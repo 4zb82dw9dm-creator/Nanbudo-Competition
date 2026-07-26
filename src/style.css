@@ -2,217 +2,274 @@
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
   font-family: Arial, Helvetica, sans-serif;
-  background: #f5f6f8;
-  color: #172033;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
+  background: #f4f6f9;
+  color: #14213d;
 }
 
 button {
-  cursor: pointer;
+  font: inherit;
 }
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-#root {
-  min-height: 100vh;
-}
-
-/* ===== APPLICATION ===== */
 
 .app {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ===== EN-TÊTE ===== */
-
 .header {
-  background: #071b3d;
+  background: #071a33;
   color: white;
-  padding: 22px 20px;
-  text-align: center;
+  padding: 36px 7%;
   border-bottom: 4px solid #c9a227;
 }
 
 .header h1 {
+  margin: 4px 0 6px;
+  font-size: clamp(30px, 5vw, 48px);
+}
+
+.surtitle {
   margin: 0;
-  font-size: 28px;
-  font-weight: 700;
+  color: #c9a227;
+  font-weight: 800;
+  letter-spacing: 2px;
+  font-size: 13px;
 }
 
-.header p {
-  margin: 8px 0 0;
-  opacity: 0.9;
+.subtitle {
+  margin: 0;
+  opacity: 0.8;
 }
 
-/* ===== CONTENU ===== */
-
-.container {
-  width: min(1100px, 92%);
-  margin: 0 auto;
-  padding: 30px 0 50px;
-}
-
-.section {
-  margin-bottom: 32px;
-}
-
-.section-title {
-  margin: 0 0 18px;
-  color: #071b3d;
-  font-size: 24px;
-}
-
-/* ===== CARTES ===== */
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 18px;
-}
-
-.card {
+.navigation {
+  display: flex;
+  gap: 8px;
+  padding: 12px 7%;
   background: white;
-  border-radius: 14px;
-  padding: 20px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  border-top: 4px solid #c9a227;
-}
-
-.card h2,
-.card h3 {
-  margin-top: 0;
-  color: #071b3d;
-}
-
-/* ===== BOUTONS ===== */
-
-.btn {
-  display: inline-block;
-  border: 0;
-  border-radius: 9px;
-  padding: 11px 18px;
-  background: #071b3d;
-  color: white;
-  font-weight: 600;
-  transition: 0.2s ease;
-}
-
-.btn:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.btn-gold {
-  background: #c9a227;
-  color: #071b3d;
-}
-
-/* ===== FORMULAIRES ===== */
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 600;
-  color: #071b3d;
-}
-
-input,
-select,
-textarea {
-  width: 100%;
-  padding: 11px 12px;
-  border: 1px solid #d5d9e2;
-  border-radius: 8px;
-  background: white;
-  color: #172033;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: 2px solid #c9a227;
-  border-color: transparent;
-}
-
-/* ===== TABLEAUX ===== */
-
-.table-wrapper {
-  width: 100%;
+  border-bottom: 1px solid #ddd;
   overflow-x: auto;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
+.navigation button {
+  border: 0;
+  background: transparent;
+  color: #071a33;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 700;
+  border-radius: 7px;
+}
+
+.navigation button.active {
+  background: #071a33;
+  color: white;
+}
+
+.content {
+  width: min(1100px, 88%);
+  margin: 0 auto;
+  flex: 1;
+  padding: 45px 0 60px;
+}
+
+.hero {
+  background: #071a33;
+  color: white;
+  padding: clamp(35px, 7vw, 70px);
+  border-radius: 18px;
+  box-shadow: 0 12px 35px rgba(7, 26, 51, 0.15);
+}
+
+.hero h2 {
+  margin: 15px 0;
+  font-size: clamp(34px, 6vw, 60px);
+}
+
+.hero p {
+  max-width: 700px;
+  line-height: 1.6;
+}
+
+.badge {
+  display: inline-block;
+  color: #c9a227;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.primary {
+  margin-top: 20px;
+  border: 0;
+  background: #c9a227;
+  color: #071a33;
+  font-weight: 800;
+  padding: 14px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 25px;
+}
+
+.card,
+.action-card {
   background: white;
+  padding: 25px;
+  border-radius: 14px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.06);
+  border-top: 3px solid #c9a227;
 }
 
-th,
-td {
-  padding: 12px;
-  border-bottom: 1px solid #e5e7eb;
+.card h3,
+.action-card h3 {
+  margin: 8px 0;
+}
+
+.card p,
+.action-card p {
+  color: #657080;
+  line-height: 1.5;
+}
+
+.number {
+  font-size: 32px;
+  font-weight: 900;
+  color: #c9a227;
+}
+
+.section-title {
+  margin-bottom: 25px;
+}
+
+.section-title h2 {
+  margin: 7px 0;
+  font-size: 36px;
+}
+
+.competition-list {
+  display: grid;
+  gap: 12px;
+}
+
+.competition {
+  background: white;
+  padding: 20px 22px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  border-left: 4px solid #c9a227;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+}
+
+.competition h3 {
+  margin: 0 0 6px;
+}
+
+.competition p {
+  margin: 0;
+  color: #657080;
+}
+
+.status {
+  white-space: nowrap;
+  background: #eef1f5;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.documents {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.documents button {
   text-align: left;
+  padding: 22px;
+  background: white;
+  color: #071a33;
+  border: 1px solid #ddd;
+  border-left: 4px solid #c9a227;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
-th {
-  background: #071b3d;
+.documents button:hover {
+  background: #071a33;
   color: white;
 }
 
-/* ===== PIED DE PAGE ===== */
-
-.footer {
-  background: #071b3d;
-  color: white;
-  text-align: center;
-  padding: 20px;
-  border-top: 4px solid #c9a227;
+.info {
+  margin-top: 25px;
+  color: #657080;
 }
 
-/* ===== MOBILE ===== */
+footer {
+  background: #071a33;
+  color: white;
+  padding: 25px 7%;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 3px solid #c9a227;
+}
 
-@media (max-width: 600px) {
-  .header h1 {
-    font-size: 23px;
+footer span {
+  color: #c9a227;
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .header {
+    padding: 28px 6%;
   }
 
-  .container {
-    width: 94%;
-    padding-top: 22px;
+  .navigation {
+    padding: 10px 6%;
   }
 
-  .section-title {
-    font-size: 21px;
+  .content {
+    width: 90%;
+    padding-top: 25px;
   }
 
-  .card {
-    padding: 16px;
+  .dashboard,
+  .action-grid,
+  .documents {
+    grid-template-columns: 1fr;
   }
 
-  .btn {
-    width: 100%;
-    text-align: center;
+  .competition {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  footer {
+    flex-direction: column;
   }
 }
