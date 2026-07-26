@@ -1,5 +1,4 @@
 # Nanbudo-Competition
-# Nanbudo Competition
 
 Application de gestion des compétitions de Nanbudo.
 
