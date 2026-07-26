@@ -1,0 +1,218 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f6f8;
+  color: #172033;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ===== APPLICATION ===== */
+
+.app {
+  min-height: 100vh;
+}
+
+/* ===== EN-TÊTE ===== */
+
+.header {
+  background: #071b3d;
+  color: white;
+  padding: 22px 20px;
+  text-align: center;
+  border-bottom: 4px solid #c9a227;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.header p {
+  margin: 8px 0 0;
+  opacity: 0.9;
+}
+
+/* ===== CONTENU ===== */
+
+.container {
+  width: min(1100px, 92%);
+  margin: 0 auto;
+  padding: 30px 0 50px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  margin: 0 0 18px;
+  color: #071b3d;
+  font-size: 24px;
+}
+
+/* ===== CARTES ===== */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border-top: 4px solid #c9a227;
+}
+
+.card h2,
+.card h3 {
+  margin-top: 0;
+  color: #071b3d;
+}
+
+/* ===== BOUTONS ===== */
+
+.btn {
+  display: inline-block;
+  border: 0;
+  border-radius: 9px;
+  padding: 11px 18px;
+  background: #071b3d;
+  color: white;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-gold {
+  background: #c9a227;
+  color: #071b3d;
+}
+
+/* ===== FORMULAIRES ===== */
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #071b3d;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #d5d9e2;
+  border-radius: 8px;
+  background: white;
+  color: #172033;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #c9a227;
+  border-color: transparent;
+}
+
+/* ===== TABLEAUX ===== */
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+th {
+  background: #071b3d;
+  color: white;
+}
+
+/* ===== PIED DE PAGE ===== */
+
+.footer {
+  background: #071b3d;
+  color: white;
+  text-align: center;
+  padding: 20px;
+  border-top: 4px solid #c9a227;
+}
+
+/* ===== MOBILE ===== */
+
+@media (max-width: 600px) {
+  .header h1 {
+    font-size: 23px;
+  }
+
+  .container {
+    width: 94%;
+    padding-top: 22px;
+  }
+
+  .section-title {
+    font-size: 21px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
