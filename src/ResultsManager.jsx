@@ -19,16 +19,17 @@ function ResultsManager({ competition }) {
     (pool) => pool.podium
   );
 
-  function competitorName(id) function printResults() {
+  function competitorName(id) {
+  const competitor = getCompetitor(id);
+
+  if (!competitor) return "—";
+
+  return `${competitor.nom} ${competitor.prenom}`;
+}
+
+function printResults() {
   window.print();
-}{
-    const competitor = getCompetitor(id);
-
-    if (!competitor) return "—";
-
-    return `${competitor.nom} ${competitor.prenom}`;
-  }
-
+}
   return (
     <div className="results-manager">
       <div className="manager-header">
