@@ -674,11 +674,8 @@ function PoolsManager({
                     </div>
 
                     {finished &&
-                      pool.statut !==
-                        "Terminée" &&
-                      pool.finalMatches
-                        ?.length === 0 && (
-                        <div className="competition-form">
+  pool.statut !== "Terminée" &&
+  (pool.finalMatches?.length || 0) === 0 && (                        <div className="competition-form">
                           <h3>
                             Clôture de la
                             catégorie
