@@ -387,7 +387,35 @@ function calculateRanking(pool) {
                         }
                       )}
                     </div>
-                  </div>
+                    <div className="pool-ranking">
+  <h3>Classement</h3>
+
+  {calculateRanking(pool).map((item, index) => {
+    const competitor = getCompetitor(
+      item.competitorId
+    );
+
+    if (!competitor) return null;
+
+    return (
+      <div
+        className="ranking-row"
+        key={item.competitorId}
+      >
+        <strong>
+          {index + 1}. {competitor.nom}{" "}
+          {competitor.prenom}
+        </strong>
+
+        <span>
+          {item.victories} V · {item.defeats} D ·{" "}
+          {item.draws} N · Diff.{" "}
+          {item.difference}
+        </span>
+      </div>
+    );
+  })}
+</div>                  </div>
 
                   <button
                     className="delete-button"
