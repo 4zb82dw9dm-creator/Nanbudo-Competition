@@ -49,8 +49,13 @@ function printResults() {
         <div className="category-total">
           <strong>{finishedPools.length}</strong>
           <span>catégories terminées</span>
-        </div>
-      </div>
+        </div><button
+  className="primary"
+  type="button"
+  onClick={printResults}
+>
+  Imprimer les résultats
+</button>      </div>
 
       {finishedPools.length === 0 ? (
         <div className="empty-state">
