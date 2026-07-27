@@ -1,205 +1,320 @@
-function CategoriesManager({ competition }) {
+import { useMemo, useState } from "react";
+
+function CategoriesManager({
+  competition,
+  onUpdateCompetition,
+}) {
   const competitors = competition.competitors || [];
 
-  const kataCompetitors = competitors.filter(
-    (competitor) => competitor.epreuves?.kata
-  );
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [categoryName, setCategoryName] = useState("");
+  const [eventType, setEventType] = useState("juRandori");
 
-  const juRandoriCompetitors = competitors.filter(
-    (competitor) => competitor.epreuves?.juRandori
-  );
+  const categories = competition.categories || [];
 
-  function formatCompetitor(competitor) {
-    const details = [];
+  const eligibleCompetitors = useMemo(() => {
+    return competitors
+      .filter((competitor) =>
+        eventType === "kata"
+          ? competitor.epreuves?.kata
+          : competitor.epreuves?.juRandori
+      )
+      .sort((a, b) => {
+        if (a.sexe !== b.sexe) {
+          return a.sexe.localeCompare(b.sexe);
+        }
 
-    if (competitor.sexe) {
-      details.push(competitor.sexe);
+        if ((a.age || 0) !== (b.age || 0)) {
+          return (a.age || 0) - (b.age || 0);
+        }
+
+        return (a.poids || 0) - (b.poids || 0);
+      });
+  }, [competitors, eventType]);
+
+  function toggleCompetitor(id) {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    );
+  }
+
+  function createCategory() {
+    if (!categoryName.trim()) {
+      alert("Indique le nom de la catégorie.");
+      return;
     }
 
-    if (
-      competitor.age !== "" &&
-      competitor.age !== undefined
-    ) {
-      details.push(`${competitor.age} ans`);
+    if (selectedIds.length === 0) {
+      alert("Sélectionne au moins un compétiteur.");
+      return;
     }
 
-    if (
-      competitor.poids !== "" &&
-      competitor.poids !== undefined
-    ) {
-      details.push(`${competitor.poids} kg`);
+    const newCategory = {
+      id: Date.now(),
+      nom: categoryName.trim(),
+      epreuve: eventType,
+      competitorIds: selectedIds,
+      statut:
+        selectedIds.length >= 3
+          ? "Prête"
+          : "Regroupement à vérifier",
+    };
+
+    onUpdateCompetition({
+      ...competition,
+      categories: [...categories, newCategory],
+    });
+
+    setCategoryName("");
+    setSelectedIds([]);
+  }
+
+  function deleteCategory(id) {
+    if (!window.confirm("Supprimer cette catégorie ?")) {
+      return;
     }
 
-    return details.join(" · ");
+    onUpdateCompetition({
+      ...competition,
+      categories: categories.filter(
+        (category) => category.id !== id
+      ),
+    });
+  }
+
+  function getCompetitor(id) {
+    return competitors.find(
+      (competitor) => competitor.id === id
+    );
   }
 
   return (
     <div className="categories-manager">
       <div className="manager-header">
         <div>
-          <p className="surtitle">PRÉPARATION</p>
-
+          <p className="surtitle">BÊTA 0.1</p>
           <h2>Catégories</h2>
 
           <p>
-            Vérification des inscriptions avant génération
-            des catégories de compétition.
+            Constitution et validation des catégories avant
+            génération des poules.
           </p>
         </div>
 
         <div className="category-total">
-          <strong>{competitors.length}</strong>
-          <span>compétiteurs</span>
+          <strong>{categories.length}</strong>
+          <span>catégories</span>
         </div>
       </div>
 
-      {competitors.length === 0 ? (
-        <div className="empty-state">
-          <span className="empty-number">0</span>
+      <div className="competition-form">
+        <h3>Créer une catégorie</h3>
 
-          <h3>Aucun compétiteur</h3>
+        <div className="form-row">
+          <label>
+            Épreuve
+
+            <select
+              value={eventType}
+              onChange={(event) => {
+                setEventType(event.target.value);
+                setSelectedIds([]);
+              }}
+            >
+              <option value="juRandori">
+                Ju Randori individuel
+              </option>
+
+              <option value="kata">
+                Kata individuel
+              </option>
+            </select>
+          </label>
+
+          <label>
+            Nom de la catégorie
+
+            <input
+              value={categoryName}
+              onChange={(event) =>
+                setCategoryName(event.target.value)
+              }
+              placeholder="Ex. Séniors Hommes A"
+            />
+          </label>
+        </div>
+
+        <div className="beta-note">
+          <strong>Règle de préparation</strong>
 
           <p>
-            Enregistre d'abord les participants dans
-            l'onglet Compétiteurs.
+            Vérifie le sexe, l'âge et, pour le Ju Randori,
+            le poids avant de valider le groupe.
           </p>
         </div>
-      ) : (
-        <>
-          <div className="category-summary">
-            <div className="card">
-              <span className="number">
-                {kataCompetitors.length}
-              </span>
 
-              <h3>Kata individuel</h3>
+        <div className="category-competitor-list">
+          {eligibleCompetitors.length === 0 ? (
+            <div className="empty-state">
+              <h3>Aucun compétiteur</h3>
 
-              <p>Inscriptions enregistrées</p>
+              <p>
+                Aucun participant n'est inscrit dans cette
+                épreuve.
+              </p>
             </div>
+          ) : (
+            eligibleCompetitors.map((competitor) => {
+              const alreadyAssigned = categories.some(
+                (category) =>
+                  category.epreuve === eventType &&
+                  category.competitorIds.includes(
+                    competitor.id
+                  )
+              );
 
-            <div className="card">
-              <span className="number">
-                {juRandoriCompetitors.length}
-              </span>
+              return (
+                <label
+                  className="category-competitor"
+                  key={competitor.id}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(
+                      competitor.id
+                    )}
+                    disabled={alreadyAssigned}
+                    onChange={() =>
+                      toggleCompetitor(competitor.id)
+                    }
+                  />
 
-              <h3>Ju Randori individuel</h3>
+                  <div>
+                    <h4>
+                      {competitor.nom}{" "}
+                      {competitor.prenom}
+                    </h4>
 
-              <p>Inscriptions enregistrées</p>
-            </div>
+                    <p>
+                      {competitor.club ||
+                        "Club non renseigné"}
+                    </p>
+                  </div>
+
+                  <div className="category-data">
+                    <span>{competitor.sexe}</span>
+
+                    {competitor.age !== "" &&
+                      competitor.age !== undefined && (
+                        <span>
+                          {competitor.age} ans
+                        </span>
+                      )}
+
+                    {eventType === "juRandori" &&
+                      competitor.poids !== "" &&
+                      competitor.poids !== undefined && (
+                        <span>
+                          {competitor.poids} kg
+                        </span>
+                      )}
+
+                    {alreadyAssigned && (
+                      <span>Déjà classé</span>
+                    )}
+                  </div>
+                </label>
+              );
+            })
+          )}
+        </div>
+
+        <button
+          className="primary"
+          type="button"
+          onClick={createCategory}
+        >
+          Créer la catégorie ({selectedIds.length})
+        </button>
+      </div>
+
+      <section className="category-section">
+        <div className="category-section-header">
+          <div>
+            <p className="surtitle">VALIDATION</p>
+            <h3>Catégories créées</h3>
           </div>
+        </div>
 
-          <section className="category-section">
-            <div className="category-section-header">
-              <div>
-                <p className="surtitle">KATA</p>
-                <h3>Kata individuel</h3>
-              </div>
-
-              <span className="status">
-                {kataCompetitors.length} inscrit
-                {kataCompetitors.length > 1 ? "s" : ""}
-              </span>
-            </div>
-
-            {kataCompetitors.length === 0 ? (
-              <div className="empty-category">
-                Aucun compétiteur inscrit en Kata.
-              </div>
-            ) : (
-              <div className="category-competitor-list">
-                {kataCompetitors.map((competitor) => (
-                  <article
-                    className="category-competitor"
-                    key={competitor.id}
-                  >
-                    <div>
-                      <h4>
-                        {competitor.nom}{" "}
-                        {competitor.prenom}
-                      </h4>
-
-                      <p>
-                        {competitor.club ||
-                          "Club non renseigné"}
-                      </p>
-                    </div>
-
-                    <div className="category-data">
-                      {formatCompetitor(competitor) || (
-                        <span>
-                          Informations à compléter
-                        </span>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="category-section">
-            <div className="category-section-header">
-              <div>
-                <p className="surtitle">JU RANDORI</p>
-                <h3>Ju Randori individuel</h3>
-              </div>
-
-              <span className="status">
-                {juRandoriCompetitors.length} inscrit
-                {juRandoriCompetitors.length > 1 ? "s" : ""}
-              </span>
-            </div>
-
-            {juRandoriCompetitors.length === 0 ? (
-              <div className="empty-category">
-                Aucun compétiteur inscrit en Ju Randori.
-              </div>
-            ) : (
-              <div className="category-competitor-list">
-                {juRandoriCompetitors.map((competitor) => (
-                  <article
-                    className="category-competitor"
-                    key={competitor.id}
-                  >
-                    <div>
-                      <h4>
-                        {competitor.nom}{" "}
-                        {competitor.prenom}
-                      </h4>
-
-                      <p>
-                        {competitor.club ||
-                          "Club non renseigné"}
-                      </p>
-                    </div>
-
-                    <div className="category-data">
-                      {formatCompetitor(competitor) || (
-                        <span>
-                          Informations à compléter
-                        </span>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <div className="beta-note">
-            <strong>
-              Prochaine étape : génération des catégories
-            </strong>
+        {categories.length === 0 ? (
+          <div className="empty-state">
+            <h3>Aucune catégorie</h3>
 
             <p>
-              Le moteur utilisera les données des
-              compétiteurs pour constituer les catégories.
-              Les regroupements pourront ensuite être
-              contrôlés avant la création des poules.
+              Sélectionne les compétiteurs ci-dessus pour
+              créer la première catégorie.
             </p>
           </div>
-        </>
-      )}
+        ) : (
+          <div className="competition-list">
+            {categories.map((category) => (
+              <article
+                className="competition"
+                key={category.id}
+              >
+                <div>
+                  <h3>{category.nom}</h3>
+
+                  <p>
+                    {category.epreuve === "kata"
+                      ? "Kata individuel"
+                      : "Ju Randori individuel"}
+                    {" · "}
+                    {category.competitorIds.length} compétiteur
+                    {category.competitorIds.length > 1
+                      ? "s"
+                      : ""}
+                  </p>
+
+                  <div className="competitor-events">
+                    {category.competitorIds.map((id) => {
+                      const competitor =
+                        getCompetitor(id);
+
+                      if (!competitor) return null;
+
+                      return (
+                        <span key={id}>
+                          {competitor.nom}{" "}
+                          {competitor.prenom}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="competition-actions">
+                  <span className="status">
+                    {category.statut}
+                  </span>
+
+                  <button
+                    className="delete-button"
+                    type="button"
+                    onClick={() =>
+                      deleteCategory(category.id)
+                    }
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
