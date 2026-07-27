@@ -317,4 +317,50 @@ footer span {
 .competition.competition-terminee .manage-button {
   background: #2e7d32;
   color: white;
+}.ranking-table {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid #d9dee7;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ranking-header,
+.ranking-row {
+  display: grid;
+  grid-template-columns: 70px minmax(180px, 2fr) repeat(5, 70px);
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.ranking-header {
+  background: #0b1f3a;
+  color: white;
+  font-weight: 700;
+}
+
+.ranking-row {
+  border-top: 1px solid #e5e7eb;
+  background: white;
+}
+
+.ranking-row > span,
+.ranking-row > strong:not(:nth-child(2)) {
+  text-align: center;
+}
+
+.ranking-row:nth-child(2) {
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .ranking-table {
+    overflow-x: auto;
+  }
+
+  .ranking-header,
+  .ranking-row {
+    min-width: 650px;
+  }
 }
