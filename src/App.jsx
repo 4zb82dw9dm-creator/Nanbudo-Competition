@@ -1,6 +1,6 @@
 import { useState } from "react";
 import "./style.css";
-
+import CompetitionManager from "./CompetitionManager";
 function App() {
   const [section, setSection] = useState("accueil");
 
@@ -118,7 +118,8 @@ function App() {
         )}
 
         {section === "competitions" && (
-          <section>
+  <CompetitionManager />
+)}          <section>
             <div className="section-title">
               <p className="surtitle">SAISON SPORTIVE</p>
               <h2>Compétitions</h2>
