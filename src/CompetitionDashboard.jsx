@@ -608,14 +608,9 @@ function deleteTestCompetitors() {
     onUpdateCompetition={onUpdateCompetition}
   />
 )}
-      {view === "results" && (
-        <div className="empty-state">
-          <h3>Résultats</h3>
-          <p>Module en préparation.</p>
-        </div>
-      )}
-    </section>
-  );
-}
-
+     {view === "results" && (
+  <ResultsManager
+    competition={competition}
+  />
+)}
 export default CompetitionDashboard;
