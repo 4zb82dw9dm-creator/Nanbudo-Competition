@@ -31,7 +31,33 @@ button {
   color: white;
   padding: 36px 7%;
   border-bottom: 4px solid #c9a227;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 30px;
 }
+
+.header-text {
+  flex: 1;
+}
+
+.afdp-logo {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .header {
+    padding: 28px 7%;
+  }
+
+  .afdp-logo {
+    width: 75px;
+  }
+}}
 
 .header h1 {
   margin: 4px 0 6px;
