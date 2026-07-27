@@ -45,8 +45,8 @@ function calculateRanking(pool) {
 
     shiro.scoreFor += match.shiroScore || 0;
     shiro.scoreAgainst += match.akaScore || 0;
-
-    if (match.winnerId === match.akaId) {
+aka.negativePoints += match.pointsNegatifsAka || 0;
+shiro.negativePoints += match.pointsNegatifsShiro || 0;    if (match.winnerId === match.akaId) {
       aka.victories += 1;
       shiro.defeats += 1;
     } else if (match.winnerId === match.shiroId) {
