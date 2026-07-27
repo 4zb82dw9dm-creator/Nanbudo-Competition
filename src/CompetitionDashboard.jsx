@@ -1,12 +1,13 @@
 import { useState } from "react";
 import CategoriesManager from "./CategoriesManager";
-import PoolsManager from "./PoolsManager";function CompetitionDashboard
-import ArbitrationManager from "./ArbitrationManager";  ({
+import PoolsManager from "./PoolsManager";
+import ArbitrationManager from "./ArbitrationManager";
+
+function CompetitionDashboard({
   competition,
   onBack,
   onUpdateCompetition,
-}) {
-  const [view, setView] = useState("dashboard");
+}) {  const [view, setView] = useState("dashboard");
   const [showForm, setShowForm] = useState(false);
 
   const [form, setForm] = useState({
