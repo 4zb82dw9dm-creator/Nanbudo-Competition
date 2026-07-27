@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-
+import CompetitionDashboard from "./CompetitionDashboard";
 function CompetitionManager() {
   const [competitions, setCompetitions] = useState(() => {
     try {
@@ -11,7 +11,7 @@ function CompetitionManager() {
   });
 
   const [showForm, setShowForm] = useState(false);
-
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
   const [form, setForm] = useState({
     nom: "",
     date: "",
@@ -83,7 +83,29 @@ function CompetitionManager() {
       current.filter((competition) => competition.id !== id)
     );
   }
+function updateCompetition(updatedCompetition) {
+  setCompetitions((current) =>
+    current.map((competition) =>
+      competition.id === updatedCompetition.id
+        ? updatedCompetition
+        : competition
+    )
+  );
+}
 
+const selectedCompetition = competitions.find(
+  (competition) => competition.id === selectedCompetitionId
+);
+
+if (selectedCompetition) {
+  return (
+    <CompetitionDashboard
+      competition={selectedCompetition}
+      onBack={() => setSelectedCompetitionId(null)}
+      onUpdateCompetition={updateCompetition}
+    />
+  );
+}  
   return (
     <section className="competition-manager">
       <div className="manager-header">
@@ -244,11 +266,8 @@ function CompetitionManager() {
                   className="manage-button"
                   type="button"
                   onClick={() =>
-                    alert(
-                      `Gestion de ${competition.nom} : prochain module`
-                    )
-                  }
-                >
+  setSelectedCompetitionId(competition.id)
+}                >
                   Gérer
                 </button>
 
