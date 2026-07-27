@@ -408,13 +408,7 @@ function deleteTestCompetitors() {
   >
     Effacer les données test
   </button>
-  <button
-  className="manage-button"
-  type="button"
-  onClick={exportCompetition}
->
-  Exporter la compétition
-</button> </div>          {showForm && (
+   </div>          {showForm && (
             <form
               className="competition-form"
               onSubmit={addCompetitor}
