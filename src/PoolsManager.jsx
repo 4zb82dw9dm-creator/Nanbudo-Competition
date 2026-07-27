@@ -434,9 +434,8 @@ shiro.negativePoints += match.pointsNegatifsShiro || 0;    if (match.winnerId ==
 
         <span>
           {item.victories} V · {item.defeats} D ·{" "}
-          {item.draws} N · Diff.{" "}
-          {item.difference}
-        </span>
+{item.draws} N · PN {item.negativePoints} · Diff.{" "}
+{item.difference}        </span>
       </div>
     );
   })}
