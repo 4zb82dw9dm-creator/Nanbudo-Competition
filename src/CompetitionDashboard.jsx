@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import CategoriesManager from "./CategoriesManager";
 function CompetitionDashboard({
   competition,
   onBack,
@@ -463,12 +463,8 @@ function CompetitionDashboard({
       )}
 
       {view === "categories" && (
-        <div className="empty-state">
-          <h3>Catégories</h3>
-          <p>Module en préparation.</p>
-        </div>
-      )}
-
+  <CategoriesManager competition={competition} />
+)}
       {view === "poules" && (
         <div className="empty-state">
           <h3>Poules</h3>
