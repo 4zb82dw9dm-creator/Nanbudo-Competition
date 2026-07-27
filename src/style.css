@@ -308,3 +308,13 @@ footer span {
   color: #081a35;
   box-shadow: 0 0 0 2px #d1d5db;
 }
+.competition.competition-terminee {
+  background: #e8f5e9;
+  border: 2px solid #2e7d32;
+  box-shadow: 0 0 0 1px rgba(46, 125, 50, 0.12);
+}
+
+.competition.competition-terminee .manage-button {
+  background: #2e7d32;
+  color: white;
+}
