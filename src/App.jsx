@@ -46,11 +46,11 @@ function App() {
   </div>
 
   <img
-    src={`${import.meta.env.BASE_URL}logo-afdp.png`}
-    alt="AFDP Nanbudo"
-    className="afdp-logo"
-  />
-</header>
+  src={`${import.meta.env.BASE_URL}logo-afdp.png`}
+  alt="AFDP Nanbudo"
+  className="header-logo"
+/>
+      </header>
       <nav className="navigation">
         <button
           className={section === "accueil" ? "active" : ""}
