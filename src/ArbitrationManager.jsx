@@ -231,14 +231,13 @@ function ArbitrationManager({
                       ? getCompetitor(match.winnerId)
                       : null;
 
-                    return (
-                      <article
-                        <article
-  className={`competition ${
-    match.statut === "Terminé" ? "competition-terminee" : ""
-  }`}
-  key={match.id}
->                        <div>
+                     return (
+  <article
+    className={`competition ${
+      match.statut === "Terminé" ? "competition-terminee" : ""
+    }`}
+    key={match.id}
+  >                  <div>
                           <p className="surtitle">
                             RENCONTRE {index + 1}
                           </p>
