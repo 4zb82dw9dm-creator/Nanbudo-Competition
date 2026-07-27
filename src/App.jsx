@@ -120,26 +120,7 @@ function App() {
         {section === "competitions" && (
   <CompetitionManager />
 )}          <section>
-            <div className="section-title">
-              <p className="surtitle">SAISON SPORTIVE</p>
-              <h2>Compétitions</h2>
-            </div>
-
-            <div className="competition-list">
-              {competitions.map((competition, index) => (
-                <article className="competition" key={index}>
-                  <div>
-                    <h3>{competition.nom}</h3>
-                    <p>{competition.lieu}</p>
-                  </div>
-
-                  <span className="status">{competition.statut}</span>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
-
+          
         {section === "organisateurs" && (
           <section>
             <div className="section-title">
