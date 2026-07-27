@@ -248,15 +248,13 @@ if (selectedCompetition) {
               <div className="competition-stats">
                 <div>
                   <strong>
-                    {competition.competitors.length}
-                  </strong>
+                    {competition.competitors?.length || 0}                  </strong>
                   <span>Compétiteurs</span>
                 </div>
 
                 <div>
                   <strong>
-                    {competition.categories.length}
-                  </strong>
+                    {competition.categories?.length || 0}                  </strong>
                   <span>Catégories</span>
                 </div>
               </div>
