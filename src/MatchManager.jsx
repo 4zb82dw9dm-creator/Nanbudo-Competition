@@ -39,8 +39,62 @@ function MatchManager({ match, onSave }) {
   }
 
   const score = calculerScore();
+const [penalitesAka, setPenalitesAka] = useState({
+  keikoku: 0,
+  fujubun: 0,
+  chui: 0,
+  hansokuChui: 0,
+  shikaku: false,
+});
 
+const [penalitesShiro, setPenalitesShiro] = useState({
+  keikoku: 0,
+  fujubun: 0,
+  chui: 0,
+  hansokuChui: 0,
+  shikaku: false,
+});
+
+function ajouterPenalite(couleur, type) {
+  const setter =
+    couleur === "aka"
+      ? setPenalitesAka
+      : setPenalitesShiro;
+
+  setter((actuelles) => {
+    if (type === "shikaku") {
+      return {
+        ...actuelles,
+        shikaku: true,
+      };
+    }
+
+    return {
+      ...actuelles,
+      [type]: actuelles[type] + 1,
+    };
+  });
+}
+
+function calculerPointsNegatifs(penalites) {
   return (
+    penalites.fujubun +
+    penalites.chui * 2 +
+    penalites.hansokuChui * 3
+  );
+}
+
+const pointsNegatifsAka =
+  calculerPointsNegatifs(penalitesAka);
+
+const pointsNegatifsShiro =
+  calculerPointsNegatifs(penalitesShiro);
+
+const scoreFinalAka =
+  score.aka - pointsNegatifsAka;
+
+const scoreFinalShiro =
+  score.shiro - pointsNegatifsShiro;  return (
     <section className="match-manager">
       <div className="manager-header">
         <div>
