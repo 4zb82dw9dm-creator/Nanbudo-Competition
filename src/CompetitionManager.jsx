@@ -1,19 +1,7 @@
 import { useEffect, useState } from "react";
 import CompetitionDashboard from "./CompetitionDashboard";
 function CompetitionManager() {
-  const [competitions, setCompetitions] = useState(() => {
-  try {
-    const saved = localStorage.getItem("nanbudo_competitions");
-
-    if (!saved) return [];
-
-    const parsed = JSON.parse(saved);
-
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-});
+  
   const [showForm, setShowForm] = useState(false);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
   const [form, setForm] = useState({
