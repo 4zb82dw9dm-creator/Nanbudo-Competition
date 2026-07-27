@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-function ArbitrationManager({
+import MatchManager from "./MatchManager";function ArbitrationManager({
   competition,
   onUpdateCompetition,
 }) {
