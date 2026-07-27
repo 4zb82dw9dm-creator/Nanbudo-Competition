@@ -296,8 +296,52 @@ function calculateRanking(pool) {
                         );
                       })}
                     </div>
+<div className="pool-ranking">
+  <h3>Classement provisoire</h3>
 
-                    <div className="pool-matches">
+  <div className="ranking-table">
+    <div className="ranking-row ranking-header">
+      <span>#</span>
+      <span>Compétiteur</span>
+      <span>V</span>
+      <span>D</span>
+      <span>E</span>
+      <span>+</span>
+      <span>-</span>
+      <span>Diff.</span>
+    </div>
+
+    {calculateRanking(pool).map((item, index) => {
+      const competitor = getCompetitor(
+        item.competitorId
+      );
+
+      if (!competitor) return null;
+
+      return (
+        <div
+          className="ranking-row"
+          key={item.competitorId}
+        >
+          <span>
+            <strong>{index + 1}</strong>
+          </span>
+
+          <span>
+            {competitor.nom} {competitor.prenom}
+          </span>
+
+          <span>{item.victories}</span>
+          <span>{item.defeats}</span>
+          <span>{item.draws}</span>
+          <span>{item.scoreFor}</span>
+          <span>{item.scoreAgainst}</span>
+          <span>{item.difference}</span>
+        </div>
+      );
+    })}
+  </div>
+</div>                    <div className="pool-matches">
                       {pool.matches.map(
                         (match, index) => {
                           const aka =
