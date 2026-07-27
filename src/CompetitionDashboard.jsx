@@ -1,6 +1,6 @@
 import { useState } from "react";
 import CategoriesManager from "./CategoriesManager";
-function CompetitionDashboard({
+import PoolsManager from "./PoolsManager";function CompetitionDashboard({
   competition,
   onBack,
   onUpdateCompetition,
@@ -596,13 +596,11 @@ function deleteTestCompetitors() {
   onUpdateCompetition={onUpdateCompetition}
 />)}
       {view === "poules" && (
-        <div className="empty-state">
-          <h3>Poules</h3>
-          <p>Module en préparation.</p>
-        </div>
-      )}
-
-      {view === "arbitrage" && (
+  <PoolsManager
+    competition={competition}
+    onUpdateCompetition={onUpdateCompetition}
+  />
+)}      {view === "arbitrage" && (
         <div className="empty-state">
           <h3>Arbitrage</h3>
           <p>Module en préparation.</p>
