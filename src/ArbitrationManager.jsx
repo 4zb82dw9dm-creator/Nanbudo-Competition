@@ -293,55 +293,14 @@ import MatchManager from "./MatchManager";function ArbitrationManager({
           )}
 
           {selectedMatch && (
-            <section className="competition-form">
-              <p className="surtitle">
-                SAISIE DU RÉSULTAT
-              </p>
-
-              <h3>
-                {getCompetitor(selectedMatch.akaId)?.nom}{" "}
-                {getCompetitor(selectedMatch.akaId)?.prenom}
-                {" VS "}
-                {getCompetitor(selectedMatch.shiroId)?.nom}{" "}
-                {getCompetitor(selectedMatch.shiroId)?.prenom}
-              </h3>
-
-              <div className="form-row">
-                <label>
-                  Score AKA
-
-                  <input
-                    type="number"
-                    step="1"
-                    value={akaScore}
-                    onChange={(event) =>
-                      setAkaScore(event.target.value)
-                    }
-                  />
-                </label>
-
-                <label>
-                  Score SHIRO
-
-                  <input
-                    type="number"
-                    step="1"
-                    value={shiroScore}
-                    onChange={(event) =>
-                      setShiroScore(event.target.value)
-                    }
-                  />
-                </label>
-              </div>
-
-              <button
-                className="primary"
-                type="button"
-                onClick={saveResult}
-              >
-                Enregistrer le résultat
-              </button>
-            </section>
+  <MatchManager
+    key={selectedMatch.id}
+    match={{
+      aka: getCompetitor(selectedMatch.akaId),
+      shiro: getCompetitor(selectedMatch.shiroId),
+    }}
+    onSave={saveOfficialMatch}
+  />
           )}
         </>
       )}
