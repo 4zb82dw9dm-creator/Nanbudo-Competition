@@ -62,13 +62,45 @@ function ajouterPenalite(couleur, type) {
       : setPenalitesShiro;
 
   setter((actuelles) => {
+    const nouvelles = { ...actuelles };
+
     if (type === "shikaku") {
-      return {
-        ...actuelles,
-        shikaku: true,
-      };
+      nouvelles.shikaku = true;
+      return nouvelles;
     }
 
+    if (type === "keikoku") {
+      nouvelles.keikoku += 1;
+
+      // 3 Keikoku = 1 Fujubun
+      if (nouvelles.keikoku >= 3) {
+        nouvelles.keikoku = 0;
+        nouvelles.fujubun += 1;
+      }
+    }
+
+    if (type === "fujubun") {
+      nouvelles.fujubun += 1;
+    }
+
+    if (type === "chui") {
+      nouvelles.chui += 1;
+    }
+
+    if (type === "hansokuChui") {
+      nouvelles.hansokuChui += 1;
+    }
+
+    // En Ju Randori individuel :
+    // 3 Fujubun = Hansoku Chui
+    if (nouvelles.fujubun >= 3) {
+      nouvelles.fujubun = 0;
+      nouvelles.hansokuChui += 1;
+    }
+
+    return nouvelles;
+  });
+}
     return {
       ...actuelles,
       [type]: actuelles[type] + 1,
