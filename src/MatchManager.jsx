@@ -72,27 +72,29 @@ function MatchManager({ match, onSave }) {
               <div className="juge" key={juge}>
                 <span>Fukushin {jugeIndex + 1}</span>
 
-                <button
-                  type="button"
-                  onClick={() => modifierVote(index, juge, "aka")}
-                >
-                  AKA
-                </button>
+              <button
+  type="button"
+  className={assaut[juge] === "aka" ? "vote-button selected aka" : "vote-button"}
+  onClick={() => modifierVote(index, juge, "aka")}
+>
+  AKA
+</button>
 
-                <button
-                  type="button"
-                  onClick={() => modifierVote(index, juge, "hikiwake")}
-                >
-                  Hikiwake
-                </button>
+<button
+  type="button"
+  className={assaut[juge] === "hikiwake" ? "vote-button selected hikiwake" : "vote-button"}
+  onClick={() => modifierVote(index, juge, "hikiwake")}
+>
+  Hikiwake
+</button>
 
-                <button
-                  type="button"
-                  onClick={() => modifierVote(index, juge, "shiro")}
-                >
-                  SHIRO
-                </button>
-              </div>
+<button
+  type="button"
+  className={assaut[juge] === "shiro" ? "vote-button selected shiro" : "vote-button"}
+  onClick={() => modifierVote(index, juge, "shiro")}
+>
+  SHIRO
+</button>              </div>
             ))}
           </div>
         ))}
