@@ -46,8 +46,7 @@ function App() {
   </div>
 
   <img
-  src={`${import.meta.env.BASE_URL}logo-afdp.png`}
-  alt="AFDP Nanbudo"
+  src="./logo-afdp.png"  alt="AFDP Nanbudo"
   className="header-logo"
 />
       </header>
