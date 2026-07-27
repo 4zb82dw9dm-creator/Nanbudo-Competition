@@ -1,9 +1,10 @@
 import { useState } from "react";
-import MatchManager from "./MatchManager";function ArbitrationManager({
+import MatchManager from "./MatchManager";
+
+function ArbitrationManager({
   competition,
   onUpdateCompetition,
-}) {
-  const pools = competition.pools || [];
+}) {  const pools = competition.pools || [];
   const competitors = competition.competitors || [];
 
   const [selectedPoolId, setSelectedPoolId] = useState("");
