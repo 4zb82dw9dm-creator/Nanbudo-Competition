@@ -4,13 +4,16 @@ import MatchManager from "./MatchManager";
 function ArbitrationManager({
   competition,
   onUpdateCompetition,
-}) {  const pools = competition.pools || [];
+}) {
+  const pools = competition.pools || [];
   const competitors = competition.competitors || [];
 
-  const [selectedPoolId, setSelectedPoolId] = useState("");
-  const [selectedMatchId, setSelectedMatchId] = useState("");
-  const [akaScore, setAkaScore] = useState("");
-  const [shiroScore, setShiroScore] = useState("");
+  const [selectedPoolId, setSelectedPoolId] =
+    useState("");
+  const [selectedMatchId, setSelectedMatchId] =
+    useState("");
+  const [selectedMatchType, setSelectedMatchType] =
+    useState("");
 
   function getCompetitor(id) {
     return competitors.find(
@@ -19,78 +22,151 @@ function ArbitrationManager({
   }
 
   const selectedPool = pools.find(
-    (pool) => String(pool.id) === String(selectedPoolId)
+    (pool) =>
+      String(pool.id) === String(selectedPoolId)
   );
 
-  const selectedMatch = selectedPool?.matches.find(
-    (match) => String(match.id) === String(selectedMatchId)
-  );
+  const poolMatches = selectedPool?.matches || [];
+  const finalMatches =
+    selectedPool?.finalMatches || [];
 
-  function selectMatch(match) {
+  const selectedMatch =
+    selectedMatchType === "final"
+      ? finalMatches.find(
+          (match) =>
+            String(match.id) ===
+            String(selectedMatchId)
+        )
+      : poolMatches.find(
+          (match) =>
+            String(match.id) ===
+            String(selectedMatchId)
+        );
+
+  function selectMatch(match, type) {
     setSelectedMatchId(match.id);
-
-    setAkaScore(
-      match.akaScore === null ? "" : match.akaScore
-    );
-
-    setShiroScore(
-      match.shiroScore === null ? "" : match.shiroScore
-    );
+    setSelectedMatchType(type);
   }
 
-  function saveResult() {
-    if (!selectedPool || !selectedMatch) {
-      alert("Sélectionne une rencontre.");
-      return;
-    }
+  function calculatePodium(finalMatchesList) {
+    const finale = finalMatchesList.find(
+      (match) => match.type === "finale"
+    );
 
-    if (akaScore === "" || shiroScore === "") {
-      alert("Saisis les deux scores.");
-      return;
-    }
-
-    const aka = Number(akaScore);
-    const shiro = Number(shiroScore);
+    const petiteFinale = finalMatchesList.find(
+      (match) =>
+        match.type === "petite-finale"
+    );
 
     if (
-      Number.isNaN(aka) ||
-      Number.isNaN(shiro)
+      !finale ||
+      !petiteFinale ||
+      finale.statut !== "Terminé" ||
+      petiteFinale.statut !== "Terminé"
     ) {
-      alert("Les scores doivent être numériques.");
+      return null;
+    }
+
+    if (
+      !finale.winnerId ||
+      !petiteFinale.winnerId
+    ) {
+      return null;
+    }
+
+    const secondId =
+      finale.winnerId === finale.akaId
+        ? finale.shiroId
+        : finale.akaId;
+
+    const fourthId =
+      petiteFinale.winnerId ===
+      petiteFinale.akaId
+        ? petiteFinale.shiroId
+        : petiteFinale.akaId;
+
+    return {
+      firstId: finale.winnerId,
+      secondId,
+      thirdId: petiteFinale.winnerId,
+      fourthId,
+    };
+  }
+
+  function saveOfficialMatch(result) {
+    if (!selectedPool || !selectedMatch) {
       return;
     }
 
-    let winnerId = null;
+    const winnerId =
+      result.vainqueur === "aka"
+        ? selectedMatch.akaId
+        : result.vainqueur === "shiro"
+          ? selectedMatch.shiroId
+          : null;
 
-    if (aka > shiro) {
-      winnerId = selectedMatch.akaId;
-    }
+    const savedMatch = {
+      ...selectedMatch,
 
-    if (shiro > aka) {
-      winnerId = selectedMatch.shiroId;
-    }
+      assauts: result.assauts,
+
+      akaScore: result.scoreAka,
+      shiroScore: result.scoreShiro,
+
+      scoreBrutAka: result.scoreBrutAka,
+      scoreBrutShiro: result.scoreBrutShiro,
+
+      penalitesAka: result.penalitesAka,
+      penalitesShiro: result.penalitesShiro,
+
+      pointsNegatifsAka:
+        result.pointsNegatifsAka,
+      pointsNegatifsShiro:
+        result.pointsNegatifsShiro,
+
+      akaDisqualifie:
+        result.akaDisqualifie,
+      shiroDisqualifie:
+        result.shiroDisqualifie,
+
+      winnerId,
+      statut: "Terminé",
+    };
 
     const updatedPools = pools.map((pool) => {
       if (pool.id !== selectedPool.id) {
         return pool;
       }
 
+      if (selectedMatchType === "final") {
+        const updatedFinalMatches = (
+          pool.finalMatches || []
+        ).map((match) =>
+          match.id === selectedMatch.id
+            ? savedMatch
+            : match
+        );
+
+        const podium =
+          calculatePodium(updatedFinalMatches);
+
+        return {
+          ...pool,
+          finalMatches: updatedFinalMatches,
+          podium,
+          statut: podium
+            ? "Terminée"
+            : "Phase finale",
+        };
+      }
+
       return {
         ...pool,
-
-        matches: pool.matches.map((match) => {
-          if (match.id !== selectedMatch.id) {
-            return match;
-          }
-
-          return {
-            ...match,
-            akaScore: aka,
-            shiroScore: shiro,
-            winnerId,
-            statut: "Terminé",
-          };
-        }),
+        matches: pool.matches.map((match) =>
+          match.id === selectedMatch.id
+            ? savedMatch
+            : match
+        ),
       };
     });
 
@@ -100,82 +176,108 @@ function ArbitrationManager({
     });
 
     setSelectedMatchId("");
-    setAkaScore("");
-    setShiroScore("");
+    setSelectedMatchType("");
   }
 
-  function saveOfficialMatch(result) {
-  if (!selectedPool || !selectedMatch) return;
+  function renderMatch(
+    match,
+    label,
+    matchType
+  ) {
+    const aka = getCompetitor(match.akaId);
+    const shiro = getCompetitor(match.shiroId);
 
- const winnerId =
-  result.vainqueur === "aka"
-    ? selectedMatch.akaId
-    : result.vainqueur === "shiro"
-      ? selectedMatch.shiroId
+    const winner = match.winnerId
+      ? getCompetitor(match.winnerId)
       : null;
-  const updatedPools = pools.map((pool) => {
-    if (pool.id !== selectedPool.id) return pool;
 
-    return {
-      ...pool,
-      matches: pool.matches.map((match) => {
-        if (match.id !== selectedMatch.id) return match;
+    return (
+      <article
+        className={`competition ${
+          match.statut === "Terminé"
+            ? "competition-terminee"
+            : ""
+        }`}
+        key={match.id}
+      >
+        <div>
+          <p className="surtitle">
+            {label}
+          </p>
 
-        return {
-  ...match,
+          <h3>
+            AKA —{" "}
+            {aka
+              ? `${aka.nom} ${aka.prenom}`
+              : "Inconnu"}
+          </h3>
 
-  assauts: result.assauts,
+          <p>contre</p>
 
-  akaScore: result.scoreAka,
-  shiroScore: result.scoreShiro,
+          <h3>
+            SHIRO —{" "}
+            {shiro
+              ? `${shiro.nom} ${shiro.prenom}`
+              : "Inconnu"}
+          </h3>
 
-  scoreBrutAka: result.scoreBrutAka,
-  scoreBrutShiro: result.scoreBrutShiro,
+          {match.statut === "Terminé" && (
+            <div className="beta-note">
+              <strong>
+                {match.akaScore} —{" "}
+                {match.shiroScore}
+              </strong>
 
-  penalitesAka: result.penalitesAka,
-  penalitesShiro: result.penalitesShiro,
+              <p>
+                {winner
+                  ? `Vainqueur : ${winner.nom} ${winner.prenom}`
+                  : "Égalité"}
+              </p>
+            </div>
+          )}
+        </div>
 
-  pointsNegatifsAka: result.pointsNegatifsAka,
-  pointsNegatifsShiro: result.pointsNegatifsShiro,
+        <button
+          className="manage-button"
+          type="button"
+          onClick={() =>
+            selectMatch(match, matchType)
+          }
+        >
+          {match.statut === "Terminé"
+            ? "Modifier"
+            : "Arbitrer"}
+        </button>
+      </article>
+    );
+  }
 
-  akaDisqualifie: result.akaDisqualifie,
-  shiroDisqualifie: result.shiroDisqualifie,
-
-  winnerId,
-  statut: "Terminé",
-};      }),
-    };
-  });
-
-  onUpdateCompetition({
-    ...competition,
-    pools: updatedPools,
-  });
-
-  setSelectedMatchId("");
-}
   return (
     <div className="arbitration-manager">
       <div className="manager-header">
         <div>
-          <p className="surtitle">AIRE DE COMBAT</p>
+          <p className="surtitle">
+            AIRE DE COMBAT
+          </p>
 
           <h2>Arbitrage</h2>
 
           <p>
-            Sélection d'une poule et saisie des résultats
-            des rencontres.
+            Sélection d'une poule et saisie des
+            résultats des rencontres.
           </p>
         </div>
       </div>
 
       {pools.length === 0 ? (
         <div className="empty-state">
-          <h3>Aucune poule disponible</h3>
+          <h3>
+            Aucune poule disponible
+          </h3>
 
           <p>
-            Génère d'abord les poules avant de commencer
-            l'arbitrage.
+            Génère d'abord les poules avant de
+            commencer l'arbitrage.
           </p>
         </div>
       ) : (
@@ -187,10 +289,11 @@ function ArbitrationManager({
               <select
                 value={selectedPoolId}
                 onChange={(event) => {
-                  setSelectedPoolId(event.target.value);
+                  setSelectedPoolId(
+                    event.target.value
+                  );
                   setSelectedMatchId("");
-                  setAkaScore("");
-                  setShiroScore("");
+                  setSelectedMatchType("");
                 }}
               >
                 <option value="">
@@ -210,112 +313,144 @@ function ArbitrationManager({
           </div>
 
           {selectedPool && (
-            <section className="category-section">
-              <div className="category-section-header">
-                <div>
-                  <p className="surtitle">RENCONTRES</p>
+            <>
+              <section className="category-section">
+                <div className="category-section-header">
+                  <div>
+                    <p className="surtitle">
+                      RENCONTRES DE POULE
+                    </p>
 
-                  <h3>{selectedPool.nom}</h3>
+                    <h3>
+                      {selectedPool.nom}
+                    </h3>
+                  </div>
+
+                  <span className="status">
+                    {
+                      poolMatches.filter(
+                        (match) =>
+                          match.statut ===
+                          "Terminé"
+                      ).length
+                    }
+                    /{poolMatches.length}{" "}
+                    terminées
+                  </span>
                 </div>
 
-                <span className="status">
-                  {
-                    selectedPool.matches.filter(
-                      (match) =>
-                        match.statut === "Terminé"
-                    ).length
-                  }
-                  /{selectedPool.matches.length} terminées
-                </span>
-              </div>
+                <div className="competition-list">
+                  {poolMatches.map(
+                    (match, index) =>
+                      renderMatch(
+                        match,
+                        `RENCONTRE ${index + 1}`,
+                        "pool"
+                      )
+                  )}
+                </div>
+              </section>
 
-              <div className="competition-list">
-                {selectedPool.matches.map(
-                  (match, index) => {
-                    const aka = getCompetitor(
-                      match.akaId
-                    );
+              {finalMatches.length > 0 && (
+                <section className="category-section">
+                  <div className="category-section-header">
+                    <div>
+                      <p className="surtitle">
+                        PHASE FINALE
+                      </p>
 
-                    const shiro = getCompetitor(
-                      match.shiroId
-                    );
+                      <h3>
+                        Finale et petite finale
+                      </h3>
+                    </div>
 
-                    const winner = match.winnerId
-                      ? getCompetitor(match.winnerId)
-                      : null;
+                    <span className="status">
+                      {
+                        finalMatches.filter(
+                          (match) =>
+                            match.statut ===
+                            "Terminé"
+                        ).length
+                      }
+                      /{finalMatches.length}{" "}
+                      terminées
+                    </span>
+                  </div>
 
-                     return (
-  <article
-    className={`competition ${
-      match.statut === "Terminé" ? "competition-terminee" : ""
-    }`}
-    key={match.id}
-  >                  <div>
-                          <p className="surtitle">
-                            RENCONTRE {index + 1}
-                          </p>
+                  <div className="competition-list">
+                    {finalMatches.map((match) =>
+                      renderMatch(
+                        match,
+                        match.label ||
+                          "PHASE FINALE",
+                        "final"
+                      )
+                    )}
+                  </div>
+                </section>
+              )}
 
-                          <h3>
-                            AKA —{" "}
-                            {aka
-                              ? `${aka.nom} ${aka.prenom}`
-                              : "Inconnu"}
-                          </h3>
+              {selectedPool.podium && (
+                <section className="category-section">
+                  <div className="pool-ranking">
+                    <h3>
+                      Podium final
+                    </h3>
 
-                          <p>contre</p>
+                    <p>
+                      🥇{" "}
+                      {getCompetitor(
+                        selectedPool.podium
+                          .firstId
+                      )?.nom || "—"}{" "}
+                      {getCompetitor(
+                        selectedPool.podium
+                          .firstId
+                      )?.prenom || ""}
+                    </p>
 
-                          <h3>
-                            SHIRO —{" "}
-                            {shiro
-                              ? `${shiro.nom} ${shiro.prenom}`
-                              : "Inconnu"}
-                          </h3>
+                    <p>
+                      🥈{" "}
+                      {getCompetitor(
+                        selectedPool.podium
+                          .secondId
+                      )?.nom || "—"}{" "}
+                      {getCompetitor(
+                        selectedPool.podium
+                          .secondId
+                      )?.prenom || ""}
+                    </p>
 
-                          {match.statut ===
-                            "Terminé" && (
-                            <div className="beta-note">
-                              <strong>
-                                {match.akaScore} —{" "}
-                                {match.shiroScore}
-                              </strong>
-
-                              <p>
-                                {winner
-                                  ? `Vainqueur : ${winner.nom} ${winner.prenom}`
-                                  : "Égalité"}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        <button
-                          className="manage-button"
-                          type="button"
-                          onClick={() =>
-                            selectMatch(match)
-                          }
-                        >
-                          {match.statut === "Terminé"
-                            ? "Modifier"
-                            : "Arbitrer"}
-                        </button>
-                      </article>
-                    );
-                  }
-                )}
-              </div>
-            </section>
+                    <p>
+                      🥉{" "}
+                      {getCompetitor(
+                        selectedPool.podium
+                          .thirdId
+                      )?.nom || "—"}{" "}
+                      {getCompetitor(
+                        selectedPool.podium
+                          .thirdId
+                      )?.prenom || ""}
+                    </p>
+                  </div>
+                </section>
+              )}
+            </>
           )}
 
           {selectedMatch && (
-  <MatchManager
-    key={selectedMatch.id}
-    match={{
-      aka: getCompetitor(selectedMatch.akaId),
-      shiro: getCompetitor(selectedMatch.shiroId),
-    }}
-    onSave={saveOfficialMatch}
-  />
+            <MatchManager
+              key={selectedMatch.id}
+              match={{
+                aka: getCompetitor(
+                  selectedMatch.akaId
+                ),
+                shiro: getCompetitor(
+                  selectedMatch.shiroId
+                ),
+              }}
+              onSave={saveOfficialMatch}
+            />
           )}
         </>
       )}
