@@ -463,8 +463,10 @@ function CompetitionDashboard({
       )}
 
       {view === "categories" && (
-  <CategoriesManager competition={competition} />
-)}
+  <CategoriesManager
+  competition={competition}
+  onUpdateCompetition={onUpdateCompetition}
+/>)}
       {view === "poules" && (
         <div className="empty-state">
           <h3>Poules</h3>
