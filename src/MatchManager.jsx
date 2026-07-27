@@ -153,7 +153,7 @@ function determinerVainqueur() {
   return null;
 }
 
-const vainqueur = determinerVainqueur();const vainqueur = determinerVainqueur(); return (
+const vainqueur = determinerVainqueur(); return (
     <section className="match-manager">
       <div className="manager-header">
         <div>
