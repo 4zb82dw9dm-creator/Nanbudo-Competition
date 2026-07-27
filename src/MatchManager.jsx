@@ -133,14 +133,18 @@ const scoreFinalShiro =
       <div className="match-score">
         <div>
           <strong>🔴 AKA</strong>
-          <h2>{score.aka}</h2>
-          <p>{match?.aka?.nom || "Compétiteur AKA"}</p>
+          <h2>{scoreFinalAka}</h2>
+<p>
+  Assauts : {score.aka} · Pénalités : -{pointsNegatifsAka}
+</p>          <p>{match?.aka?.nom || "Compétiteur AKA"}</p>
         </div>
 
         <div>
           <strong>⚪ SHIRO</strong>
-          <h2>{score.shiro}</h2>
-          <p>{match?.shiro?.nom || "Compétiteur SHIRO"}</p>
+          <h2>{scoreFinalShiro}</h2>
+<p>
+  Assauts : {score.shiro} · Pénalités : -{pointsNegatifsShiro}
+</p>          <p>{match?.shiro?.nom || "Compétiteur SHIRO"}</p>
         </div>
       </div>
       <div className="penalties">
