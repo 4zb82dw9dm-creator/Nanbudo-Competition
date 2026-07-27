@@ -121,7 +121,39 @@ const scoreFinalAka =
   score.aka - pointsNegatifsAka;
 
 const scoreFinalShiro =
-  score.shiro - pointsNegatifsShiro;  return (
+  score.shiro - pointsNegatifsShiro; const akaDisqualifie =
+  penalitesAka.hansokuChui > 0 ||
+  penalitesAka.shikaku;
+
+const shiroDisqualifie =
+  penalitesShiro.hansokuChui > 0 ||
+  penalitesShiro.shikaku;
+
+function determinerVainqueur() {
+  if (akaDisqualifie && !shiroDisqualifie) {
+    return "shiro";
+  }
+
+  if (shiroDisqualifie && !akaDisqualifie) {
+    return "aka";
+  }
+
+  if (akaDisqualifie && shiroDisqualifie) {
+    return null;
+  }
+
+  if (scoreFinalAka > scoreFinalShiro) {
+    return "aka";
+  }
+
+  if (scoreFinalShiro > scoreFinalAka) {
+    return "shiro";
+  }
+
+  return null;
+}
+
+const vainqueur = determinerVainqueur(); return (
     <section className="match-manager">
       <div className="manager-header">
         <div>
