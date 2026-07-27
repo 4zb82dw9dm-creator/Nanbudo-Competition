@@ -273,3 +273,38 @@ footer span {
     flex-direction: column;
   }
 }
+/* Sélection des votes d'arbitrage */
+
+.vote-button {
+  padding: 10px 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  background: #f3f4f6;
+  cursor: pointer;
+  font-weight: 700;
+  transition: 0.15s ease;
+}
+
+.vote-button.selected {
+  transform: scale(1.05);
+  border-width: 3px;
+}
+
+.vote-button.selected.aka {
+  background: #d32f2f;
+  border-color: #a71919;
+  color: white;
+}
+
+.vote-button.selected.hikiwake {
+  background: #d4af37;
+  border-color: #a98a22;
+  color: #081a35;
+}
+
+.vote-button.selected.shiro {
+  background: white;
+  border-color: #081a35;
+  color: #081a35;
+  box-shadow: 0 0 0 2px #d1d5db;
+}
