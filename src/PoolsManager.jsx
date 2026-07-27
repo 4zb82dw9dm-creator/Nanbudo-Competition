@@ -18,15 +18,15 @@ function PoolsManager({
   }
 function calculateRanking(pool) {
   const ranking = pool.competitorIds.map((id) => ({
-    competitorId: id,
-    victories: 0,
-    defeats: 0,
-    draws: 0,
-    scoreFor: 0,
-    scoreAgainst: 0,
-    difference: 0,
-  }));
-
+  competitorId: id,
+  victories: 0,
+  defeats: 0,
+  draws: 0,
+  scoreFor: 0,
+  scoreAgainst: 0,
+  difference: 0,
+  negativePoints: 0,
+}));
   pool.matches.forEach((match) => {
     if (match.statut !== "Terminé") return;
 
