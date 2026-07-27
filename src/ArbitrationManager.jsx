@@ -103,6 +103,43 @@ import MatchManager from "./MatchManager";function ArbitrationManager({
     setShiroScore("");
   }
 
+  function saveOfficialMatch(result) {
+  if (!selectedPool || !selectedMatch) return;
+
+  const winnerId =
+    result.scoreAka > result.scoreShiro
+      ? selectedMatch.akaId
+      : result.scoreShiro > result.scoreAka
+        ? selectedMatch.shiroId
+        : null;
+
+  const updatedPools = pools.map((pool) => {
+    if (pool.id !== selectedPool.id) return pool;
+
+    return {
+      ...pool,
+      matches: pool.matches.map((match) => {
+        if (match.id !== selectedMatch.id) return match;
+
+        return {
+          ...match,
+          assauts: result.assauts,
+          akaScore: result.scoreAka,
+          shiroScore: result.scoreShiro,
+          winnerId,
+          statut: "Terminé",
+        };
+      }),
+    };
+  });
+
+  onUpdateCompetition({
+    ...competition,
+    pools: updatedPools,
+  });
+
+  setSelectedMatchId("");
+}
   return (
     <div className="arbitration-manager">
       <div className="manager-header">
