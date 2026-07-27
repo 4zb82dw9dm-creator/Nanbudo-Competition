@@ -119,7 +119,7 @@ function App() {
 
         {section === "competitions" && (
   <CompetitionManager />
-)}          <section>
+)}          
           
         {section === "organisateurs" && (
           <section>
