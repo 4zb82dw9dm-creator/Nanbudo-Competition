@@ -233,10 +233,12 @@ function ArbitrationManager({
 
                     return (
                       <article
-                        className="competition"
-                        key={match.id}
-                      >
-                        <div>
+                        <article
+  className={`competition ${
+    match.statut === "Terminé" ? "competition-terminee" : ""
+  }`}
+  key={match.id}
+>                        <div>
                           <p className="surtitle">
                             RENCONTRE {index + 1}
                           </p>
