@@ -101,12 +101,7 @@ function ajouterPenalite(couleur, type) {
     return nouvelles;
   });
 }
-    return {
-      ...actuelles,
-      [type]: actuelles[type] + 1,
-    };
-  });
-}
+  
 
 function calculerPointsNegatifs(penalites) {
   return (
