@@ -415,6 +415,17 @@ shiro.negativePoints += match.pointsNegatifsShiro || 0;    if (match.winnerId ==
                     <div className="pool-ranking">
   <h3>Classement</h3>
 
+<div className="ranking-table">
+  <div className="ranking-header">
+    <span>Place</span>
+    <span>Compétiteur</span>
+    <span>V</span>
+    <span>D</span>
+    <span>N</span>
+    <span>PN</span>
+    <span>Diff.</span>
+  </div>
+
   {calculateRanking(pool).map((item, index) => {
     const competitor = getCompetitor(
       item.competitorId
@@ -427,19 +438,21 @@ shiro.negativePoints += match.pointsNegatifsShiro || 0;    if (match.winnerId ==
         className="ranking-row"
         key={item.competitorId}
       >
+        <strong>{index + 1}</strong>
+
         <strong>
-          {index + 1}. {competitor.nom}{" "}
-          {competitor.prenom}
+          {competitor.nom} {competitor.prenom}
         </strong>
 
-        <span>
-          {item.victories} V · {item.defeats} D ·{" "}
-{item.draws} N · PN {item.negativePoints} · Diff.{" "}
-{item.difference}        </span>
+        <span>{item.victories}</span>
+        <span>{item.defeats}</span>
+        <span>{item.draws}</span>
+        <span>{item.negativePoints}</span>
+        <span>{item.difference}</span>
       </div>
     );
   })}
-</div>                  </div>
+</div></div>                  </div>
 
                   <button
                     className="delete-button"
