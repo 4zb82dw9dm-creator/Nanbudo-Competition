@@ -323,53 +323,61 @@ shiro.negativePoints += match.pointsNegatifsShiro || 0;    if (match.winnerId ==
                     </div>
 <div className="pool-ranking">
   
-</div>                    <div className="pool-matches">
-                      {pool.matches.map(
-                        (match, index) => {
-                          const aka =
-                            getCompetitor(
-                              match.akaId
-                            );
+</div>                   <div className="pool-matches">
+  <h3>Rencontres</h3>
 
-                          const shiro =
-                            getCompetitor(
-                              match.shiroId
-                            );
+  {pool.matches.map((match, index) => {
+    const aka = getCompetitor(match.akaId);
+    const shiro = getCompetitor(match.shiroId);
 
-                          return (
-                            <div
-                              className="pool-match"
-                              key={match.id}
-                            >
-                              <strong>
-                                Rencontre {index + 1}
-                              </strong>
+    const winner = match.winnerId
+      ? getCompetitor(match.winnerId)
+      : null;
 
-                              <span>
-                                AKA :{" "}
-                                {aka
-                                  ? `${aka.nom} ${aka.prenom}`
-                                  : "Inconnu"}
-                              </span>
+    return (
+      <div
+        className="pool-match"
+        key={match.id}
+      >
+        <strong>
+          Rencontre {index + 1}
+        </strong>
 
-                              <span>VS</span>
+        <span>
+          🔴 AKA —{" "}
+          {aka
+            ? `${aka.nom} ${aka.prenom}`
+            : "Inconnu"}
+        </span>
 
-                              <span>
-                                SHIRO :{" "}
-                                {shiro
-                                  ? `${shiro.nom} ${shiro.prenom}`
-                                  : "Inconnu"}
-                              </span>
+        <span className="match-vs">
+          VS
+        </span>
 
-                              <span>
-                                {match.statut}
-                              </span>
-                            </div>
-                          );
-                        }
-                      )}
-                    </div>
-                    <div className="pool-ranking">
+        <span>
+          ⚪ SHIRO —{" "}
+          {shiro
+            ? `${shiro.nom} ${shiro.prenom}`
+            : "Inconnu"}
+        </span>
+
+        {match.statut === "Terminé" && (
+          <span>
+            {match.akaScore} — {match.shiroScore}
+            {" · "}
+            {winner
+              ? `Vainqueur : ${winner.nom} ${winner.prenom}`
+              : "Égalité"}
+          </span>
+        )}
+
+        <span>
+          {match.statut}
+        </span>
+      </div>
+    );
+  })}
+</div>                    <div className="pool-ranking">
   <h3>Classement</h3>
 
 <div className="ranking-table">
