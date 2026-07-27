@@ -64,13 +64,19 @@ shiro.negativePoints += match.pointsNegatifsShiro || 0;    if (match.winnerId ==
   });
 
   ranking.sort((a, b) => {
-    if (b.victories !== a.victories) {
-      return b.victories - a.victories;
-    }
+  // 1. Nombre de victoires
+  if (b.victories !== a.victories) {
+    return b.victories - a.victories;
+  }
 
-    return b.difference - a.difference;
-  });
+  // 2. Moins de points négatifs
+  if (a.negativePoints !== b.negativePoints) {
+    return a.negativePoints - b.negativePoints;
+  }
 
+  // 3. Différence de score
+  return b.difference - a.difference;
+});
   return ranking;
 }  function generateMatches(competitorIds) {
     const matches = [];
