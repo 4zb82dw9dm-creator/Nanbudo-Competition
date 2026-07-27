@@ -232,31 +232,7 @@ function deleteTestCompetitors() {
       (competitor) => !competitor.testData
     ),
   });
-} function exportCompetition() {
-  const data = JSON.stringify(competition, null, 2);
-
-  const blob = new Blob([data], {
-    type: "application/json",
-  });
-
-  const url = URL.createObjectURL(blob);
-
-  const link = document.createElement("a");
-
-  const safeName = (competition.nom || "competition")
-    .replace(/[^a-zA-Z0-9À-ÿ-_ ]/g, "")
-    .replace(/\s+/g, "-")
-    .toLowerCase();
-
-  link.href = url;
-  link.download = `${safeName}-sauvegarde.json`;
-
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  URL.revokeObjectURL(url);
-} function exportCompetition() {
+}  function exportCompetition() {
   const data = JSON.stringify(competition, null, 2);
 
   const blob = new Blob([data], {
