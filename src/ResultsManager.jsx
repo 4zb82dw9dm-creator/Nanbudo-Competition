@@ -19,7 +19,9 @@ function ResultsManager({ competition }) {
     (pool) => pool.podium
   );
 
-  function competitorName(id) {
+  function competitorName(id) function printResults() {
+  window.print();
+}{
     const competitor = getCompetitor(id);
 
     if (!competitor) return "—";
