@@ -36,7 +36,7 @@ function App() {
     <div className="app">
       <header className="header">
         <div>
-          <p className="surtitle">AFDP NANBUDO FRANCE</p>
+          <p className="surtitle">AFDP NANBUDO </p>
           <h1>Commission Compétition</h1>
           <p className="subtitle">
             Gestion et organisation des compétitions
