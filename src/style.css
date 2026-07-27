@@ -389,4 +389,45 @@ footer span {
   .ranking-row {
     min-width: 650px;
   }
+}@media print {
+  .header,
+  .navigation,
+  .competition-tabs,
+  .manage-button,
+  button,
+  footer {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: #000 !important;
+  }
+
+  .content {
+    max-width: none;
+    margin: 0;
+    padding: 20px;
+  }
+
+  .results-manager {
+    width: 100%;
+  }
+
+  .results-manager .manager-header {
+    margin-bottom: 25px;
+  }
+
+  .results-manager .competition {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #999;
+    box-shadow: none;
+    margin-bottom: 20px;
+  }
+
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
 }
