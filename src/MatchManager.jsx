@@ -346,11 +346,26 @@ const vainqueur = determinerVainqueur(); return (
         </p>
 
         <p>
-          {score.aka > score.shiro && "🔴 AKA est en tête"}
-          {score.shiro > score.aka && "⚪ SHIRO est en tête"}
-          {score.aka === score.shiro && "Égalité"}
-        </p>
+  {akaDisqualifie && !shiroDisqualifie && (
+    <>⛔ AKA — HANSOKU CHUI · 🏆 SHIRO vainqueur</>
+  )}
 
+  {shiroDisqualifie && !akaDisqualifie && (
+    <>⛔ SHIRO — HANSOKU CHUI · 🏆 AKA vainqueur</>
+  )}
+
+  {!akaDisqualifie && !shiroDisqualifie && vainqueur === "aka" && (
+    <>🏆 AKA vainqueur</>
+  )}
+
+  {!akaDisqualifie && !shiroDisqualifie && vainqueur === "shiro" && (
+    <>🏆 SHIRO vainqueur</>
+  )}
+
+  {!akaDisqualifie && !shiroDisqualifie && vainqueur === null && (
+    <>Égalité</>
+  )}
+</p>
         {onSave && (
           <button
             type="button"
