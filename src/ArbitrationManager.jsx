@@ -107,13 +107,12 @@ function ArbitrationManager({
   function saveOfficialMatch(result) {
   if (!selectedPool || !selectedMatch) return;
 
-  const winnerId =
-    result.scoreAka > result.scoreShiro
-      ? selectedMatch.akaId
-      : result.scoreShiro > result.scoreAka
-        ? selectedMatch.shiroId
-        : null;
-
+ const winnerId =
+  result.vainqueur === "aka"
+    ? selectedMatch.akaId
+    : result.vainqueur === "shiro"
+      ? selectedMatch.shiroId
+      : null;
   const updatedPools = pools.map((pool) => {
     if (pool.id !== selectedPool.id) return pool;
 
@@ -123,14 +122,28 @@ function ArbitrationManager({
         if (match.id !== selectedMatch.id) return match;
 
         return {
-          ...match,
-          assauts: result.assauts,
-          akaScore: result.scoreAka,
-          shiroScore: result.scoreShiro,
-          winnerId,
-          statut: "Terminé",
-        };
-      }),
+  ...match,
+
+  assauts: result.assauts,
+
+  akaScore: result.scoreAka,
+  shiroScore: result.scoreShiro,
+
+  scoreBrutAka: result.scoreBrutAka,
+  scoreBrutShiro: result.scoreBrutShiro,
+
+  penalitesAka: result.penalitesAka,
+  penalitesShiro: result.penalitesShiro,
+
+  pointsNegatifsAka: result.pointsNegatifsAka,
+  pointsNegatifsShiro: result.pointsNegatifsShiro,
+
+  akaDisqualifie: result.akaDisqualifie,
+  shiroDisqualifie: result.shiroDisqualifie,
+
+  winnerId,
+  statut: "Terminé",
+};      }),
     };
   });
 
