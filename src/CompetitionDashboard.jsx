@@ -116,8 +116,121 @@ function CompetitionDashboard({
       ),
     });
   }
+function loadTestCompetitors() {
+  if (competitors.length > 0) {
+    const confirmed = window.confirm(
+      "Des compétiteurs sont déjà enregistrés. Ajouter quand même les données test ?"
+    );
 
-  return (
+    if (!confirmed) return;
+  }
+
+  const currentYear = new Date().getFullYear();
+
+  const testData = [
+    ["MARTIN", "Lucas", "Marseille", "Homme", 17, 63, "1er Kyu", true, true],
+    ["BERNARD", "Hugo", "Lyon", "Homme", 18, 67, "1er Dan", true, true],
+    ["ROBERT", "Enzo", "Paris", "Homme", 17, 65, "2e Kyu", false, true],
+
+    ["DUBOIS", "Emma", "Marseille", "Femme", 17, 54, "1er Kyu", true, true],
+    ["THOMAS", "Léa", "Toulouse", "Femme", 18, 57, "1er Dan", true, true],
+    ["PETIT", "Chloé", "Lyon", "Femme", 17, 52, "2e Kyu", true, false],
+
+    ["DURAND", "Thomas", "Marseille", "Homme", 25, 68, "1er Dan", true, true],
+    ["LEROY", "Nicolas", "Paris", "Homme", 29, 71, "2e Dan", false, true],
+    ["MOREAU", "Julien", "Lyon", "Homme", 31, 69, "1er Dan", true, true],
+    ["SIMON", "Alexandre", "Toulouse", "Homme", 27, 82, "2e Dan", false, true],
+    ["LAURENT", "Maxime", "Bordeaux", "Homme", 34, 85, "3e Dan", true, true],
+    ["MICHEL", "Romain", "Marseille", "Homme", 30, 80, "1er Dan", false, true],
+
+    ["GARCIA", "Camille", "Paris", "Femme", 24, 55, "1er Dan", true, true],
+    ["DAVID", "Manon", "Marseille", "Femme", 28, 58, "2e Dan", true, true],
+    ["BERTRAND", "Julie", "Lyon", "Femme", 32, 56, "1er Dan", false, true],
+    ["ROUX", "Clara", "Toulouse", "Femme", 26, 66, "1er Dan", true, true],
+    ["VINCENT", "Sarah", "Bordeaux", "Femme", 30, 64, "2e Dan", false, true],
+    ["FOURNIER", "Alice", "Marseille", "Femme", 29, 67, "1er Dan", true, false],
+
+    ["GIRARD", "Philippe", "Paris", "Homme", 44, 78, "2e Dan", true, true],
+    ["ANDRE", "Laurent", "Marseille", "Homme", 48, 81, "3e Dan", true, true],
+    ["MERCIER", "Stéphane", "Lyon", "Homme", 52, 83, "2e Dan", false, true],
+
+    ["BONNET", "Sophie", "Marseille", "Femme", 43, 60, "2e Dan", true, true],
+    ["FRANCOIS", "Nathalie", "Paris", "Femme", 49, 63, "3e Dan", true, true],
+    ["MARTINEZ", "Isabelle", "Toulouse", "Femme", 51, 61, "2e Dan", true, false],
+  ];
+
+  const testCompetitors = testData.map(
+    (
+      [
+        nom,
+        prenom,
+        club,
+        sexe,
+        age,
+        poids,
+        grade,
+        kata,
+        juRandori,
+      ],
+      index
+    ) => ({
+      id: Date.now() + index,
+      nom,
+      prenom,
+      club,
+      sexe,
+
+      // Date fictive permettant de conserver
+      // la structure actuelle de l'application.
+      dateNaissance: `${currentYear - age}-01-01`,
+
+      age,
+      poids,
+      grade,
+
+      epreuves: {
+        kata,
+        juRandori,
+      },
+
+      testData: true,
+    })
+  );
+
+  onUpdateCompetition({
+    ...competition,
+    competitors: [
+      ...competitors,
+      ...testCompetitors,
+    ],
+  });
+
+  alert("24 compétiteurs test ont été ajoutés.");
+}
+
+function deleteTestCompetitors() {
+  const testCompetitors = competitors.filter(
+    (competitor) => competitor.testData
+  );
+
+  if (testCompetitors.length === 0) {
+    alert("Aucune donnée test à supprimer.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Supprimer les ${testCompetitors.length} compétiteurs test ?`
+  );
+
+  if (!confirmed) return;
+
+  onUpdateCompetition({
+    ...competition,
+    competitors: competitors.filter(
+      (competitor) => !competitor.testData
+    ),
+  });
+}  return (
     <section className="competition-dashboard">
       <button
         className="back-button"
@@ -259,8 +372,23 @@ function CompetitionDashboard({
                 : "+ Ajouter un compétiteur"}
             </button>
           </div>
+<div className="test-tools">
+  <button
+    className="manage-button"
+    type="button"
+    onClick={loadTestCompetitors}
+  >
+    Charger 24 compétiteurs test
+  </button>
 
-          {showForm && (
+  <button
+    className="delete-button"
+    type="button"
+    onClick={deleteTestCompetitors}
+  >
+    Effacer les données test
+  </button>
+</div>          {showForm && (
             <form
               className="competition-form"
               onSubmit={addCompetitor}
