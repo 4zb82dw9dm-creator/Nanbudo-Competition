@@ -608,9 +608,13 @@ function deleteTestCompetitors() {
     onUpdateCompetition={onUpdateCompetition}
   />
 )}
-     {view === "results" && (
-  <ResultsManager
-    competition={competition}
-  />
-)}
+           {view === "results" && (
+        <ResultsManager
+          competition={competition}
+        />
+      )}
+    </section>
+  );
+}
+
 export default CompetitionDashboard;
