@@ -16,8 +16,63 @@ function PoolsManager({
       (competitor) => competitor.id === id
     );
   }
+function calculateRanking(pool) {
+  const ranking = pool.competitorIds.map((id) => ({
+    competitorId: id,
+    victories: 0,
+    defeats: 0,
+    draws: 0,
+    scoreFor: 0,
+    scoreAgainst: 0,
+    difference: 0,
+  }));
 
-  function generateMatches(competitorIds) {
+  pool.matches.forEach((match) => {
+    if (match.statut !== "Terminé") return;
+
+    const aka = ranking.find(
+      (item) => item.competitorId === match.akaId
+    );
+
+    const shiro = ranking.find(
+      (item) => item.competitorId === match.shiroId
+    );
+
+    if (!aka || !shiro) return;
+
+    aka.scoreFor += match.akaScore || 0;
+    aka.scoreAgainst += match.shiroScore || 0;
+
+    shiro.scoreFor += match.shiroScore || 0;
+    shiro.scoreAgainst += match.akaScore || 0;
+
+    if (match.winnerId === match.akaId) {
+      aka.victories += 1;
+      shiro.defeats += 1;
+    } else if (match.winnerId === match.shiroId) {
+      shiro.victories += 1;
+      aka.defeats += 1;
+    } else {
+      aka.draws += 1;
+      shiro.draws += 1;
+    }
+  });
+
+  ranking.forEach((item) => {
+    item.difference =
+      item.scoreFor - item.scoreAgainst;
+  });
+
+  ranking.sort((a, b) => {
+    if (b.victories !== a.victories) {
+      return b.victories - a.victories;
+    }
+
+    return b.difference - a.difference;
+  });
+
+  return ranking;
+}  function generateMatches(competitorIds) {
     const matches = [];
 
     for (let i = 0; i < competitorIds.length; i++) {
