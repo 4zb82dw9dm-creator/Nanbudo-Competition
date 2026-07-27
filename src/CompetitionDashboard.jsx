@@ -256,7 +256,25 @@ function deleteTestCompetitors() {
   link.remove();
 
   URL.revokeObjectURL(url);
-} return (
+} function exportCompetition() {
+  const data = JSON.stringify(competition, null, 2);
+
+  const blob = new Blob([data], {
+    type: "application/json",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "nanbudo-competition.json";
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  URL.revokeObjectURL(url);
+} (
     <section className="competition-dashboard">
       <button
         className="back-button"
