@@ -356,13 +356,27 @@ const vainqueur = determinerVainqueur(); return (
             type="button"
             className="primary"
             onClick={() =>
-              onSave({
-                assauts,
-                scoreAka: score.aka,
-                scoreShiro: score.shiro,
-              })
-            }
-          >
+  onSave({
+    assauts,
+
+    scoreBrutAka: score.aka,
+    scoreBrutShiro: score.shiro,
+
+    scoreAka: scoreFinalAka,
+    scoreShiro: scoreFinalShiro,
+
+    penalitesAka,
+    penalitesShiro,
+
+    pointsNegatifsAka,
+    pointsNegatifsShiro,
+
+    akaDisqualifie,
+    shiroDisqualifie,
+
+    vainqueur,
+  })
+}          >
             Enregistrer le combat
           </button>
         )}
