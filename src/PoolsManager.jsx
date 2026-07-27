@@ -63,7 +63,7 @@ shiro.negativePoints += match.pointsNegatifsShiro || 0;    if (match.winnerId ==
       item.scoreFor - item.scoreAgainst;
   });
 
-  ranking.sort((a, b) => {
+ ranking.sort((a, b) => {
   // 1. Nombre de victoires
   if (b.victories !== a.victories) {
     return b.victories - a.victories;
@@ -74,10 +74,29 @@ shiro.negativePoints += match.pointsNegatifsShiro || 0;    if (match.winnerId ==
     return a.negativePoints - b.negativePoints;
   }
 
-  // 3. Différence de score
+  // 3. Confrontation directe
+  const confrontation = pool.matches.find(
+    (match) =>
+      match.statut === "Terminé" &&
+      (
+        (match.akaId === a.competitorId &&
+          match.shiroId === b.competitorId) ||
+        (match.akaId === b.competitorId &&
+          match.shiroId === a.competitorId)
+      )
+  );
+
+  if (confrontation?.winnerId === a.competitorId) {
+    return -1;
+  }
+
+  if (confrontation?.winnerId === b.competitorId) {
+    return 1;
+  }
+
+  // 4. Différence de score provisoire
   return b.difference - a.difference;
-});
-  return ranking;
+});  return ranking;
 }  function generateMatches(competitorIds) {
     const matches = [];
 
