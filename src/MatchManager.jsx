@@ -143,8 +143,127 @@ const scoreFinalShiro =
           <p>{match?.shiro?.nom || "Compétiteur SHIRO"}</p>
         </div>
       </div>
+      <div className="penalties">
+        <h3>Pénalités</h3>
 
-      <div className="assauts">
+        <div className="penalties-grid">
+          <div className="penalty-card">
+            <h3>🔴 AKA</h3>
+
+            <p>
+              Keikoku : {penalitesAka.keikoku}
+              {" · "}
+              Fujubun : {penalitesAka.fujubun}
+              {" · "}
+              Chui : {penalitesAka.chui}
+              {" · "}
+              Hansoku Chui : {penalitesAka.hansokuChui}
+            </p>
+
+            <p>
+              Points négatifs : <strong>{pointsNegatifsAka}</strong>
+            </p>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("aka", "keikoku")}
+            >
+              + Keikoku
+            </button>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("aka", "fujubun")}
+            >
+              + Fujubun
+            </button>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("aka", "chui")}
+            >
+              + Chui
+            </button>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("aka", "hansokuChui")}
+            >
+              + Hansoku Chui
+            </button>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("aka", "shikaku")}
+            >
+              Shikaku
+            </button>
+
+            {penalitesAka.shikaku && (
+              <strong>⛔ SHIKAKU</strong>
+            )}
+          </div>
+
+          <div className="penalty-card">
+            <h3>⚪ SHIRO</h3>
+
+            <p>
+              Keikoku : {penalitesShiro.keikoku}
+              {" · "}
+              Fujubun : {penalitesShiro.fujubun}
+              {" · "}
+              Chui : {penalitesShiro.chui}
+              {" · "}
+              Hansoku Chui : {penalitesShiro.hansokuChui}
+            </p>
+
+            <p>
+              Points négatifs : <strong>{pointsNegatifsShiro}</strong>
+            </p>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("shiro", "keikoku")}
+            >
+              + Keikoku
+            </button>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("shiro", "fujubun")}
+            >
+              + Fujubun
+            </button>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("shiro", "chui")}
+            >
+              + Chui
+            </button>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("shiro", "hansokuChui")}
+            >
+              + Hansoku Chui
+            </button>
+
+            <button
+              type="button"
+              onClick={() => ajouterPenalite("shiro", "shikaku")}
+            >
+              Shikaku
+            </button>
+
+            {penalitesShiro.shikaku && (
+              <strong>⛔ SHIKAKU</strong>
+            )}
+          </div>
+        </div>
+      </div>
+
+          <div className="assauts">
         {assauts.map((assaut, index) => (
           <div className="assaut-card" key={index}>
             <h3>Assaut {index + 1}</h3>
