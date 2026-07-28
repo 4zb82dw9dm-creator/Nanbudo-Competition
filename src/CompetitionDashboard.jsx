@@ -64,11 +64,15 @@ juRandori2: false,  });
       return;
     }
 
-    if (!form.kata && !form.juRandori) {
-      alert("Sélectionne au moins une épreuve.");
-      return;
-    }
-
+    if (
+  !form.kata &&
+  !form.randori &&
+  !form.juRandori1 &&
+  !form.juRandori2
+) {
+  alert("Sélectionne au moins une épreuve.");
+  return;
+}
     const competitor = {
       id: Date.now(),
       nom: form.nom.trim().toUpperCase(),
