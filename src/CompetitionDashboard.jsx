@@ -362,18 +362,26 @@ function deleteTestCompetitors() {
               </p>
             </div>
 
-            <button
-              className="primary"
-              type="button"
-              onClick={() =>
-                setShowForm((current) => !current)
-              }
-            >
-              {showForm
-                ? "Annuler"
-                : "+ Ajouter un compétiteur"}
-            </button>
-          </div>
+            <div className="competitor-actions">
+  <button
+    className="manage-button"
+    type="button"
+  >
+    Importer des compétiteurs
+  </button>
+
+  <button
+    className="primary"
+    type="button"
+    onClick={() =>
+      setShowForm((current) => !current)
+    }
+  >
+    {showForm
+      ? "Annuler"
+      : "+ Ajouter un compétiteur"}
+  </button>
+</div>          </div>
 <div className="test-tools">
   <button
     className="manage-button"
