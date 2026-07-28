@@ -71,19 +71,135 @@ function handleImportFile(event) {
   const reader = new FileReader();
 
   reader.onload = () => {
-    const content = reader.result;
+    const content = String(reader.result || "");
 
     const lines = content
       .split(/\r?\n/)
-      .filter((line) => line.trim() !== "");
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
 
-    console.log("Lignes CSV :", lines);
+    if (lines.length < 2) {
+      alert("Le fichier CSV ne contient aucun compétiteur.");
+      return;
+    }
+
+    const dataLines = lines.slice(1);
+    const importedCompetitors = [];
+    const errors = [];
+
+    dataLines.forEach((line, index) => {
+      const columns = line
+        .split(";")
+        .map((value) => value.trim());
+
+      if (columns.length !== 13) {
+        errors.push(
+          `Ligne ${index + 2} : 13 colonnes attendues.`
+        );
+        return;
+      }
+
+      const [
+        nom,
+        prenom,
+        club,
+        sexe,
+        dateNaissance,
+        poids,
+        grade,
+        kata0,
+        kata1,
+        kata2,
+        randori,
+        juRandori1,
+        juRandori2,
+      ] = columns;
+
+      const epreuves = {
+        kata0: kata0 === "1",
+        kata1: kata1 === "1",
+        kata2: kata2 === "1",
+        randori: randori === "1",
+        juRandori1: juRandori1 === "1",
+        juRandori2: juRandori2 === "1",
+      };
+
+      if (!nom || !prenom) {
+        errors.push(
+          `Ligne ${index + 2} : nom ou prénom manquant.`
+        );
+        return;
+      }
+
+      const nombreKatas = [
+        epreuves.kata0,
+        epreuves.kata1,
+        epreuves.kata2,
+      ].filter(Boolean).length;
+
+      if (nombreKatas > 1) {
+        errors.push(
+          `Ligne ${index + 2} : plusieurs catégories Kata sélectionnées.`
+        );
+        return;
+      }
+
+      const nombreCombats = [
+        epreuves.randori,
+        epreuves.juRandori1,
+        epreuves.juRandori2,
+      ].filter(Boolean).length;
+
+      if (nombreCombats > 1) {
+        errors.push(
+          `Ligne ${index + 2} : plusieurs catégories de combat sélectionnées.`
+        );
+        return;
+      }
+
+      if (nombreKatas === 0 && nombreCombats === 0) {
+        errors.push(
+          `Ligne ${index + 2} : aucune épreuve sélectionnée.`
+        );
+        return;
+      }
+
+      importedCompetitors.push({
+        id: Date.now() + index,
+        nom: nom.toUpperCase(),
+        prenom,
+        club,
+        sexe: sexe || "Homme",
+        dateNaissance,
+        age: calculateAge(dateNaissance),
+        poids: poids
+          ? Number(poids.replace(",", "."))
+          : "",
+        grade,
+        epreuves,
+        imported: true,
+      });
+    });
+
+    if (errors.length > 0) {
+      alert(
+        `Import annulé.\n\n${errors.length} erreur(s) détectée(s) :\n\n${errors.join(
+          "\n"
+        )}`
+      );
+      return;
+    }
+
+    onUpdateCompetition({
+      ...competition,
+      competitors: [
+        ...competitors,
+        ...importedCompetitors,
+      ],
+    });
 
     alert(
-      `Fichier "${file.name}" lu : ${Math.max(
-        lines.length - 1,
-        0
-      )} compétiteur(s) détecté(s).`
+      `${importedCompetitors.length} compétiteur(s) importé(s) avec succès.`
     );
   };
 
@@ -94,7 +210,7 @@ function handleImportFile(event) {
   reader.readAsText(file, "UTF-8");
 
   event.target.value = "";
-}  function addCompetitor(event) {
+}
     event.preventDefault();
 
     if (!form.nom.trim() || !form.prenom.trim()) {
