@@ -137,36 +137,42 @@ function loadTestCompetitors() {
   const currentYear = new Date().getFullYear();
 
   const testData = [
-    ["MARTIN", "Lucas", "Marseille", "Homme", 17, 63, "1er Kyu", true, true],
-    ["BERNARD", "Hugo", "Lyon", "Homme", 18, 67, "1er Dan", true, true],
-    ["ROBERT", "Enzo", "Paris", "Homme", 17, 65, "2e Kyu", false, true],
+  // Jeunes hommes
+  ["MARTIN", "Lucas", "Marseille", "Homme", 17, 63, "1er Kyu", true, true, false, false],
+  ["BERNARD", "Hugo", "Lyon", "Homme", 18, 67, "1er Dan", true, false, true, false],
+  ["ROBERT", "Enzo", "Paris", "Homme", 17, 65, "2e Kyu", false, false, false, true],
 
-    ["DUBOIS", "Emma", "Marseille", "Femme", 17, 54, "1er Kyu", true, true],
-    ["THOMAS", "Léa", "Toulouse", "Femme", 18, 57, "1er Dan", true, true],
-    ["PETIT", "Chloé", "Lyon", "Femme", 17, 52, "2e Kyu", true, false],
+  // Jeunes femmes
+  ["DUBOIS", "Emma", "Marseille", "Femme", 17, 54, "1er Kyu", true, true, false, false],
+  ["THOMAS", "Léa", "Toulouse", "Femme", 18, 57, "1er Dan", true, false, true, false],
+  ["PETIT", "Chloé", "Lyon", "Femme", 17, 52, "2e Kyu", true, false, false, true],
 
-    ["DURAND", "Thomas", "Marseille", "Homme", 25, 68, "1er Dan", true, true],
-    ["LEROY", "Nicolas", "Paris", "Homme", 29, 71, "2e Dan", false, true],
-    ["MOREAU", "Julien", "Lyon", "Homme", 31, 69, "1er Dan", true, true],
-    ["SIMON", "Alexandre", "Toulouse", "Homme", 27, 82, "2e Dan", false, true],
-    ["LAURENT", "Maxime", "Bordeaux", "Homme", 34, 85, "3e Dan", true, true],
-    ["MICHEL", "Romain", "Marseille", "Homme", 30, 80, "1er Dan", false, true],
+  // Adultes hommes
+  ["DURAND", "Thomas", "Marseille", "Homme", 25, 68, "1er Dan", true, true, false, false],
+  ["LEROY", "Nicolas", "Paris", "Homme", 29, 71, "2e Dan", false, false, true, false],
+  ["MOREAU", "Julien", "Lyon", "Homme", 31, 69, "1er Dan", true, false, false, true],
+  ["SIMON", "Alexandre", "Toulouse", "Homme", 27, 82, "2e Dan", false, true, false, false],
+  ["LAURENT", "Maxime", "Bordeaux", "Homme", 34, 85, "3e Dan", true, false, true, false],
+  ["MICHEL", "Romain", "Marseille", "Homme", 30, 80, "1er Dan", false, false, false, true],
 
-    ["GARCIA", "Camille", "Paris", "Femme", 24, 55, "1er Dan", true, true],
-    ["DAVID", "Manon", "Marseille", "Femme", 28, 58, "2e Dan", true, true],
-    ["BERTRAND", "Julie", "Lyon", "Femme", 32, 56, "1er Dan", false, true],
-    ["ROUX", "Clara", "Toulouse", "Femme", 26, 66, "1er Dan", true, true],
-    ["VINCENT", "Sarah", "Bordeaux", "Femme", 30, 64, "2e Dan", false, true],
-    ["FOURNIER", "Alice", "Marseille", "Femme", 29, 67, "1er Dan", true, false],
+  // Adultes femmes
+  ["GARCIA", "Camille", "Paris", "Femme", 24, 55, "1er Dan", true, true, false, false],
+  ["DAVID", "Manon", "Marseille", "Femme", 28, 58, "2e Dan", true, false, true, false],
+  ["BERTRAND", "Julie", "Lyon", "Femme", 32, 56, "1er Dan", false, false, false, true],
+  ["ROUX", "Clara", "Toulouse", "Femme", 26, 66, "1er Dan", true, true, false, false],
+  ["VINCENT", "Sarah", "Bordeaux", "Femme", 30, 64, "2e Dan", false, false, true, false],
+  ["FOURNIER", "Alice", "Marseille", "Femme", 29, 67, "1er Dan", true, false, false, true],
 
-    ["GIRARD", "Philippe", "Paris", "Homme", 44, 78, "2e Dan", true, true],
-    ["ANDRE", "Laurent", "Marseille", "Homme", 48, 81, "3e Dan", true, true],
-    ["MERCIER", "Stéphane", "Lyon", "Homme", 52, 83, "2e Dan", false, true],
+  // Vétérans hommes
+  ["GIRARD", "Philippe", "Paris", "Homme", 44, 78, "2e Dan", true, true, false, false],
+  ["ANDRE", "Laurent", "Marseille", "Homme", 48, 81, "3e Dan", true, false, true, false],
+  ["MERCIER", "Stéphane", "Lyon", "Homme", 52, 83, "2e Dan", false, false, false, true],
 
-    ["BONNET", "Sophie", "Marseille", "Femme", 43, 60, "2e Dan", true, true],
-    ["FRANCOIS", "Nathalie", "Paris", "Femme", 49, 63, "3e Dan", true, true],
-    ["MARTINEZ", "Isabelle", "Toulouse", "Femme", 51, 61, "2e Dan", true, false],
-  ];
+  // Vétérans femmes
+  ["BONNET", "Sophie", "Marseille", "Femme", 43, 60, "2e Dan", true, true, false, false],
+  ["FRANCOIS", "Nathalie", "Paris", "Femme", 49, 63, "3e Dan", true, false, true, false],
+  ["MARTINEZ", "Isabelle", "Toulouse", "Femme", 51, 61, "2e Dan", true, false, false, true],
+];
 
   const testCompetitors = testData.map(
     (
