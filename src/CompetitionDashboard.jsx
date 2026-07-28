@@ -143,7 +143,7 @@ function loadTestCompetitors() {
 
   const currentYear = new Date().getFullYear();
 
-  const testData = const testData = [
+  const testData = [
   // Jeunes hommes
   ["MARTIN", "Lucas", "Marseille", "Homme", 17, 63, "1er Kyu", true, false, false, true, false, false],
   ["BERNARD", "Hugo", "Lyon", "Homme", 18, 67, "1er Dan", false, true, false, false, true, false],
