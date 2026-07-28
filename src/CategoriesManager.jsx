@@ -1,27 +1,42 @@
 import { useMemo, useState } from "react";
 
+const EVENT_LABELS = {
+  kata0: "Kata 0",
+  kata1: "Kata 1",
+  kata2: "Kata 2",
+  randori: "Randori",
+  juRandori1: "Ju Randori 1",
+  juRandori2: "Ju Randori 2",
+};
+
+const COMBAT_EVENTS = [
+  "randori",
+  "juRandori1",
+  "juRandori2",
+];
+
 function CategoriesManager({
   competition,
   onUpdateCompetition,
 }) {
   const competitors = competition.competitors || [];
+  const categories = competition.categories || [];
 
   const [selectedIds, setSelectedIds] = useState([]);
   const [categoryName, setCategoryName] = useState("");
-  const [eventType, setEventType] = useState("juRandori");
-
-  const categories = competition.categories || [];
+  const [eventType, setEventType] = useState("juRandori1");
 
   const eligibleCompetitors = useMemo(() => {
     return competitors
-      .filter((competitor) =>
-        eventType === "kata"
-          ? competitor.epreuves?.kata
-          : competitor.epreuves?.juRandori
+      .filter(
+        (competitor) =>
+          competitor.epreuves?.[eventType] === true
       )
       .sort((a, b) => {
         if (a.sexe !== b.sexe) {
-          return a.sexe.localeCompare(b.sexe);
+          return (a.sexe || "").localeCompare(
+            b.sexe || ""
+          );
         }
 
         if ((a.age || 0) !== (b.age || 0)) {
@@ -31,6 +46,12 @@ function CategoriesManager({
         return (a.poids || 0) - (b.poids || 0);
       });
   }, [competitors, eventType]);
+
+  function changeEvent(newEventType) {
+    setEventType(newEventType);
+    setSelectedIds([]);
+    setCategoryName("");
+  }
 
   function toggleCompetitor(id) {
     setSelectedIds((current) =>
@@ -48,6 +69,24 @@ function CategoriesManager({
 
     if (selectedIds.length === 0) {
       alert("Sélectionne au moins un compétiteur.");
+      return;
+    }
+
+    const selectedCompetitors = competitors.filter(
+      (competitor) =>
+        selectedIds.includes(competitor.id)
+    );
+
+    const invalidCompetitor =
+      selectedCompetitors.find(
+        (competitor) =>
+          !competitor.epreuves?.[eventType]
+      );
+
+    if (invalidCompetitor) {
+      alert(
+        "Un compétiteur sélectionné n'est pas inscrit dans cette épreuve."
+      );
       return;
     }
 
@@ -90,11 +129,29 @@ function CategoriesManager({
     );
   }
 
+  function isAlreadyAssigned(competitorId) {
+    return categories.some(
+      (category) =>
+        category.epreuve === eventType &&
+        category.competitorIds?.includes(
+          competitorId
+        )
+    );
+  }
+
+  function getEventLabel(event) {
+    return EVENT_LABELS[event] || event;
+  }
+
+  const showWeight =
+    COMBAT_EVENTS.includes(eventType);
+
   return (
     <div className="categories-manager">
       <div className="manager-header">
         <div>
           <p className="surtitle">BÊTA 0.1</p>
+
           <h2>Catégories</h2>
 
           <p>
@@ -118,17 +175,32 @@ function CategoriesManager({
 
             <select
               value={eventType}
-              onChange={(event) => {
-                setEventType(event.target.value);
-                setSelectedIds([]);
-              }}
+              onChange={(event) =>
+                changeEvent(event.target.value)
+              }
             >
-              <option value="juRandori">
-                Ju Randori individuel
+              <option value="kata0">
+                Kata 0
               </option>
 
-              <option value="kata">
-                Kata individuel
+              <option value="kata1">
+                Kata 1
+              </option>
+
+              <option value="kata2">
+                Kata 2
+              </option>
+
+              <option value="randori">
+                Randori
+              </option>
+
+              <option value="juRandori1">
+                Ju Randori 1
+              </option>
+
+              <option value="juRandori2">
+                Ju Randori 2
               </option>
             </select>
           </label>
@@ -147,11 +219,17 @@ function CategoriesManager({
         </div>
 
         <div className="beta-note">
-          <strong>Règle de préparation</strong>
+          <strong>
+            {getEventLabel(eventType)}
+          </strong>
 
           <p>
-            Vérifie le sexe, l'âge et, pour le Ju Randori,
-            le poids avant de valider le groupe.
+            Les compétiteurs affichés ci-dessous sont
+            uniquement ceux inscrits dans cette épreuve.
+            Vérifie le sexe et l'âge
+            {showWeight
+              ? " ainsi que le poids avant de valider la catégorie."
+              : " avant de valider la catégorie."}
           </p>
         </div>
 
@@ -161,73 +239,86 @@ function CategoriesManager({
               <h3>Aucun compétiteur</h3>
 
               <p>
-                Aucun participant n'est inscrit dans cette
-                épreuve.
+                Aucun participant n'est inscrit en{" "}
+                {getEventLabel(eventType)}.
               </p>
             </div>
           ) : (
-            eligibleCompetitors.map((competitor) => {
-              const alreadyAssigned = categories.some(
-                (category) =>
-                  category.epreuve === eventType &&
-                  category.competitorIds.includes(
+            eligibleCompetitors.map(
+              (competitor) => {
+                const alreadyAssigned =
+                  isAlreadyAssigned(
                     competitor.id
-                  )
-              );
+                  );
 
-              return (
-                <label
-                  className="category-competitor"
-                  key={competitor.id}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(
-                      competitor.id
-                    )}
-                    disabled={alreadyAssigned}
-                    onChange={() =>
-                      toggleCompetitor(competitor.id)
-                    }
-                  />
+                return (
+                  <label
+                    className="category-competitor"
+                    key={competitor.id}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(
+                        competitor.id
+                      )}
+                      disabled={alreadyAssigned}
+                      onChange={() =>
+                        toggleCompetitor(
+                          competitor.id
+                        )
+                      }
+                    />
 
-                  <div>
-                    <h4>
-                      {competitor.nom}{" "}
-                      {competitor.prenom}
-                    </h4>
+                    <div>
+                      <h4>
+                        {competitor.nom}{" "}
+                        {competitor.prenom}
+                      </h4>
 
-                    <p>
-                      {competitor.club ||
-                        "Club non renseigné"}
-                    </p>
-                  </div>
+                      <p>
+                        {competitor.club ||
+                          "Club non renseigné"}
+                      </p>
+                    </div>
 
-                  <div className="category-data">
-                    <span>{competitor.sexe}</span>
+                    <div className="category-data">
+                      <span>
+                        {competitor.sexe}
+                      </span>
 
-                    {competitor.age !== "" &&
-                      competitor.age !== undefined && (
+                      {competitor.age !== "" &&
+                        competitor.age !==
+                          undefined && (
+                          <span>
+                            {competitor.age} ans
+                          </span>
+                        )}
+
+                      {showWeight &&
+                        competitor.poids !== "" &&
+                        competitor.poids !==
+                          undefined && (
+                          <span>
+                            {competitor.poids} kg
+                          </span>
+                        )}
+
+                      {competitor.grade && (
                         <span>
-                          {competitor.age} ans
+                          {competitor.grade}
                         </span>
                       )}
 
-                    {eventType === "juRandori" &&
-                      competitor.poids !== "" &&
-                      competitor.poids !== undefined && (
+                      {alreadyAssigned && (
                         <span>
-                          {competitor.poids} kg
+                          Déjà classé
                         </span>
                       )}
-
-                    {alreadyAssigned && (
-                      <span>Déjà classé</span>
-                    )}
-                  </div>
-                </label>
-              );
-            })
+                    </div>
+                  </label>
+                );
+              }
+            )
           )}
         </div>
 
@@ -243,7 +334,10 @@ function CategoriesManager({
       <section className="category-section">
         <div className="category-section-header">
           <div>
-            <p className="surtitle">VALIDATION</p>
+            <p className="surtitle">
+              VALIDATION
+            </p>
+
             <h3>Catégories créées</h3>
           </div>
         </div>
@@ -268,30 +362,37 @@ function CategoriesManager({
                   <h3>{category.nom}</h3>
 
                   <p>
-                    {category.epreuve === "kata"
-                      ? "Kata individuel"
-                      : "Ju Randori individuel"}
+                    {getEventLabel(
+                      category.epreuve
+                    )}
                     {" · "}
-                    {category.competitorIds.length} compétiteur
-                    {category.competitorIds.length > 1
+                    {category.competitorIds?.length ||
+                      0}{" "}
+                    compétiteur
+                    {(category.competitorIds
+                      ?.length || 0) > 1
                       ? "s"
                       : ""}
                   </p>
 
                   <div className="competitor-events">
-                    {category.competitorIds.map((id) => {
-                      const competitor =
-                        getCompetitor(id);
+                    {category.competitorIds?.map(
+                      (id) => {
+                        const competitor =
+                          getCompetitor(id);
 
-                      if (!competitor) return null;
+                        if (!competitor) {
+                          return null;
+                        }
 
-                      return (
-                        <span key={id}>
-                          {competitor.nom}{" "}
-                          {competitor.prenom}
-                        </span>
-                      );
-                    })}
+                        return (
+                          <span key={id}>
+                            {competitor.nom}{" "}
+                            {competitor.prenom}
+                          </span>
+                        );
+                      }
+                    )}
                   </div>
                 </div>
 
@@ -304,7 +405,9 @@ function CategoriesManager({
                     className="delete-button"
                     type="button"
                     onClick={() =>
-                      deleteCategory(category.id)
+                      deleteCategory(
+                        category.id
+                      )
                     }
                   >
                     Supprimer
