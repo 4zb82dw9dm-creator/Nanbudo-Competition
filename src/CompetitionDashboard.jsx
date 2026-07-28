@@ -170,17 +170,19 @@ function loadTestCompetitors() {
 
   const testCompetitors = testData.map(
     (
-      [
-        nom,
-        prenom,
-        club,
-        sexe,
-        age,
-        poids,
-        grade,
-        kata,
-        juRandori,
-      ],
+     [
+  nom,
+  prenom,
+  club,
+  sexe,
+  age,
+  poids,
+  grade,
+  kata,
+  randori,
+  juRandori1,
+  juRandori2,
+],
       index
     ) => ({
       id: Date.now() + index,
