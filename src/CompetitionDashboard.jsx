@@ -200,10 +200,11 @@ function loadTestCompetitors() {
       grade,
 
       epreuves: {
-        kata,
-        juRandori,
-      },
-
+  kata,
+  randori,
+  juRandori1,
+  juRandori2,
+},
       testData: true,
     })
   );
