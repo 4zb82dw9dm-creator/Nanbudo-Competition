@@ -687,29 +687,30 @@ function deleteTestCompetitors() {
                   </div>
 
                   <div className="competitor-events">
-  
-{competitor.epreuves.kata0 && (
-  <span>Kata 0</span>
-)}
+  {competitor.epreuves?.kata0 && (
+    <span>Kata 0</span>
+  )}
 
-{competitor.epreuves.kata1 && (
-  <span>Kata 1</span>
-)}
+  {competitor.epreuves?.kata1 && (
+    <span>Kata 1</span>
+  )}
 
-{competitor.epreuves.kata2 && (
-  <span>Kata 2</span>
-)}  {competitor.epreuves.randori && (
+  {competitor.epreuves?.kata2 && (
+    <span>Kata 2</span>
+  )}
+
+  {competitor.epreuves?.randori && (
     <span>Randori</span>
   )}
 
-  {competitor.epreuves.juRandori1 && (
+  {competitor.epreuves?.juRandori1 && (
     <span>Ju Randori 1</span>
   )}
 
-  {competitor.epreuves.juRandori2 && (
+  {competitor.epreuves?.juRandori2 && (
     <span>Ju Randori 2</span>
   )}
-</div>                  <button
+</div>                <button
                     className="delete-button"
                     type="button"
                     onClick={() =>
