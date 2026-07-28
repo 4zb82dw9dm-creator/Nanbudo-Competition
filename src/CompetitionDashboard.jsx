@@ -84,10 +84,11 @@ juRandori2: false,  });
       poids: form.poids ? Number(form.poids) : "",
       grade: form.grade.trim(),
       epreuves: {
-        kata: form.kata,
-        juRandori: form.juRandori,
-      },
-    };
+  kata: form.kata,
+  randori: form.randori,
+  juRandori1: form.juRandori1,
+  juRandori2: form.juRandori2,
+},    };
 
     onUpdateCompetition({
       ...competition,
