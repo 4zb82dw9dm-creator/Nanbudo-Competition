@@ -9,8 +9,8 @@ import ResultsManager from "./ResultsManager";function CompetitionDashboard({
   onUpdateCompetition,
 }) {  const [view, setView] = useState("dashboard");
   const [showForm, setShowForm] = useState(false);
-
-  const [form, setForm] = useState({
+const importFileRef = useRef(null);
+    const [form, setForm] = useState({
     nom: "",
     prenom: "",
     club: "",
