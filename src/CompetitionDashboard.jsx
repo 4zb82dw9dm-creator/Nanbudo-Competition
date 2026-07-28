@@ -19,8 +19,9 @@ import ResultsManager from "./ResultsManager";function CompetitionDashboard({
     poids: "",
     grade: "",
     kata: true,
-    juRandori: true,
-  });
+randori: false,
+juRandori1: false,
+juRandori2: false,  });
 
   const competitors = competition.competitors || [];
 
