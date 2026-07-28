@@ -65,16 +65,18 @@ juRandori2: false,  });
       alert("Le nom et le prénom sont obligatoires.");
       return;
     }
-
-    if (
-  !form.kata &&
+if (
+  !form.kata0 &&
+  !form.kata1 &&
+  !form.kata2 &&
   !form.randori &&
   !form.juRandori1 &&
   !form.juRandori2
 ) {
   alert("Sélectionne au moins une épreuve.");
   return;
-}
+}    
+
     const competitor = {
       id: Date.now(),
       nom: form.nom.trim().toUpperCase(),
