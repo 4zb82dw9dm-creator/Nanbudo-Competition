@@ -503,31 +503,51 @@ function deleteTestCompetitors() {
               </div>
 
               <fieldset className="event-selection">
-                <legend>Épreuves</legend>
+  <legend>Épreuves</legend>
 
-                <label>
-                  <input
-                    name="kata"
-                    type="checkbox"
-                    checked={form.kata}
-                    onChange={handleChange}
-                  />
+  <label>
+    <input
+      name="kata"
+      type="checkbox"
+      checked={form.kata}
+      onChange={handleChange}
+    />
+    Kata individuel
+  </label>
 
-                  Kata individuel
-                </label>
+  <label>
+    <input
+      name="randori"
+      type="checkbox"
+      checked={form.randori}
+      onChange={handleChange}
+      disabled={form.juRandori1 || form.juRandori2}
+    />
+    Randori
+  </label>
 
-                <label>
-                  <input
-                    name="juRandori"
-                    type="checkbox"
-                    checked={form.juRandori}
-                    onChange={handleChange}
-                  />
+  <label>
+    <input
+      name="juRandori1"
+      type="checkbox"
+      checked={form.juRandori1}
+      onChange={handleChange}
+      disabled={form.randori || form.juRandori2}
+    />
+    Ju Randori 1
+  </label>
 
-                  Ju Randori individuel
-                </label>
-              </fieldset>
-
+  <label>
+    <input
+      name="juRandori2"
+      type="checkbox"
+      checked={form.juRandori2}
+      onChange={handleChange}
+      disabled={form.randori || form.juRandori1}
+    />
+    Ju Randori 2
+  </label>
+</fieldset>
               <button
                 className="primary"
                 type="submit"
