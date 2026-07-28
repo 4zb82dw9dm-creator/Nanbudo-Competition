@@ -57,8 +57,44 @@ juRandori2: false,  });
 
     return age;
   }
+function handleImportFile(event) {
+  const file = event.target.files?.[0];
 
-  function addCompetitor(event) {
+  if (!file) return;
+
+  if (!file.name.toLowerCase().endsWith(".csv")) {
+    alert("Sélectionne un fichier CSV.");
+    event.target.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    const content = reader.result;
+
+    const lines = content
+      .split(/\r?\n/)
+      .filter((line) => line.trim() !== "");
+
+    console.log("Lignes CSV :", lines);
+
+    alert(
+      `Fichier "${file.name}" lu : ${Math.max(
+        lines.length - 1,
+        0
+      )} compétiteur(s) détecté(s).`
+    );
+  };
+
+  reader.onerror = () => {
+    alert("Impossible de lire le fichier.");
+  };
+
+  reader.readAsText(file, "UTF-8");
+
+  event.target.value = "";
+}  function addCompetitor(event) {
     event.preventDefault();
 
     if (!form.nom.trim() || !form.prenom.trim()) {
@@ -387,10 +423,19 @@ function deleteTestCompetitors() {
               </p>
             </div>
 
-            <div className="competitor-actions">
+          <div className="competitor-actions">
+  <input
+    ref={importFileRef}
+    type="file"
+    accept=".csv"
+    onChange={handleImportFile}
+    style={{ display: "none" }}
+  />
+
   <button
     className="manage-button"
     type="button"
+    onClick={() => importFileRef.current?.click()}
   >
     Importer des compétiteurs
   </button>
