@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import CategoriesManager from "./CategoriesManager";
 import PoolsManager from "./PoolsManager";
 import ArbitrationManager from "./ArbitrationManager";
