@@ -1,5 +1,14 @@
 import { useState } from "react";
 
+const EVENT_LABELS = {
+  kata0: "Kata 0 — Shihotai",
+  kata1: "Kata 1",
+  kata2: "Kata 2",
+  randori: "Randori",
+  juRandori1: "Ju Randori 1",
+  juRandori2: "Ju Randori 2",
+};
+
 function PoolsManager({
   competition,
   onUpdateCompetition,
@@ -13,12 +22,27 @@ function PoolsManager({
 
   function getCompetitor(id) {
     return competitors.find(
-      (competitor) => competitor.id === id
+      (competitor) =>
+        String(competitor.id) === String(id)
     );
   }
 
+  function getCategory(id) {
+    return categories.find(
+      (category) =>
+        String(category.id) === String(id)
+    );
+  }
+
+  function getEventLabel(eventType) {
+    return EVENT_LABELS[eventType] || eventType || "Épreuve";
+  }
+
   function calculateRanking(pool) {
-    const ranking = pool.competitorIds.map((id) => ({
+    const competitorIds = pool.competitorIds || [];
+    const matches = pool.matches || [];
+
+    const ranking = competitorIds.map((id) => ({
       competitorId: id,
       victories: 0,
       defeats: 0,
@@ -29,36 +53,47 @@ function PoolsManager({
       negativePoints: 0,
     }));
 
-    pool.matches.forEach((match) => {
+    matches.forEach((match) => {
       if (match.statut !== "Terminé") return;
 
       const aka = ranking.find(
-        (item) => item.competitorId === match.akaId
+        (item) =>
+          String(item.competitorId) ===
+          String(match.akaId)
       );
 
       const shiro = ranking.find(
-        (item) => item.competitorId === match.shiroId
+        (item) =>
+          String(item.competitorId) ===
+          String(match.shiroId)
       );
 
       if (!aka || !shiro) return;
 
-      aka.scoreFor += match.akaScore || 0;
-      aka.scoreAgainst += match.shiroScore || 0;
+      const akaScore = Number(match.akaScore) || 0;
+      const shiroScore = Number(match.shiroScore) || 0;
 
-      shiro.scoreFor += match.shiroScore || 0;
-      shiro.scoreAgainst += match.akaScore || 0;
+      aka.scoreFor += akaScore;
+      aka.scoreAgainst += shiroScore;
+
+      shiro.scoreFor += shiroScore;
+      shiro.scoreAgainst += akaScore;
 
       aka.negativePoints +=
-        match.pointsNegatifsAka || 0;
+        Number(match.pointsNegatifsAka) || 0;
 
       shiro.negativePoints +=
-        match.pointsNegatifsShiro || 0;
+        Number(match.pointsNegatifsShiro) || 0;
 
-      if (match.winnerId === match.akaId) {
+      if (
+        String(match.winnerId) ===
+        String(match.akaId)
+      ) {
         aka.victories += 1;
         shiro.defeats += 1;
       } else if (
-        match.winnerId === match.shiroId
+        String(match.winnerId) ===
+        String(match.shiroId)
       ) {
         shiro.victories += 1;
         aka.defeats += 1;
@@ -74,42 +109,48 @@ function PoolsManager({
     });
 
     ranking.sort((a, b) => {
-      // 1. Nombre de victoires
       if (b.victories !== a.victories) {
         return b.victories - a.victories;
       }
 
-      // 2. Moins de points négatifs
       if (a.negativePoints !== b.negativePoints) {
         return a.negativePoints - b.negativePoints;
       }
 
-      // 3. Confrontation directe
-      const confrontation = pool.matches.find(
+      const confrontation = matches.find(
         (match) =>
           match.statut === "Terminé" &&
-          (
-            (match.akaId === a.competitorId &&
-              match.shiroId === b.competitorId) ||
-            (match.akaId === b.competitorId &&
-              match.shiroId === a.competitorId)
-          )
+          ((String(match.akaId) ===
+            String(a.competitorId) &&
+            String(match.shiroId) ===
+              String(b.competitorId)) ||
+            (String(match.akaId) ===
+              String(b.competitorId) &&
+              String(match.shiroId) ===
+                String(a.competitorId)))
       );
 
       if (
-        confrontation?.winnerId === a.competitorId
+        confrontation &&
+        String(confrontation.winnerId) ===
+          String(a.competitorId)
       ) {
         return -1;
       }
 
       if (
-        confrontation?.winnerId === b.competitorId
+        confrontation &&
+        String(confrontation.winnerId) ===
+          String(b.competitorId)
       ) {
         return 1;
       }
 
-      // Départage technique provisoire
-      return b.difference - a.difference;
+      if (b.difference !== a.difference) {
+        return b.difference - a.difference;
+      }
+
+      return b.scoreFor - a.scoreFor;
     });
 
     return ranking;
@@ -117,23 +158,22 @@ function PoolsManager({
 
   function generateMatches(competitorIds) {
     const matches = [];
+    const now = Date.now();
 
-    for (
-      let i = 0;
-      i < competitorIds.length;
-      i++
-    ) {
+    for (let i = 0; i < competitorIds.length; i++) {
       for (
         let j = i + 1;
         j < competitorIds.length;
         j++
       ) {
         matches.push({
-          id: `${Date.now()}-${i}-${j}`,
+          id: `${now}-${i}-${j}`,
           akaId: competitorIds[i],
           shiroId: competitorIds[j],
           akaScore: null,
           shiroScore: null,
+          pointsNegatifsAka: 0,
+          pointsNegatifsShiro: 0,
           winnerId: null,
           statut: "À jouer",
         });
@@ -144,11 +184,21 @@ function PoolsManager({
   }
 
   function poolIsFinished(pool) {
+    const matches = pool.matches || [];
+
     return (
-      pool.matches.length > 0 &&
-      pool.matches.every(
+      matches.length > 0 &&
+      matches.every(
         (match) => match.statut === "Terminé"
       )
+    );
+  }
+
+  function poolExistsForCategory(categoryId) {
+    return pools.some(
+      (pool) =>
+        String(pool.categoryId) ===
+        String(categoryId)
     );
   }
 
@@ -158,10 +208,8 @@ function PoolsManager({
       return;
     }
 
-    const category = categories.find(
-      (item) =>
-        String(item.id) ===
-        String(selectedCategoryId)
+    const category = getCategory(
+      selectedCategoryId
     );
 
     if (!category) {
@@ -169,37 +217,35 @@ function PoolsManager({
       return;
     }
 
-    if (category.competitorIds.length < 2) {
+    const competitorIds =
+      category.competitorIds || [];
+
+    if (competitorIds.length < 2) {
       alert(
         "Il faut au moins 2 compétiteurs pour créer une poule."
       );
       return;
     }
 
-    const alreadyExists = pools.some(
-      (pool) => pool.categoryId === category.id
-    );
-
-    if (alreadyExists) {
+    if (poolExistsForCategory(category.id)) {
       alert(
         "Une poule existe déjà pour cette catégorie."
       );
       return;
     }
 
-    const matches = generateMatches(
-      category.competitorIds
-    );
+    const matches =
+      generateMatches(competitorIds);
 
     const newPool = {
       id: Date.now(),
       categoryId: category.id,
+      epreuve: category.epreuve,
       nom: `Poule - ${category.nom}`,
-      competitorIds: category.competitorIds,
+      competitorIds: [...competitorIds],
       matches,
       statut: "Prête",
 
-      // Phase finale
       closingMode: "",
       rankingLocked: [],
       finalMatches: [],
@@ -230,23 +276,27 @@ function PoolsManager({
   }
 
   function chooseClosingMode(poolId, mode) {
-    const updatedPools = pools.map((pool) => {
-      if (pool.id !== poolId) return pool;
+    const pool = pools.find(
+      (item) => item.id === poolId
+    );
 
-      // Si une phase finale existe déjà, on évite
-      // de changer le mode par accident.
-      if (pool.finalMatches?.length > 0) {
-        alert(
-          "La phase finale a déjà été générée."
-        );
-        return pool;
-      }
+    if (!pool) return;
 
-      return {
-        ...pool,
-        closingMode: mode,
-      };
-    });
+    if ((pool.finalMatches || []).length > 0) {
+      alert(
+        "La phase finale a déjà été générée."
+      );
+      return;
+    }
+
+    const updatedPools = pools.map((item) =>
+      item.id === poolId
+        ? {
+            ...item,
+            closingMode: mode,
+          }
+        : item
+    );
 
     onUpdateCompetition({
       ...competition,
@@ -263,9 +313,7 @@ function PoolsManager({
     }
 
     if (!pool.closingMode) {
-      alert(
-        "Choisis un mode de clôture."
-      );
+      alert("Choisis un mode de clôture.");
       return;
     }
 
@@ -275,10 +323,13 @@ function PoolsManager({
       const podium = {
         firstId:
           ranking[0]?.competitorId || null,
+
         secondId:
           ranking[1]?.competitorId || null,
+
         thirdId:
           ranking[2]?.competitorId || null,
+
         fourthId:
           ranking[3]?.competitorId || null,
       };
@@ -321,9 +372,12 @@ function PoolsManager({
           shiroId: ranking[1].competitorId,
           akaScore: null,
           shiroScore: null,
+          pointsNegatifsAka: 0,
+          pointsNegatifsShiro: 0,
           winnerId: null,
           statut: "À jouer",
         },
+
         {
           id: `${now}-bronze`,
           type: "petite-finale",
@@ -332,6 +386,8 @@ function PoolsManager({
           shiroId: ranking[3].competitorId,
           akaScore: null,
           shiroScore: null,
+          pointsNegatifsAka: 0,
+          pointsNegatifsShiro: 0,
           winnerId: null,
           statut: "À jouer",
         },
@@ -356,6 +412,11 @@ function PoolsManager({
     }
   }
 
+  const availableCategories = categories.filter(
+    (category) =>
+      !poolExistsForCategory(category.id)
+  );
+
   return (
     <div className="pools-manager">
       <div className="manager-header">
@@ -367,14 +428,18 @@ function PoolsManager({
           <h2>Poules</h2>
 
           <p>
-            Génération des rencontres à partir des
-            catégories validées.
+            Génération des rencontres à partir
+            des catégories créées.
           </p>
         </div>
 
         <div className="category-total">
           <strong>{pools.length}</strong>
-          <span>poules</span>
+
+          <span>
+            poule
+            {pools.length > 1 ? "s" : ""}
+          </span>
         </div>
       </div>
 
@@ -393,44 +458,64 @@ function PoolsManager({
         <div className="competition-form">
           <h3>Créer une poule</h3>
 
-          <label>
-            Catégorie
+          {availableCategories.length === 0 ? (
+            <div className="beta-note">
+              <strong>
+                Toutes les catégories ont une poule
+              </strong>
 
-            <select
-              value={selectedCategoryId}
-              onChange={(event) =>
-                setSelectedCategoryId(
-                  event.target.value
-                )
-              }
-            >
-              <option value="">
-                Sélectionner une catégorie
-              </option>
+              <p>
+                Une poule a déjà été générée pour
+                chaque catégorie disponible.
+              </p>
+            </div>
+          ) : (
+            <>
+              <label>
+                Catégorie
 
-              {categories.map((category) => (
-                <option
-                  key={category.id}
-                  value={category.id}
+                <select
+                  value={selectedCategoryId}
+                  onChange={(event) =>
+                    setSelectedCategoryId(
+                      event.target.value
+                    )
+                  }
                 >
-                  {category.nom} —{" "}
-                  {
-                    category.competitorIds
-                      .length
-                  }{" "}
-                  compétiteurs
-                </option>
-              ))}
-            </select>
-          </label>
+                  <option value="">
+                    Sélectionner une catégorie
+                  </option>
 
-          <button
-            className="primary"
-            type="button"
-            onClick={createPool}
-          >
-            Générer la poule
-          </button>
+                  {availableCategories.map(
+                    (category) => (
+                      <option
+                        key={category.id}
+                        value={category.id}
+                      >
+                        {getEventLabel(
+                          category.epreuve
+                        )}
+                        {" — "}
+                        {category.nom}
+                        {" — "}
+                        {category.competitorIds
+                          ?.length || 0}{" "}
+                        compétiteurs
+                      </option>
+                    )
+                  )}
+                </select>
+              </label>
+
+              <button
+                className="primary"
+                type="button"
+                onClick={createPool}
+              >
+                Générer la poule
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -457,16 +542,18 @@ function PoolsManager({
         ) : (
           <div className="competition-list">
             {pools.map((pool) => {
-              const category = categories.find(
-                (item) =>
-                  item.id === pool.categoryId
-              );
+              const category =
+                getCategory(pool.categoryId);
 
               const ranking =
                 calculateRanking(pool);
 
               const finished =
                 poolIsFinished(pool);
+
+              const poolEvent =
+                category?.epreuve ||
+                pool.epreuve;
 
               return (
                 <article
@@ -475,27 +562,30 @@ function PoolsManager({
                 >
                   <div>
                     <p className="surtitle">
-                      {category?.epreuve ===
-                      "kata"
-                        ? "KATA"
-                        : "JU RANDORI"}
+                      {getEventLabel(poolEvent)}
                     </p>
 
                     <h3>{pool.nom}</h3>
 
                     <p>
-                      {
-                        pool.competitorIds
-                          .length
-                      }{" "}
-                      compétiteurs
+                      {pool.competitorIds?.length ||
+                        0}{" "}
+                      compétiteur
+                      {(pool.competitorIds?.length ||
+                        0) > 1
+                        ? "s"
+                        : ""}
                       {" · "}
-                      {pool.matches.length}{" "}
-                      rencontres
+                      {pool.matches?.length || 0}{" "}
+                      rencontre
+                      {(pool.matches?.length || 0) >
+                      1
+                        ? "s"
+                        : ""}
                     </p>
 
                     <div className="competitor-events">
-                      {pool.competitorIds.map(
+                      {pool.competitorIds?.map(
                         (id) => {
                           const competitor =
                             getCompetitor(id);
@@ -507,9 +597,7 @@ function PoolsManager({
                           return (
                             <span key={id}>
                               {competitor.nom}{" "}
-                              {
-                                competitor.prenom
-                              }
+                              {competitor.prenom}
                             </span>
                           );
                         }
@@ -519,7 +607,7 @@ function PoolsManager({
                     <div className="pool-matches">
                       <h3>Rencontres</h3>
 
-                      {pool.matches.map(
+                      {(pool.matches || []).map(
                         (match, index) => {
                           const aka =
                             getCompetitor(
@@ -569,13 +657,11 @@ function PoolsManager({
                               {match.statut ===
                                 "Terminé" && (
                                 <span>
-                                  {
-                                    match.akaScore
-                                  }{" "}
+                                  {match.akaScore ??
+                                    0}{" "}
                                   —{" "}
-                                  {
-                                    match.shiroScore
-                                  }
+                                  {match.shiroScore ??
+                                    0}
                                   {" · "}
                                   {winner
                                     ? `Vainqueur : ${winner.nom} ${winner.prenom}`
@@ -598,9 +684,7 @@ function PoolsManager({
                       <div className="ranking-table">
                         <div className="ranking-header">
                           <span>Place</span>
-                          <span>
-                            Compétiteur
-                          </span>
+                          <span>Compétiteur</span>
                           <span>V</span>
                           <span>D</span>
                           <span>N</span>
@@ -631,24 +715,16 @@ function PoolsManager({
                                 </strong>
 
                                 <strong>
-                                  {
-                                    competitor.nom
-                                  }{" "}
-                                  {
-                                    competitor.prenom
-                                  }
+                                  {competitor.nom}{" "}
+                                  {competitor.prenom}
                                 </strong>
 
                                 <span>
-                                  {
-                                    item.victories
-                                  }
+                                  {item.victories}
                                 </span>
 
                                 <span>
-                                  {
-                                    item.defeats
-                                  }
+                                  {item.defeats}
                                 </span>
 
                                 <span>
@@ -662,9 +738,7 @@ function PoolsManager({
                                 </span>
 
                                 <span>
-                                  {
-                                    item.difference
-                                  }
+                                  {item.difference}
                                 </span>
                               </div>
                             );
@@ -674,11 +748,12 @@ function PoolsManager({
                     </div>
 
                     {finished &&
-  pool.statut !== "Terminée" &&
-  (pool.finalMatches?.length || 0) === 0 && (                        <div className="competition-form">
+                      pool.statut !== "Terminée" &&
+                      (pool.finalMatches?.length ||
+                        0) === 0 && (
+                        <div className="competition-form">
                           <h3>
-                            Clôture de la
-                            catégorie
+                            Clôture de la catégorie
                           </h3>
 
                           <label>
@@ -689,9 +764,7 @@ function PoolsManager({
                                 pool.closingMode ||
                                 ""
                               }
-                              onChange={(
-                                event
-                              ) =>
+                              onChange={(event) =>
                                 chooseClosingMode(
                                   pool.id,
                                   event.target
@@ -708,8 +781,7 @@ function PoolsManager({
                               </option>
 
                               <option value="finals">
-                                Finale + petite
-                                finale
+                                Finale + petite finale
                               </option>
                             </select>
                           </label>
@@ -718,13 +790,10 @@ function PoolsManager({
                             className="primary"
                             type="button"
                             onClick={() =>
-                              validateClosing(
-                                pool
-                              )
+                              validateClosing(pool)
                             }
                           >
-                            Valider la phase
-                            finale
+                            Valider la phase finale
                           </button>
                         </div>
                       )}
@@ -742,47 +811,39 @@ function PoolsManager({
                           <p>
                             🥇{" "}
                             {getCompetitor(
-                              pool.podium
-                                .firstId
+                              pool.podium.firstId
                             )?.nom || "—"}{" "}
                             {getCompetitor(
-                              pool.podium
-                                .firstId
+                              pool.podium.firstId
                             )?.prenom || ""}
                           </p>
 
                           <p>
                             🥈{" "}
                             {getCompetitor(
-                              pool.podium
-                                .secondId
+                              pool.podium.secondId
                             )?.nom || "—"}{" "}
                             {getCompetitor(
-                              pool.podium
-                                .secondId
+                              pool.podium.secondId
                             )?.prenom || ""}
                           </p>
 
                           <p>
                             🥉{" "}
                             {getCompetitor(
-                              pool.podium
-                                .thirdId
+                              pool.podium.thirdId
                             )?.nom || "—"}{" "}
                             {getCompetitor(
-                              pool.podium
-                                .thirdId
+                              pool.podium.thirdId
                             )?.prenom || ""}
                           </p>
                         </div>
                       )}
 
-                    {pool.finalMatches?.length >
-                      0 && (
+                    {(pool.finalMatches?.length ||
+                      0) > 0 && (
                       <div className="pool-ranking">
-                        <h3>
-                          Phase finale
-                        </h3>
+                        <h3>Phase finale</h3>
 
                         {pool.finalMatches.map(
                           (match) => {
@@ -813,18 +874,18 @@ function PoolsManager({
                                 </strong>
 
                                 <span>
-                                  🔴{" "}
+                                  🔴 AKA —{" "}
                                   {aka
                                     ? `${aka.nom} ${aka.prenom}`
                                     : "Inconnu"}
                                 </span>
 
-                                <span>
+                                <span className="match-vs">
                                   VS
                                 </span>
 
                                 <span>
-                                  ⚪{" "}
+                                  ⚪ SHIRO —{" "}
                                   {shiro
                                     ? `${shiro.nom} ${shiro.prenom}`
                                     : "Inconnu"}
@@ -833,13 +894,11 @@ function PoolsManager({
                                 {match.statut ===
                                   "Terminé" && (
                                   <span>
-                                    {
-                                      match.akaScore
-                                    }{" "}
+                                    {match.akaScore ??
+                                      0}{" "}
                                     —{" "}
-                                    {
-                                      match.shiroScore
-                                    }
+                                    {match.shiroScore ??
+                                      0}
                                     {" · "}
                                     {winner
                                       ? `Vainqueur : ${winner.nom} ${winner.prenom}`
@@ -848,9 +907,7 @@ function PoolsManager({
                                 )}
 
                                 <span>
-                                  {
-                                    match.statut
-                                  }
+                                  {match.statut}
                                 </span>
                               </div>
                             );
