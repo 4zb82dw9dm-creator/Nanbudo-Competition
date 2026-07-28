@@ -18,7 +18,9 @@ import ResultsManager from "./ResultsManager";function CompetitionDashboard({
     dateNaissance: "",
     poids: "",
     grade: "",
-    kata: true,
+    kata0: false,
+kata1: false,
+kata2: false,
 randori: false,
 juRandori1: false,
 juRandori2: false,  });
