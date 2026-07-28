@@ -602,16 +602,22 @@ function deleteTestCompetitors() {
                   </div>
 
                   <div className="competitor-events">
-                    {competitor.epreuves.kata && (
-                      <span>Kata</span>
-                    )}
+  {competitor.epreuves.kata && (
+    <span>Kata</span>
+  )}
 
-                    {competitor.epreuves.juRandori && (
-                      <span>Ju Randori</span>
-                    )}
-                  </div>
+  {competitor.epreuves.randori && (
+    <span>Randori</span>
+  )}
 
-                  <button
+  {competitor.epreuves.juRandori1 && (
+    <span>Ju Randori 1</span>
+  )}
+
+  {competitor.epreuves.juRandori2 && (
+    <span>Ju Randori 2</span>
+  )}
+</div>                  <button
                     className="delete-button"
                     type="button"
                     onClick={() =>
