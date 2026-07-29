@@ -1,36 +1,11 @@
 import { useState } from "react";
 import "./style.css";
 import CompetitionManager from "./CompetitionManager";
+
+const afdpLogoUrl = `${import.meta.env.BASE_URL}logo-afdp.png`;
 function App() {
   const [section, setSection] = useState("accueil");
 
-  const competitions = [
-    {
-      nom: "Coupe régionale d'hiver Nord",
-      lieu: "Igny",
-      statut: "À préparer",
-    },
-    {
-      nom: "Coupe régionale d'hiver Sud",
-      lieu: "Marseille",
-      statut: "À préparer",
-    },
-    {
-      nom: "Coupe de France",
-      lieu: "Crest",
-      statut: "À préparer",
-    },
-    {
-      nom: "Coupe régionale de printemps Nord",
-      lieu: "Bagneux",
-      statut: "À préparer",
-    },
-    {
-      nom: "Coupe régionale de printemps Sud",
-      lieu: "Marseille",
-      statut: "À préparer",
-    },
-  ];
 
   return (
     <div className="app">
@@ -46,8 +21,9 @@ function App() {
   </div>
 
   <img
-  src="./logo-afdp.png"  alt="AFDP Nanbudo"
-  className="header-logo"
+  src={afdpLogoUrl}
+  alt="AFDP Nanbudo"
+  className="afdp-logo"
 />
       </header>
       <nav className="navigation">
