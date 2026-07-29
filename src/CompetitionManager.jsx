@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CompetitionDashboard from "./CompetitionDashboard";
 function CompetitionManager() {
+  const importFileRef = useRef(null);
   const [competitions, setCompetitions] = useState(() => {
     try {
       const saved = localStorage.getItem("nanbudo_competitions");
@@ -72,6 +73,59 @@ function CompetitionManager() {
     setShowForm(false);
   }
 
+  function importCompetition(importedCompetition) {
+    setCompetitions((current) => {
+      const conflictIndex = current.findIndex(
+        (competition) =>
+          String(competition.id) === String(importedCompetition.id)
+      );
+
+      if (conflictIndex === -1) {
+        return [...current, importedCompetition];
+      }
+
+      const confirmed = window.confirm(
+        "Une compétition avec le même identifiant existe déjà. La remplacer ?"
+      );
+
+      if (!confirmed) {
+        alert("Import annulé.");
+        return current;
+      }
+
+      return current.map((competition, index) =>
+        index === conflictIndex ? importedCompetition : competition
+      );
+    });
+  }
+
+  function handleImportFile(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const importedCompetition = JSON.parse(reader.result);
+
+        if (!importedCompetition?.id) {
+          alert("Import impossible : identifiant de compétition manquant.");
+          return;
+        }
+
+        importCompetition(importedCompetition);
+      } catch {
+        alert("Import impossible : fichier invalide.");
+      } finally {
+        event.target.value = "";
+      }
+    };
+
+    reader.readAsText(file);
+  }
+
   function deleteCompetition(id) {
     const confirmed = window.confirm(
       "Supprimer cette compétition ?"
@@ -122,6 +176,22 @@ if (selectedCompetition) {
           onClick={() => setShowForm((current) => !current)}
         >
           {showForm ? "Annuler" : "+ Nouvelle compétition"}
+        </button>
+
+        <input
+          ref={importFileRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={handleImportFile}
+          hidden
+        />
+
+        <button
+          className="secondary"
+          type="button"
+          onClick={() => importFileRef.current?.click()}
+        >
+          Importer une compétition
         </button>
       </div>
 
