@@ -1,46 +1,26 @@
 import { useState } from "react";
 
-const EVENT_LABELS = {
-  kata0: "Kata 0 — Shihotai",
-  kata1: "Kata 1",
-  kata2: "Kata 2",
-  randori: "Randori",
-  juRandori1: "Ju Randori 1",
-  juRandori2: "Ju Randori 2",
-};
-
-const KATA_NOTES = [
-  3.9,
-  4.0,
-  4.1,
-  4.2,
-  4.3,
-  4.4,
-  4.5,
-  4.6,
-  4.7,
-  4.8,
-  4.9,
-];
-
 function MatchManager({
   match,
+  competitor,
+  passage,
+  initialResult,
   onSave,
-  mode = "combat",
-  eventType = "",
-  competitor = null,
-  passage = null,
-  initialResult = null,
+  mode,
+  type,
+  eventType,
 }) {
   /*
    * =========================================================
-   * OUTILS
+   * MODE
    * =========================================================
    */
 
-  function getEventLabel(type) {
-    return EVENT_LABELS[type] || type || "Épreuve";
-  }
+  // Compatible avec :
+  // mode="kata"
+  // ou type="kata"
+  const kataMode =
+    mode === "kata" || type === "kata";
 
   /*
    * =========================================================
@@ -51,12 +31,9 @@ function MatchManager({
   const [notesKata, setNotesKata] = useState(() => {
     if (
       initialResult?.notes &&
-      Array.isArray(initialResult.notes) &&
       initialResult.notes.length === 5
     ) {
-      return initialResult.notes.map((note) =>
-        Number(note)
-      );
+      return initialResult.notes.map(Number);
     }
 
     return [
@@ -69,21 +46,7 @@ function MatchManager({
   });
 
   function modifierNoteKata(index, valeur) {
-    let nombre = Number(valeur);
-
-    if (Number.isNaN(nombre)) {
-      nombre = 4.5;
-    }
-
-    if (nombre < 3.9) {
-      nombre = 3.9;
-    }
-
-    if (nombre > 4.9) {
-      nombre = 4.9;
-    }
-
-    nombre = Number(nombre.toFixed(1));
+    const nombre = Number(valeur);
 
     setNotesKata((actuelles) =>
       actuelles.map((note, i) =>
@@ -93,57 +56,38 @@ function MatchManager({
   }
 
   function calculerKata() {
-    const notes = notesKata.map((note) =>
-      Number(note)
-    );
+    const notes = notesKata.map(Number);
+
+    const noteMax = Math.max(...notes);
+    const noteMin = Math.min(...notes);
 
     /*
-     * On retire exactement UNE note haute
-     * et UNE note basse.
+     * On retire UNE note maximale
+     * et UNE note minimale.
      *
-     * Si plusieurs juges donnent la même
-     * note haute ou basse, une seule note
-     * est retirée.
+     * Si plusieurs juges ont la même note,
+     * une seule occurrence est retirée.
      */
 
-    let indexMax = 0;
+    const indexMax =
+      notes.indexOf(noteMax);
 
-    for (
-      let index = 1;
-      index < notes.length;
-      index++
-    ) {
-      if (notes[index] > notes[indexMax]) {
-        indexMax = index;
-      }
+    let indexMin =
+      notes.indexOf(noteMin);
+
+    /*
+     * Cas particulier :
+     * si les 5 notes sont identiques,
+     * indexMax et indexMin seraient identiques.
+     * On retire alors deux juges différents.
+     */
+
+    if (indexMin === indexMax) {
+      indexMin = notes.findIndex(
+        (_, index) =>
+          index !== indexMax
+      );
     }
-
-    let indexMin = null;
-
-    for (
-      let index = 0;
-      index < notes.length;
-      index++
-    ) {
-      if (index === indexMax) {
-        continue;
-      }
-
-      if (
-        indexMin === null ||
-        notes[index] < notes[indexMin]
-      ) {
-        indexMin = index;
-      }
-    }
-
-    const noteMax =
-      notes[indexMax];
-
-    const noteMin =
-      indexMin !== null
-        ? notes[indexMin]
-        : null;
 
     const notesRetenues =
       notes.filter(
@@ -161,11 +105,15 @@ function MatchManager({
 
     return {
       notes,
+
       indexMax,
       indexMin,
+
       noteMax,
       noteMin,
+
       notesRetenues,
+
       total: Number(
         total.toFixed(1)
       ),
@@ -181,37 +129,53 @@ function MatchManager({
    * =========================================================
    */
 
-  const [assauts, setAssauts] = useState(
-    Array.from(
-      { length: 7 },
-      () => ({
-        juge1: "",
-        juge2: "",
-        juge3: "",
-      })
-    )
-  );
+  const [assauts, setAssauts] =
+    useState(() => {
+      if (
+        match?.assauts &&
+        match.assauts.length === 7
+      ) {
+        return match.assauts;
+      }
+
+      return Array.from(
+        { length: 7 },
+        () => ({
+          juge1: "",
+          juge2: "",
+          juge3: "",
+        })
+      );
+    });
 
   const [
     penalitesAka,
     setPenalitesAka,
-  ] = useState({
-    keikoku: 0,
-    fujubun: 0,
-    chui: 0,
-    hansokuChui: 0,
-    shikaku: false,
+  ] = useState(() => {
+    return (
+      match?.penalitesAka || {
+        keikoku: 0,
+        fujubun: 0,
+        chui: 0,
+        hansokuChui: 0,
+        shikaku: false,
+      }
+    );
   });
 
   const [
     penalitesShiro,
     setPenalitesShiro,
-  ] = useState({
-    keikoku: 0,
-    fujubun: 0,
-    chui: 0,
-    hansokuChui: 0,
-    shikaku: false,
+  ] = useState(() => {
+    return (
+      match?.penalitesShiro || {
+        keikoku: 0,
+        fujubun: 0,
+        chui: 0,
+        hansokuChui: 0,
+        shikaku: false,
+      }
+    );
   });
 
   function modifierVote(
@@ -248,7 +212,9 @@ function MatchManager({
           shiro += 1;
         }
 
-        if (vote === "hikiwake") {
+        if (
+          vote === "hikiwake"
+        ) {
           aka += 1;
           shiro += 1;
         }
@@ -266,7 +232,7 @@ function MatchManager({
 
   function ajouterPenalite(
     couleur,
-    type
+    typePenalite
   ) {
     const setter =
       couleur === "aka"
@@ -278,42 +244,68 @@ function MatchManager({
         ...actuelles,
       };
 
-      if (type === "shikaku") {
-        nouvelles.shikaku = true;
+      if (
+        typePenalite ===
+        "shikaku"
+      ) {
+        nouvelles.shikaku =
+          true;
 
         return nouvelles;
       }
 
-      if (type === "keikoku") {
-        nouvelles.keikoku += 1;
+      if (
+        typePenalite ===
+        "keikoku"
+      ) {
+        nouvelles.keikoku +=
+          1;
 
+        // 3 Keikoku = 1 Fujubun
         if (
-          nouvelles.keikoku >= 3
+          nouvelles.keikoku >=
+          3
         ) {
-          nouvelles.keikoku = 0;
-          nouvelles.fujubun += 1;
+          nouvelles.keikoku =
+            0;
+
+          nouvelles.fujubun +=
+            1;
         }
       }
 
-      if (type === "fujubun") {
-        nouvelles.fujubun += 1;
+      if (
+        typePenalite ===
+        "fujubun"
+      ) {
+        nouvelles.fujubun +=
+          1;
       }
 
-      if (type === "chui") {
+      if (
+        typePenalite === "chui"
+      ) {
         nouvelles.chui += 1;
       }
 
       if (
-        type === "hansokuChui"
+        typePenalite ===
+        "hansokuChui"
       ) {
-        nouvelles.hansokuChui += 1;
+        nouvelles.hansokuChui +=
+          1;
       }
 
+      // 3 Fujubun = Hansoku Chui
       if (
-        nouvelles.fujubun >= 3
+        nouvelles.fujubun >=
+        3
       ) {
-        nouvelles.fujubun = 0;
-        nouvelles.hansokuChui += 1;
+        nouvelles.fujubun =
+          0;
+
+        nouvelles.hansokuChui +=
+          1;
       }
 
       return nouvelles;
@@ -326,7 +318,8 @@ function MatchManager({
     return (
       penalites.fujubun +
       penalites.chui * 2 +
-      penalites.hansokuChui * 3
+      penalites.hansokuChui *
+        3
     );
   }
 
@@ -354,8 +347,8 @@ function MatchManager({
     penalitesAka.shikaku;
 
   const shiroDisqualifie =
-    penalitesShiro.hansokuChui >
-      0 ||
+    penalitesShiro
+      .hansokuChui > 0 ||
     penalitesShiro.shikaku;
 
   function determinerVainqueur() {
@@ -406,15 +399,19 @@ function MatchManager({
    * =========================================================
    */
 
-  if (mode === "kata") {
+  if (kataMode) {
+    const competiteur =
+      competitor ||
+      match?.competiteur ||
+      match?.aka ||
+      null;
+
     return (
       <section className="match-manager">
         <div className="manager-header">
           <div>
             <p className="surtitle">
-              {getEventLabel(
-                eventType
-              )}
+              KATA
             </p>
 
             <h2>
@@ -422,12 +419,12 @@ function MatchManager({
             </h2>
 
             <p>
-              {competitor
+              {competiteur
                 ? `${
-                    competitor.nom ||
+                    competiteur.nom ||
                     ""
                   } ${
-                    competitor.prenom ||
+                    competiteur.prenom ||
                     ""
                   }`
                 : "Compétiteur"}
@@ -444,7 +441,7 @@ function MatchManager({
         <div className="match-score">
           <div>
             <strong>
-              NOTE DU PASSAGE
+              NOTE FINALE
             </strong>
 
             <h2>
@@ -454,7 +451,7 @@ function MatchManager({
             </h2>
 
             <p>
-              Somme des 3 notes
+              Total des 3 notes
               retenues
             </p>
           </div>
@@ -462,31 +459,22 @@ function MatchManager({
 
         <div className="penalties">
           <h3>
-            Notes des 5 juges
+            Notes des arbitres
           </h3>
 
           <p>
-            Chaque juge attribue une
-            note comprise entre 3,9 et
-            4,9. La note la plus haute
-            et la note la plus basse
-            sont retirées.
+            Notes autorisées :
+            3,9 à 4,9.
           </p>
 
           <div className="penalties-grid">
             {notesKata.map(
               (note, index) => {
-                const noteHaute =
-                  index ===
-                  resultatKata.indexMax;
-
-                const noteBasse =
-                  index ===
-                  resultatKata.indexMin;
-
                 const eliminee =
-                  noteHaute ||
-                  noteBasse;
+                  index ===
+                    resultatKata.indexMax ||
+                  index ===
+                    resultatKata.indexMin;
 
                 return (
                   <div
@@ -494,7 +482,8 @@ function MatchManager({
                     key={index}
                   >
                     <h3>
-                      Juge {index + 1}
+                      Juge{" "}
+                      {index + 1}
                     </h3>
 
                     <h2>
@@ -534,8 +523,22 @@ function MatchManager({
                         )
                       }
                     >
-                      {KATA_NOTES.map(
-                        (valeur) => (
+                      {[
+                        3.9,
+                        4.0,
+                        4.1,
+                        4.2,
+                        4.3,
+                        4.4,
+                        4.5,
+                        4.6,
+                        4.7,
+                        4.8,
+                        4.9,
+                      ].map(
+                        (
+                          valeur
+                        ) => (
                           <option
                             key={
                               valeur
@@ -552,23 +555,28 @@ function MatchManager({
                       )}
                     </select>
 
-                    {noteHaute && (
+                    {index ===
+                      resultatKata.indexMax && (
                       <p>
-                        ⬆️ Note la plus
-                        haute — retirée
+                        ⬆️ Note la
+                        plus haute —
+                        retirée
                       </p>
                     )}
 
-                    {noteBasse && (
+                    {index ===
+                      resultatKata.indexMin && (
                       <p>
-                        ⬇️ Note la plus
-                        basse — retirée
+                        ⬇️ Note la
+                        plus basse —
+                        retirée
                       </p>
                     )}
 
                     {!eliminee && (
                       <p>
-                        ✅ Note retenue
+                        ✅ Note
+                        retenue
                       </p>
                     )}
                   </div>
@@ -580,33 +588,33 @@ function MatchManager({
 
         <div className="match-result">
           <h3>
-            Résultat du passage
+            Résultat
           </h3>
 
           <p>
-            Notes des juges :{" "}
-            <strong>
-              {resultatKata.notes
-                .map((note) =>
-                  note.toFixed(1)
-                )
-                .join(" · ")}
-            </strong>
+            Notes :{" "}
+            {resultatKata.notes
+              .map((note) =>
+                note.toFixed(1)
+              )
+              .join(" · ")}
           </p>
 
           <p>
-            Note haute retirée :{" "}
+            Note la plus basse
+            retirée :{" "}
             <strong>
-              {resultatKata.noteMax.toFixed(
+              {resultatKata.noteMin.toFixed(
                 1
               )}
             </strong>
           </p>
 
           <p>
-            Note basse retirée :{" "}
+            Note la plus haute
+            retirée :{" "}
             <strong>
-              {resultatKata.noteMin.toFixed(
+              {resultatKata.noteMax.toFixed(
                 1
               )}
             </strong>
@@ -624,22 +632,13 @@ function MatchManager({
           </p>
 
           <p>
-            Total du passage :{" "}
+            Total :{" "}
             <strong>
               {resultatKata.total.toFixed(
                 1
               )}
             </strong>
           </p>
-
-          {initialResult && (
-            <p>
-              Ce passage a déjà été
-              enregistré. Tu peux
-              modifier les notes puis
-              l'enregistrer à nouveau.
-            </p>
-          )}
 
           {onSave && (
             <button
@@ -655,23 +654,34 @@ function MatchManager({
                   notesRetenues:
                     resultatKata.notesRetenues,
 
-                  noteRetireeHaute:
-                    resultatKata.noteMax,
-
                   noteRetireeBasse:
                     resultatKata.noteMin,
 
+                  noteRetireeHaute:
+                    resultatKata.noteMax,
+
+                  noteMin:
+                    resultatKata.noteMin,
+
+                  noteMax:
+                    resultatKata.noteMax,
+
                   total:
+                    resultatKata.total,
+
+                  score:
                     resultatKata.total,
                 })
               }
             >
               {initialResult
-                ? `Modifier le passage ${
-                    passage || ""
+                ? `Enregistrer les modifications du passage ${
+                    passage ||
+                    ""
                   }`
                 : `Enregistrer le passage ${
-                    passage || ""
+                    passage ||
+                    ""
                   }`}
             </button>
           )}
@@ -682,7 +692,7 @@ function MatchManager({
 
   /*
    * =========================================================
-   * AFFICHAGE COMBAT
+   * AFFICHAGE JU RANDORI
    * =========================================================
    */
 
@@ -691,14 +701,18 @@ function MatchManager({
       <div className="manager-header">
         <div>
           <p className="surtitle">
-            {getEventLabel(
-              eventType
-            )}
+            JU RANDORI
           </p>
 
           <h2>
             Feuille de combat
           </h2>
+
+          {eventType && (
+            <p>
+              {eventType}
+            </p>
+          )}
         </div>
       </div>
 
@@ -719,15 +733,10 @@ function MatchManager({
           </p>
 
           <p>
-            {match?.aka
-              ? `${
-                  match.aka.nom ||
-                  ""
-                } ${
-                  match.aka.prenom ||
-                  ""
-                }`
-              : "Compétiteur AKA"}
+            {match?.aka?.nom ||
+              "Compétiteur AKA"}{" "}
+            {match?.aka?.prenom ||
+              ""}
           </p>
         </div>
 
@@ -741,21 +750,17 @@ function MatchManager({
           </h2>
 
           <p>
-            Assauts : {score.shiro} ·
+            Assauts :{" "}
+            {score.shiro} ·
             Pénalités : -
             {pointsNegatifsShiro}
           </p>
 
           <p>
-            {match?.shiro
-              ? `${
-                  match.shiro.nom ||
-                  ""
-                } ${
-                  match.shiro.prenom ||
-                  ""
-                }`
-              : "Compétiteur SHIRO"}
+            {match?.shiro?.nom ||
+              "Compétiteur SHIRO"}{" "}
+            {match?.shiro?.prenom ||
+              ""}
           </p>
         </div>
       </div>
@@ -868,10 +873,14 @@ function MatchManager({
 
             <p>
               Keikoku :{" "}
-              {penalitesShiro.keikoku}
+              {
+                penalitesShiro.keikoku
+              }
               {" · "}
               Fujubun :{" "}
-              {penalitesShiro.fujubun}
+              {
+                penalitesShiro.fujubun
+              }
               {" · "}
               Chui :{" "}
               {penalitesShiro.chui}
@@ -885,7 +894,9 @@ function MatchManager({
             <p>
               Points négatifs :{" "}
               <strong>
-                {pointsNegatifsShiro}
+                {
+                  pointsNegatifsShiro
+                }
               </strong>
             </p>
 
@@ -984,7 +995,8 @@ function MatchManager({
                   >
                     <span>
                       Fukushin{" "}
-                      {jugeIndex + 1}
+                      {jugeIndex +
+                        1}
                     </span>
 
                     <button
@@ -1074,46 +1086,28 @@ function MatchManager({
         </p>
 
         <p>
-          Score après pénalités :
-          {" "}
-          <strong>
-            {scoreFinalAka}
-          </strong>
-          {" — "}
-          <strong>
-            {scoreFinalShiro}
-          </strong>
-        </p>
-
-        <p>
           {akaDisqualifie &&
             !shiroDisqualifie && (
               <>
-                ⛔ AKA disqualifié ·
-                🏆 SHIRO vainqueur
+                ⛔ AKA —
+                HANSOKU CHUI · 🏆
+                SHIRO vainqueur
               </>
             )}
 
           {shiroDisqualifie &&
             !akaDisqualifie && (
               <>
-                ⛔ SHIRO disqualifié ·
-                🏆 AKA vainqueur
-              </>
-            )}
-
-          {akaDisqualifie &&
-            shiroDisqualifie && (
-              <>
-                ⛔ Les deux
-                compétiteurs sont
-                disqualifiés
+                ⛔ SHIRO —
+                HANSOKU CHUI · 🏆
+                AKA vainqueur
               </>
             )}
 
           {!akaDisqualifie &&
             !shiroDisqualifie &&
-            vainqueur === "aka" && (
+            vainqueur ===
+              "aka" && (
               <>
                 🏆 AKA vainqueur
               </>
@@ -1124,16 +1118,16 @@ function MatchManager({
             vainqueur ===
               "shiro" && (
               <>
-                🏆 SHIRO vainqueur
+                🏆 SHIRO
+                vainqueur
               </>
             )}
 
           {!akaDisqualifie &&
             !shiroDisqualifie &&
-            vainqueur === null && (
-              <>
-                Égalité
-              </>
+            vainqueur ===
+              null && (
+              <>Égalité</>
             )}
         </p>
 
@@ -1143,7 +1137,8 @@ function MatchManager({
             className="primary"
             onClick={() =>
               onSave({
-                type: "ju-randori",
+                type:
+                  "ju-randori",
 
                 assauts,
 
@@ -1160,12 +1155,15 @@ function MatchManager({
                   scoreFinalShiro,
 
                 penalitesAka,
+
                 penalitesShiro,
 
                 pointsNegatifsAka,
+
                 pointsNegatifsShiro,
 
                 akaDisqualifie,
+
                 shiroDisqualifie,
 
                 vainqueur,
