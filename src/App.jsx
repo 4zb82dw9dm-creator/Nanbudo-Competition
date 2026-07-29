@@ -1,32 +1,29 @@
 import { useState } from "react";
 import "./style.css";
 import CompetitionManager from "./CompetitionManager";
+import logoAfdp from "./assets/logo-afdp.png";
 
 function App() {
   const [section, setSection] = useState("accueil");
 
   return (
     <div className="app">
-      {/* ========================================
+      {/* =====================================
           BANDEAU SUPÉRIEUR
-      ======================================== */}
+      ====================================== */}
 
       <header className="top-banner">
         <div className="top-banner-inner">
-         <img
-  src={`${import.meta.env.BASE_URL}logo-afdp.png`}
-  alt="AFDP Nanbudo"
-  className="top-logo"
-/>
+          <img
+            src={logoAfdp}
+            alt="AFDP Nanbudo"
+            className="top-logo"
+          />
 
           <div className="top-banner-text">
-            <p className="surtitle">
-              AFDP NANBUDO
-            </p>
+            <p className="surtitle">AFDP NANBUDO</p>
 
-            <h1>
-              Commission Compétition
-            </h1>
+            <h1>Commission Compétition</h1>
 
             <p className="subtitle">
               Gestion et organisation des compétitions
@@ -34,7 +31,6 @@ function App() {
           </div>
         </div>
       </header>
-
       {/* ========================================
           APPLICATION
       ======================================== */}
