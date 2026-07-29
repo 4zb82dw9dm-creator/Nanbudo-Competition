@@ -4,6 +4,22 @@ import PoolsManager from "./PoolsManager";
 import ArbitrationManager from "./ArbitrationManager";
 import ResultsManager from "./ResultsManager";
 
+const EMPTY_FORM = {
+  nom: "",
+  prenom: "",
+  club: "",
+  sexe: "Homme",
+  dateNaissance: "",
+  poids: "",
+  grade: "",
+  kata0: false,
+  kata1: false,
+  kata2: false,
+  randori: false,
+  juRandori1: false,
+  juRandori2: false,
+};
+
 function CompetitionDashboard({
   competition,
   onBack,
@@ -11,25 +27,21 @@ function CompetitionDashboard({
 }) {
   const [view, setView] = useState("dashboard");
   const [showForm, setShowForm] = useState(false);
+  const [editingCompetitorId, setEditingCompetitorId] =
+    useState(null);
+  const [form, setForm] = useState({ ...EMPTY_FORM });
+
   const importFileRef = useRef(null);
 
-  const [form, setForm] = useState({
-    nom: "",
-    prenom: "",
-    club: "",
-    sexe: "Homme",
-    dateNaissance: "",
-    poids: "",
-    grade: "",
-    kata0: false,
-    kata1: false,
-    kata2: false,
-    randori: false,
-    juRandori1: false,
-    juRandori2: false,
-  });
-
   const competitors = competition.competitors || [];
+  const categories = competition.categories || [];
+  const pools = competition.pools || [];
+
+  function resetForm() {
+    setForm({ ...EMPTY_FORM });
+    setEditingCompetitorId(null);
+    setShowForm(false);
+  }
 
   function handleChange(event) {
     const { name, value, type, checked } = event.target;
@@ -43,7 +55,12 @@ function CompetitionDashboard({
   function calculateAge(dateNaissance) {
     if (!dateNaissance) return "";
 
-    const birth = new Date(dateNaissance);
+    const birth = new Date(`${dateNaissance}T00:00:00`);
+
+    if (Number.isNaN(birth.getTime())) {
+      return "";
+    }
+
     const today = new Date();
 
     let age = today.getFullYear() - birth.getFullYear();
@@ -60,6 +77,369 @@ function CompetitionDashboard({
     }
 
     return age;
+  }
+
+  function normalizeText(value) {
+    return String(value || "").trim().toLocaleLowerCase("fr");
+  }
+
+  function isSameCompetitor(
+    competitor,
+    candidate,
+    ignoredId = null
+  ) {
+    if (
+      ignoredId !== null &&
+      String(competitor.id) === String(ignoredId)
+    ) {
+      return false;
+    }
+
+    const sameName =
+      normalizeText(competitor.nom) ===
+      normalizeText(candidate.nom);
+
+    const sameFirstName =
+      normalizeText(competitor.prenom) ===
+      normalizeText(candidate.prenom);
+
+    if (!sameName || !sameFirstName) {
+      return false;
+    }
+
+    /*
+      Si les deux dates de naissance sont renseignées,
+      elles doivent aussi correspondre.
+
+      Si une date manque, nom + prénom suffisent pour
+      déclencher l'avertissement.
+    */
+    if (
+      competitor.dateNaissance &&
+      candidate.dateNaissance
+    ) {
+      return (
+        competitor.dateNaissance ===
+        candidate.dateNaissance
+      );
+    }
+
+    return true;
+  }
+
+  function validateEvents(values) {
+    const nombreKatas = [
+      values.kata0,
+      values.kata1,
+      values.kata2,
+    ].filter(Boolean).length;
+
+    if (nombreKatas > 1) {
+      alert(
+        "Un compétiteur ne peut être inscrit que dans une seule catégorie Kata."
+      );
+      return false;
+    }
+
+    const nombreCombats = [
+      values.randori,
+      values.juRandori1,
+      values.juRandori2,
+    ].filter(Boolean).length;
+
+    if (nombreCombats > 1) {
+      alert(
+        "Un compétiteur ne peut être inscrit que dans une seule catégorie de combat."
+      );
+      return false;
+    }
+
+    if (nombreKatas === 0 && nombreCombats === 0) {
+      alert("Sélectionne au moins une épreuve.");
+      return false;
+    }
+
+    return true;
+  }
+
+  function competitorIsInCategory(id) {
+    return categories.some((category) =>
+      (category.competitorIds || []).some(
+        (competitorId) =>
+          String(competitorId) === String(id)
+      )
+    );
+  }
+
+  function competitorIsInPool(id) {
+    return pools.some((pool) => {
+      const inPool = (pool.competitorIds || []).some(
+        (competitorId) =>
+          String(competitorId) === String(id)
+      );
+
+      const inMatches = (pool.matches || []).some(
+        (match) =>
+          String(match.akaId) === String(id) ||
+          String(match.shiroId) === String(id) ||
+          String(match.winnerId) === String(id)
+      );
+
+      const inPassages = (pool.passages || []).some(
+        (passage) =>
+          String(passage.competitorId) === String(id)
+      );
+
+      const inFinalMatches = (
+        pool.finalMatches || []
+      ).some(
+        (match) =>
+          String(match.akaId) === String(id) ||
+          String(match.shiroId) === String(id) ||
+          String(match.winnerId) === String(id)
+      );
+
+      const inFinalPassages = (
+        pool.finalPassages || []
+      ).some(
+        (passage) =>
+          String(passage.competitorId) === String(id)
+      );
+
+      const inRanking = (
+        pool.rankingLocked || []
+      ).some(
+        (item) =>
+          String(item.competitorId) === String(id)
+      );
+
+      const podium = pool.podium || {};
+
+      const inPodium = [
+        podium.firstId,
+        podium.secondId,
+        podium.thirdId,
+        podium.fourthId,
+      ].some(
+        (competitorId) =>
+          competitorId !== null &&
+          competitorId !== undefined &&
+          String(competitorId) === String(id)
+      );
+
+      return (
+        inPool ||
+        inMatches ||
+        inPassages ||
+        inFinalMatches ||
+        inFinalPassages ||
+        inRanking ||
+        inPodium
+      );
+    });
+  }
+
+  function startAddCompetitor() {
+    setEditingCompetitorId(null);
+    setForm({ ...EMPTY_FORM });
+    setShowForm(true);
+  }
+
+  function startEditCompetitor(competitor) {
+    setEditingCompetitorId(competitor.id);
+
+    setForm({
+      nom: competitor.nom || "",
+      prenom: competitor.prenom || "",
+      club: competitor.club || "",
+      sexe: competitor.sexe || "Homme",
+      dateNaissance: competitor.dateNaissance || "",
+      poids:
+        competitor.poids === "" ||
+        competitor.poids === undefined ||
+        competitor.poids === null
+          ? ""
+          : String(competitor.poids),
+      grade: competitor.grade || "",
+      kata0: Boolean(competitor.epreuves?.kata0),
+      kata1: Boolean(competitor.epreuves?.kata1),
+      kata2: Boolean(competitor.epreuves?.kata2),
+      randori: Boolean(
+        competitor.epreuves?.randori
+      ),
+      juRandori1: Boolean(
+        competitor.epreuves?.juRandori1
+      ),
+      juRandori2: Boolean(
+        competitor.epreuves?.juRandori2
+      ),
+    });
+
+    setShowForm(true);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function saveCompetitor(event) {
+    event.preventDefault();
+
+    const nom = form.nom.trim();
+    const prenom = form.prenom.trim();
+
+    if (!nom || !prenom) {
+      alert("Le nom et le prénom sont obligatoires.");
+      return;
+    }
+
+    if (!validateEvents(form)) {
+      return;
+    }
+
+    const poids =
+      form.poids === ""
+        ? ""
+        : Number(String(form.poids).replace(",", "."));
+
+    if (
+      poids !== "" &&
+      (!Number.isFinite(poids) || poids <= 0)
+    ) {
+      alert("Le poids indiqué n'est pas valide.");
+      return;
+    }
+
+    const candidate = {
+      nom,
+      prenom,
+      dateNaissance: form.dateNaissance,
+    };
+
+    const duplicate = competitors.find((competitor) =>
+      isSameCompetitor(
+        competitor,
+        candidate,
+        editingCompetitorId
+      )
+    );
+
+    if (duplicate) {
+      alert(
+        `Un compétiteur similaire existe déjà : ${duplicate.nom} ${duplicate.prenom}.`
+      );
+      return;
+    }
+
+    const competitorData = {
+      nom: nom.toUpperCase(),
+      prenom,
+      club: form.club.trim(),
+      sexe: form.sexe,
+      dateNaissance: form.dateNaissance,
+      age: calculateAge(form.dateNaissance),
+      poids,
+      grade: form.grade.trim(),
+
+      epreuves: {
+        kata0: form.kata0,
+        kata1: form.kata1,
+        kata2: form.kata2,
+        randori: form.randori,
+        juRandori1: form.juRandori1,
+        juRandori2: form.juRandori2,
+      },
+    };
+
+    if (editingCompetitorId !== null) {
+      const existingCompetitor = competitors.find(
+        (competitor) =>
+          String(competitor.id) ===
+          String(editingCompetitorId)
+      );
+
+      if (!existingCompetitor) {
+        alert("Compétiteur introuvable.");
+        resetForm();
+        return;
+      }
+
+      /*
+        IMPORTANT :
+        l'ID existant est conservé.
+        Les catégories, poules, matchs et résultats
+        continuent donc de référencer la même personne.
+      */
+      const updatedCompetitors = competitors.map(
+        (competitor) =>
+          String(competitor.id) ===
+          String(editingCompetitorId)
+            ? {
+                ...competitor,
+                ...competitorData,
+                id: competitor.id,
+              }
+            : competitor
+      );
+
+      onUpdateCompetition({
+        ...competition,
+        competitors: updatedCompetitors,
+      });
+
+      resetForm();
+      return;
+    }
+
+    const competitor = {
+      id: Date.now(),
+      ...competitorData,
+    };
+
+    onUpdateCompetition({
+      ...competition,
+      competitors: [...competitors, competitor],
+    });
+
+    resetForm();
+  }
+
+  function deleteCompetitor(id) {
+    if (competitorIsInPool(id)) {
+      alert(
+        "Suppression impossible : ce compétiteur est déjà utilisé dans une poule, un match, un passage, un classement ou un résultat."
+      );
+      return;
+    }
+
+    if (competitorIsInCategory(id)) {
+      alert(
+        "Suppression impossible : ce compétiteur appartient déjà à une catégorie. Supprime ou modifie d'abord la catégorie concernée."
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Supprimer ce compétiteur ?"
+    );
+
+    if (!confirmed) return;
+
+    onUpdateCompetition({
+      ...competition,
+      competitors: competitors.filter(
+        (competitor) =>
+          String(competitor.id) !== String(id)
+      ),
+    });
+
+    if (
+      editingCompetitorId !== null &&
+      String(editingCompetitorId) === String(id)
+    ) {
+      resetForm();
+    }
   }
 
   function handleImportFile(event) {
@@ -84,7 +464,9 @@ function CompetitionDashboard({
         .filter((line) => line !== "");
 
       if (lines.length < 2) {
-        alert("Le fichier CSV ne contient aucun compétiteur.");
+        alert(
+          "Le fichier CSV ne contient aucun compétiteur."
+        );
         return;
       }
 
@@ -120,6 +502,13 @@ function CompetitionDashboard({
           juRandori2,
         ] = columns;
 
+        if (!nom || !prenom) {
+          errors.push(
+            `Ligne ${index + 2} : nom ou prénom manquant.`
+          );
+          return;
+        }
+
         const epreuves = {
           kata0: kata0 === "1",
           kata1: kata1 === "1",
@@ -128,13 +517,6 @@ function CompetitionDashboard({
           juRandori1: juRandori1 === "1",
           juRandori2: juRandori2 === "1",
         };
-
-        if (!nom || !prenom) {
-          errors.push(
-            `Ligne ${index + 2} : nom ou prénom manquant.`
-          );
-          return;
-        }
 
         const nombreKatas = [
           epreuves.kata0,
@@ -169,17 +551,59 @@ function CompetitionDashboard({
           return;
         }
 
+        const parsedWeight = poids
+          ? Number(poids.replace(",", "."))
+          : "";
+
+        if (
+          parsedWeight !== "" &&
+          (!Number.isFinite(parsedWeight) ||
+            parsedWeight <= 0)
+        ) {
+          errors.push(
+            `Ligne ${index + 2} : poids invalide.`
+          );
+          return;
+        }
+
+        const candidate = {
+          nom,
+          prenom,
+          dateNaissance,
+        };
+
+        const duplicateExisting = competitors.some(
+          (competitor) =>
+            isSameCompetitor(
+              competitor,
+              candidate
+            )
+        );
+
+        const duplicateImport =
+          importedCompetitors.some((competitor) =>
+            isSameCompetitor(
+              competitor,
+              candidate
+            )
+          );
+
+        if (duplicateExisting || duplicateImport) {
+          errors.push(
+            `Ligne ${index + 2} : doublon détecté pour ${nom} ${prenom}.`
+          );
+          return;
+        }
+
         importedCompetitors.push({
-          id: Date.now() + index,
+          id: `${Date.now()}-import-${index}`,
           nom: nom.toUpperCase(),
           prenom,
           club,
           sexe: sexe || "Homme",
           dateNaissance,
           age: calculateAge(dateNaissance),
-          poids: poids
-            ? Number(poids.replace(",", "."))
-            : "",
+          poids: parsedWeight,
           grade,
           epreuves,
           imported: true,
@@ -217,86 +641,6 @@ function CompetitionDashboard({
     event.target.value = "";
   }
 
-  function addCompetitor(event) {
-    event.preventDefault();
-
-    if (!form.nom.trim() || !form.prenom.trim()) {
-      alert("Le nom et le prénom sont obligatoires.");
-      return;
-    }
-
-    if (
-      !form.kata0 &&
-      !form.kata1 &&
-      !form.kata2 &&
-      !form.randori &&
-      !form.juRandori1 &&
-      !form.juRandori2
-    ) {
-      alert("Sélectionne au moins une épreuve.");
-      return;
-    }
-
-    const competitor = {
-      id: Date.now(),
-      nom: form.nom.trim().toUpperCase(),
-      prenom: form.prenom.trim(),
-      club: form.club.trim(),
-      sexe: form.sexe,
-      dateNaissance: form.dateNaissance,
-      age: calculateAge(form.dateNaissance),
-      poids: form.poids ? Number(form.poids) : "",
-      grade: form.grade.trim(),
-
-      epreuves: {
-        kata0: form.kata0,
-        kata1: form.kata1,
-        kata2: form.kata2,
-        randori: form.randori,
-        juRandori1: form.juRandori1,
-        juRandori2: form.juRandori2,
-      },
-    };
-
-    onUpdateCompetition({
-      ...competition,
-      competitors: [...competitors, competitor],
-    });
-
-    setForm({
-      nom: "",
-      prenom: "",
-      club: "",
-      sexe: "Homme",
-      dateNaissance: "",
-      poids: "",
-      grade: "",
-      kata0: false,
-      kata1: false,
-      kata2: false,
-      randori: false,
-      juRandori1: false,
-      juRandori2: false,
-    });
-
-    setShowForm(false);
-  }
-
-  function deleteCompetitor(id) {
-    const confirmed = window.confirm(
-      "Supprimer ce compétiteur ?"
-    );
-
-    if (!confirmed) return;
-
-    onUpdateCompetition({
-      ...competition,
-      competitors: competitors.filter(
-        (competitor) => competitor.id !== id
-      ),
-    });
-  }
-
   function loadTestCompetitors() {
     if (competitors.length > 0) {
       const confirmed = window.confirm(
@@ -309,17 +653,14 @@ function CompetitionDashboard({
     const currentYear = new Date().getFullYear();
 
     const testData = [
-      // Jeunes hommes
       ["MARTIN", "Lucas", "Marseille", "Homme", 17, 63, "1er Kyu", true, false, false, true, false, false],
       ["BERNARD", "Hugo", "Lyon", "Homme", 18, 67, "1er Dan", false, true, false, false, true, false],
       ["ROBERT", "Enzo", "Paris", "Homme", 17, 65, "2e Kyu", false, false, true, false, false, true],
 
-      // Jeunes femmes
       ["DUBOIS", "Emma", "Marseille", "Femme", 17, 54, "1er Kyu", true, false, false, true, false, false],
       ["THOMAS", "Léa", "Toulouse", "Femme", 18, 57, "1er Dan", false, true, false, false, true, false],
       ["PETIT", "Chloé", "Lyon", "Femme", 17, 52, "2e Kyu", false, false, true, false, false, true],
 
-      // Adultes hommes
       ["DURAND", "Thomas", "Marseille", "Homme", 25, 68, "1er Dan", true, false, false, true, false, false],
       ["LEROY", "Nicolas", "Paris", "Homme", 29, 71, "2e Dan", false, true, false, false, true, false],
       ["MOREAU", "Julien", "Lyon", "Homme", 31, 69, "1er Dan", false, false, true, false, false, true],
@@ -327,7 +668,6 @@ function CompetitionDashboard({
       ["LAURENT", "Maxime", "Bordeaux", "Homme", 34, 85, "3e Dan", false, true, false, false, true, false],
       ["MICHEL", "Romain", "Marseille", "Homme", 30, 80, "1er Dan", false, false, true, false, false, true],
 
-      // Adultes femmes
       ["GARCIA", "Camille", "Paris", "Femme", 24, 55, "1er Dan", true, false, false, true, false, false],
       ["DAVID", "Manon", "Marseille", "Femme", 28, 58, "2e Dan", false, true, false, false, true, false],
       ["BERTRAND", "Julie", "Lyon", "Femme", 32, 56, "1er Dan", false, false, true, false, false, true],
@@ -335,16 +675,16 @@ function CompetitionDashboard({
       ["VINCENT", "Sarah", "Bordeaux", "Femme", 30, 64, "2e Dan", false, true, false, false, true, false],
       ["FOURNIER", "Alice", "Marseille", "Femme", 29, 67, "1er Dan", false, false, true, false, false, true],
 
-      // Vétérans hommes
       ["GIRARD", "Philippe", "Paris", "Homme", 44, 78, "2e Dan", true, false, false, true, false, false],
       ["ANDRE", "Laurent", "Marseille", "Homme", 48, 81, "3e Dan", false, true, false, false, true, false],
       ["MERCIER", "Stéphane", "Lyon", "Homme", 52, 83, "2e Dan", false, false, true, false, false, true],
 
-      // Vétérans femmes
       ["BONNET", "Sophie", "Marseille", "Femme", 43, 60, "2e Dan", true, false, false, true, false, false],
       ["FRANCOIS", "Nathalie", "Paris", "Femme", 49, 63, "3e Dan", false, true, false, false, true, false],
       ["MARTINEZ", "Isabelle", "Toulouse", "Femme", 51, 61, "2e Dan", false, false, true, false, false, true],
     ];
+
+    const now = Date.now();
 
     const testCompetitors = testData.map(
       (
@@ -365,7 +705,7 @@ function CompetitionDashboard({
         ],
         index
       ) => ({
-        id: Date.now() + index,
+        id: `${now}-test-${index}`,
         nom,
         prenom,
         club,
@@ -406,6 +746,20 @@ function CompetitionDashboard({
 
     if (testCompetitors.length === 0) {
       alert("Aucune donnée test à supprimer.");
+      return;
+    }
+
+    const protectedTestCompetitors =
+      testCompetitors.filter(
+        (competitor) =>
+          competitorIsInCategory(competitor.id) ||
+          competitorIsInPool(competitor.id)
+      );
+
+    if (protectedTestCompetitors.length > 0) {
+      alert(
+        `Suppression impossible : ${protectedTestCompetitors.length} compétiteur(s) test sont utilisés dans une catégorie ou une poule.`
+      );
       return;
     }
 
@@ -509,7 +863,7 @@ function CompetitionDashboard({
 
             <div className="card">
               <span className="number">
-                {competition.categories?.length || 0}
+                {categories.length}
               </span>
 
               <h3>Catégories</h3>
@@ -517,10 +871,17 @@ function CompetitionDashboard({
             </div>
 
             <div className="card">
-              <span className="number">0</span>
+              <span className="number">
+                {pools.reduce(
+                  (total, pool) =>
+                    total +
+                    (pool.matches?.length || 0),
+                  0
+                )}
+              </span>
 
               <h3>Combats</h3>
-              <p>Rencontres enregistrées</p>
+              <p>Rencontres générées</p>
             </div>
           </div>
 
@@ -528,9 +889,8 @@ function CompetitionDashboard({
             <strong>Compétition en préparation</strong>
 
             <p>
-              Commence par enregistrer les compétiteurs.
-              Les catégories et les poules seront générées
-              dans les prochaines étapes.
+              Enregistre les compétiteurs, prépare les
+              catégories puis génère les poules.
             </p>
           </div>
         </div>
@@ -572,9 +932,13 @@ function CompetitionDashboard({
               <button
                 className="primary"
                 type="button"
-                onClick={() =>
-                  setShowForm((current) => !current)
-                }
+                onClick={() => {
+                  if (showForm) {
+                    resetForm();
+                  } else {
+                    startAddCompetitor();
+                  }
+                }}
               >
                 {showForm
                   ? "Annuler"
@@ -604,9 +968,13 @@ function CompetitionDashboard({
           {showForm && (
             <form
               className="competition-form"
-              onSubmit={addCompetitor}
+              onSubmit={saveCompetitor}
             >
-              <h3>Inscription d'un compétiteur</h3>
+              <h3>
+                {editingCompetitorId !== null
+                  ? "Modifier le compétiteur"
+                  : "Inscription d'un compétiteur"}
+              </h3>
 
               <div className="form-row">
                 <label>
@@ -672,7 +1040,7 @@ function CompetitionDashboard({
                   <input
                     name="poids"
                     type="number"
-                    min="0"
+                    min="0.1"
                     step="0.1"
                     value={form.poids}
                     onChange={handleChange}
@@ -770,12 +1138,26 @@ function CompetitionDashboard({
                 </label>
               </fieldset>
 
-              <button
-                className="primary"
-                type="submit"
-              >
-                Enregistrer le compétiteur
-              </button>
+              <div className="competition-actions">
+                <button
+                  className="primary"
+                  type="submit"
+                >
+                  {editingCompetitorId !== null
+                    ? "Enregistrer les modifications"
+                    : "Enregistrer le compétiteur"}
+                </button>
+
+                {editingCompetitorId !== null && (
+                  <button
+                    className="manage-button"
+                    type="button"
+                    onClick={resetForm}
+                  >
+                    Annuler la modification
+                  </button>
+                )}
+              </div>
             </form>
           )}
 
@@ -792,82 +1174,107 @@ function CompetitionDashboard({
             </div>
           ) : (
             <div className="competitor-list">
-              {competitors.map((competitor) => (
-                <article
-                  className="competitor-card"
-                  key={competitor.id}
-                >
-                  <div>
-                    <h3>
-                      {competitor.nom}{" "}
-                      {competitor.prenom}
-                    </h3>
+              {competitors.map((competitor) => {
+                const protectedCompetitor =
+                  competitorIsInCategory(competitor.id) ||
+                  competitorIsInPool(competitor.id);
 
-                    <p>
-                      {competitor.club ||
-                        "Club non renseigné"}
-                    </p>
-                  </div>
-
-                  <div className="competitor-details">
-                    <span>{competitor.sexe}</span>
-
-                    {competitor.age !== "" &&
-                      competitor.age !== undefined && (
-                        <span>
-                          {competitor.age} ans
-                        </span>
-                      )}
-
-                    {competitor.poids !== "" &&
-                      competitor.poids !== undefined && (
-                        <span>
-                          {competitor.poids} kg
-                        </span>
-                      )}
-
-                    {competitor.grade && (
-                      <span>{competitor.grade}</span>
-                    )}
-                  </div>
-
-                  <div className="competitor-events">
-                    {competitor.epreuves?.kata0 && (
-                      <span>Kata 0</span>
-                    )}
-
-                    {competitor.epreuves?.kata1 && (
-                      <span>Kata 1</span>
-                    )}
-
-                    {competitor.epreuves?.kata2 && (
-                      <span>Kata 2</span>
-                    )}
-
-                    {competitor.epreuves?.randori && (
-                      <span>Randori</span>
-                    )}
-
-                    {competitor.epreuves?.juRandori1 && (
-                      <span>Ju Randori 1</span>
-                    )}
-
-                    {competitor.epreuves?.juRandori2 && (
-                      <span>Ju Randori 2</span>
-                    )}
-                  </div>
-
-                  <button
-                    className="delete-button"
-                    type="button"
-                    onClick={() =>
-                      deleteCompetitor(competitor.id)
-                    }
+                return (
+                  <article
+                    className="competitor-card"
+                    key={competitor.id}
                   >
-                    Supprimer
-                  </button>
-                </article>
-              ))}
+                    <div>
+                      <h3>
+                        {competitor.nom}{" "}
+                        {competitor.prenom}
+                      </h3>
+
+                      <p>
+                        {competitor.club ||
+                          "Club non renseigné"}
+                      </p>
+                    </div>
+
+                    <div className="competitor-details">
+                      <span>{competitor.sexe}</span>
+
+                      {competitor.age !== "" &&
+                        competitor.age !== undefined && (
+                          <span>
+                            {competitor.age} ans
+                          </span>
+                        )}
+
+                      {competitor.poids !== "" &&
+                        competitor.poids !== undefined && (
+                          <span>
+                            {competitor.poids} kg
+                          </span>
+                        )}
+
+                      {competitor.grade && (
+                        <span>{competitor.grade}</span>
+                      )}
+                    </div>
+
+                    <div className="competitor-events">
+                      {competitor.epreuves?.kata0 && (
+                        <span>Kata 0</span>
+                      )}
+
+                      {competitor.epreuves?.kata1 && (
+                        <span>Kata 1</span>
+                      )}
+
+                      {competitor.epreuves?.kata2 && (
+                        <span>Kata 2</span>
+                      )}
+
+                      {competitor.epreuves?.randori && (
+                        <span>Randori</span>
+                      )}
+
+                      {competitor.epreuves?.juRandori1 && (
+                        <span>Ju Randori 1</span>
+                      )}
+
+                      {competitor.epreuves?.juRandori2 && (
+                        <span>Ju Randori 2</span>
+                      )}
+                    </div>
+
+                    {protectedCompetitor && (
+                      <p className="info">
+                        Utilisé dans l'organisation de la
+                        compétition : suppression protégée.
+                      </p>
+                    )}
+
+                    <div className="competition-actions">
+                      <button
+                        className="manage-button"
+                        type="button"
+                        onClick={() =>
+                          startEditCompetitor(competitor)
+                        }
+                      >
+                        Modifier
+                      </button>
+
+                      <button
+                        className="delete-button"
+                        type="button"
+                        onClick={() =>
+                          deleteCompetitor(competitor.id)
+                        }
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </div>
@@ -895,9 +1302,7 @@ function CompetitionDashboard({
       )}
 
       {view === "results" && (
-        <ResultsManager
-          competition={competition}
-        />
+        <ResultsManager competition={competition} />
       )}
     </section>
   );
