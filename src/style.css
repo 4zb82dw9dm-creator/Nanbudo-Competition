@@ -26,43 +26,74 @@ button {
   flex-direction: column;
 }
 
+/* =========================================================
+   BANDEAU PRINCIPAL
+   ========================================================= */
+
 .header {
+  width: 100%;
   background: #071a33;
   color: white;
-  padding: 36px 7%;
+  padding: 20px 7%;
   border-bottom: 4px solid #c9a227;
 
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 30px;
+  gap: 24px;
 }
 
 .header-text {
   flex: 1;
-}
-
-.afdp-logo {
-  width: 120px;
-  height: auto;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-@media (max-width: 700px) {
-  .header {
-    padding: 28px 7%;
-  }
-
-  .afdp-logo {
-    width: 75px;
-  }
+  min-width: 0;
 }
 
 .header h1 {
   margin: 4px 0 6px;
-  font-size: clamp(30px, 5vw, 48px);
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.05;
 }
+
+.header .surtitle {
+  margin: 0;
+}
+
+.subtitle {
+  margin: 0;
+  opacity: 0.8;
+}
+
+/*
+  IMPORTANT :
+  App.jsx utilise className="header-logo".
+  C'est donc cette classe qu'il faut dimensionner.
+*/
+
+.header-logo {
+  width: 110px;
+  height: 110px;
+  max-width: 110px;
+  max-height: 110px;
+  object-fit: contain;
+  display: block;
+  flex: 0 0 110px;
+}
+
+/* Ancienne classe conservée au cas où */
+
+.afdp-logo {
+  width: 110px;
+  height: 110px;
+  max-width: 110px;
+  max-height: 110px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   TEXTES
+   ========================================================= */
 
 .surtitle {
   margin: 0;
@@ -72,10 +103,9 @@ button {
   font-size: 13px;
 }
 
-.subtitle {
-  margin: 0;
-  opacity: 0.8;
-}
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
 
 .navigation {
   display: flex;
@@ -94,6 +124,7 @@ button {
   cursor: pointer;
   font-weight: 700;
   border-radius: 7px;
+  white-space: nowrap;
 }
 
 .navigation button.active {
@@ -101,12 +132,20 @@ button {
   color: white;
 }
 
+/* =========================================================
+   CONTENU
+   ========================================================= */
+
 .content {
   width: min(1100px, 88%);
   margin: 0 auto;
   flex: 1;
   padding: 45px 0 60px;
 }
+
+/* =========================================================
+   ACCUEIL
+   ========================================================= */
 
 .hero {
   background: #071a33;
@@ -144,6 +183,10 @@ button {
   cursor: pointer;
 }
 
+/* =========================================================
+   TABLEAU DE BORD
+   ========================================================= */
+
 .dashboard {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -177,6 +220,10 @@ button {
   color: #c9a227;
 }
 
+/* =========================================================
+   SECTIONS
+   ========================================================= */
+
 .section-title {
   margin-bottom: 25px;
 }
@@ -185,6 +232,10 @@ button {
   margin: 7px 0;
   font-size: 36px;
 }
+
+/* =========================================================
+   COMPÉTITIONS
+   ========================================================= */
 
 .competition-list {
   display: grid;
@@ -195,11 +246,15 @@ button {
   background: white;
   padding: 20px 22px;
   border-radius: 12px;
+
   display: flex;
   justify-content: space-between;
   align-items: center;
+
   gap: 20px;
+
   border-left: 4px solid #c9a227;
+
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
 }
 
@@ -221,11 +276,19 @@ button {
   font-weight: 700;
 }
 
+/* =========================================================
+   ORGANISATEURS
+   ========================================================= */
+
 .action-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 18px;
 }
+
+/* =========================================================
+   DOCUMENTS
+   ========================================================= */
 
 .documents {
   display: grid;
@@ -255,13 +318,20 @@ button {
   color: #657080;
 }
 
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
 footer {
   background: #071a33;
   color: white;
   padding: 25px 7%;
+
   display: flex;
   justify-content: space-between;
+
   gap: 20px;
+
   border-top: 3px solid #c9a227;
 }
 
@@ -270,44 +340,22 @@ footer span {
   font-weight: 800;
 }
 
-@media (max-width: 700px) {
-  .header {
-    padding: 28px 6%;
-  }
-
-  .navigation {
-    padding: 10px 6%;
-  }
-
-  .content {
-    width: 90%;
-    padding-top: 25px;
-  }
-
-  .dashboard,
-  .action-grid,
-  .documents {
-    grid-template-columns: 1fr;
-  }
-
-  .competition {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  footer {
-    flex-direction: column;
-  }
-}
-/* Sélection des votes d'arbitrage */
+/* =========================================================
+   VOTES D'ARBITRAGE
+   ========================================================= */
 
 .vote-button {
   padding: 10px 16px;
+
   border: 2px solid #d1d5db;
   border-radius: 8px;
+
   background: #f3f4f6;
+
   cursor: pointer;
+
   font-weight: 700;
+
   transition: 0.15s ease;
 }
 
@@ -334,29 +382,51 @@ footer span {
   color: #081a35;
   box-shadow: 0 0 0 2px #d1d5db;
 }
+
+/* =========================================================
+   COMPÉTITION TERMINÉE
+   ========================================================= */
+
 .competition.competition-terminee {
   background: #e8f5e9;
   border: 2px solid #2e7d32;
-  box-shadow: 0 0 0 1px rgba(46, 125, 50, 0.12);
+
+  box-shadow:
+    0 0 0 1px rgba(46, 125, 50, 0.12);
 }
 
 .competition.competition-terminee .manage-button {
   background: #2e7d32;
   color: white;
-}.ranking-table {
+}
+
+/* =========================================================
+   CLASSEMENTS
+   ========================================================= */
+
+.ranking-table {
   width: 100%;
   margin-top: 12px;
+
   border: 1px solid #d9dee7;
   border-radius: 10px;
+
   overflow: hidden;
 }
 
 .ranking-header,
 .ranking-row {
   display: grid;
-  grid-template-columns: 70px minmax(180px, 2fr) repeat(5, 70px);
+
+  grid-template-columns:
+    70px
+    minmax(180px, 2fr)
+    repeat(5, 70px);
+
   align-items: center;
+
   gap: 8px;
+
   padding: 12px 14px;
 }
 
@@ -380,7 +450,60 @@ footer span {
   font-weight: 700;
 }
 
+/* =========================================================
+   TABLETTE / MOBILE
+   ========================================================= */
+
 @media (max-width: 700px) {
+
+  .header {
+    padding: 18px 6%;
+    gap: 15px;
+  }
+
+  .header h1 {
+    font-size: clamp(25px, 7vw, 34px);
+  }
+
+  .header-logo,
+  .afdp-logo {
+    width: 75px;
+    height: 75px;
+
+    max-width: 75px;
+    max-height: 75px;
+
+    flex-basis: 75px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+  }
+
+  .navigation {
+    padding: 10px 6%;
+  }
+
+  .content {
+    width: 90%;
+    padding-top: 25px;
+  }
+
+  .dashboard,
+  .action-grid,
+  .documents {
+    grid-template-columns: 1fr;
+  }
+
+  .competition {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  footer {
+    flex-direction: column;
+  }
+
   .ranking-table {
     overflow-x: auto;
   }
@@ -389,7 +512,50 @@ footer span {
   .ranking-row {
     min-width: 650px;
   }
-}@media print {
+}
+
+/* =========================================================
+   TRÈS PETITS ÉCRANS
+   ========================================================= */
+
+@media (max-width: 450px) {
+
+  .header {
+    padding: 15px 5%;
+    gap: 10px;
+  }
+
+  .header h1 {
+    font-size: 25px;
+  }
+
+  .header-logo,
+  .afdp-logo {
+    width: 62px;
+    height: 62px;
+
+    max-width: 62px;
+    max-height: 62px;
+
+    flex-basis: 62px;
+  }
+
+  .surtitle {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+}
+
+/* =========================================================
+   IMPRESSION
+   ========================================================= */
+
+@media print {
+
   .header,
   .navigation,
   .competition-tabs,
@@ -421,8 +587,11 @@ footer span {
   .results-manager .competition {
     break-inside: avoid;
     page-break-inside: avoid;
+
     border: 1px solid #999;
+
     box-shadow: none;
+
     margin-bottom: 20px;
   }
 
