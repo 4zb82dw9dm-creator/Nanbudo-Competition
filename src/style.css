@@ -66,48 +66,23 @@ button {
 }
 
 /*
-  IMPORTANT :
-  Dans App.jsx l'image utilise :
-  className="header-logo"
-
-  C'est donc CETTE classe qui doit
-  contrôler la taille du logo.
+  Classes historiques conservées pour compatibilité.
+  Le bandeau actuel utilise .top-logo, défini plus bas.
 */
 
-.header-logo {
-  display: block;
-
-  width: 100px !important;
-  height: 100px !important;
-
-  max-width: 100px !important;
-  max-height: 100px !important;
-
-  min-width: 0;
-  min-height: 0;
-
-  object-fit: contain;
-
-  flex: 0 0 100px;
-
-  margin: 0;
-  padding: 0;
-}
-
-/* Ancienne classe conservée au cas où */
-
+.header-logo,
 .afdp-logo {
   display: block;
-
   width: 100px !important;
   height: 100px !important;
-
   max-width: 100px !important;
   max-height: 100px !important;
-
+  min-width: 0;
+  min-height: 0;
   object-fit: contain;
-
   flex: 0 0 100px;
+  margin: 0;
+  padding: 0;
 }
 
 /* ========================================
