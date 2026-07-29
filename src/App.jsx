@@ -13,11 +13,11 @@ function App() {
 
       <header className="top-banner">
         <div className="top-banner-inner">
-          <img
-            src="./logo-afdp.png"
-            alt="AFDP Nanbudo"
-            className="top-logo"
-          />
+         <img
+  src={`${import.meta.env.BASE_URL}logo-afdp.png`}
+  alt="AFDP Nanbudo"
+  className="top-logo"
+/>
 
           <div className="top-banner-text">
             <p className="surtitle">
