@@ -6,7 +6,6 @@ import {
   buildBackup,
   cloneForStorage,
   createBackupFilename,
-  createCompetitionCopy,
   downloadJsonFile,
   parseBackupFileContent,
 } from "./backupUtils";
@@ -146,24 +145,22 @@ function CompetitionManager() {
 
         if (conflictingCompetition) {
           const replace = window.confirm(
-            `Une compétition avec le même identifiant existe déjà : ${conflictingCompetition.nom}.\n\nOK : remplacer cette compétition.\nAnnuler : importer une copie avec un nouvel identifiant.`
+            `Une compétition avec le même identifiant existe déjà : ${conflictingCompetition.nom}.\n\nOK : remplacer cette compétition.\nAnnuler : annuler totalement l'import.`
           );
 
-          if (replace) {
-            setCompetitions((current) =>
-              current.map((competition) =>
-                String(competition.id) === String(importedCompetition.id)
-                  ? importedCompetition
-                  : competition
-              )
-            );
-            alert("Compétition restaurée en remplaçant l'ancienne version.");
+          if (!replace) {
+            alert("Import annulé. Aucune donnée existante n'a été modifiée.");
             return;
           }
 
-          const copiedCompetition = createCompetitionCopy(importedCompetition);
-          setCompetitions((current) => [...current, copiedCompetition]);
-          alert("Compétition importée comme nouvelle copie.");
+          setCompetitions((current) =>
+            current.map((competition) =>
+              String(competition.id) === String(importedCompetition.id)
+                ? importedCompetition
+                : competition
+            )
+          );
+          alert("Compétition restaurée en remplaçant l'ancienne version.");
           return;
         }
 

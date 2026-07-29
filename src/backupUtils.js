@@ -139,13 +139,3 @@ export function parseBackupFileContent(content) {
 export function cloneForStorage(value) {
   return JSON.parse(JSON.stringify(value));
 }
-
-export function createCompetitionCopy(competition) {
-  return {
-    ...cloneForStorage(competition),
-    id: Date.now(),
-    nom: `${competition.nom} (restaurée)`,
-    restoredFromId: competition.id,
-    restoredAt: new Date().toISOString(),
-  };
-}
