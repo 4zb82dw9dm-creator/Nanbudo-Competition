@@ -1,26 +1,89 @@
 import { useState } from "react";
 
+const EVENT_LABELS = {
+  kata0: "Kata 0 — Shihotai",
+  kata1: "Kata 1",
+  kata2: "Kata 2",
+  randori: "Randori",
+  juRandori1: "Ju Randori 1",
+  juRandori2: "Ju Randori 2",
+};
+
+const KATA_NOTES = [
+  3.9,
+  4.0,
+  4.1,
+  4.2,
+  4.3,
+  4.4,
+  4.5,
+  4.6,
+  4.7,
+  4.8,
+  4.9,
+];
+
 function MatchManager({
   match,
   onSave,
-  type = "ju-randori",
+  mode = "combat",
+  eventType = "",
+  competitor = null,
+  passage = null,
+  initialResult = null,
 }) {
+  /*
+   * =========================================================
+   * OUTILS
+   * =========================================================
+   */
+
+  function getEventLabel(type) {
+    return EVENT_LABELS[type] || type || "Épreuve";
+  }
+
   /*
    * =========================================================
    * KATA
    * =========================================================
    */
 
-  const [notesKata, setNotesKata] = useState([
-    4.5,
-    4.5,
-    4.5,
-    4.5,
-    4.5,
-  ]);
+  const [notesKata, setNotesKata] = useState(() => {
+    if (
+      initialResult?.notes &&
+      Array.isArray(initialResult.notes) &&
+      initialResult.notes.length === 5
+    ) {
+      return initialResult.notes.map((note) =>
+        Number(note)
+      );
+    }
+
+    return [
+      4.5,
+      4.5,
+      4.5,
+      4.5,
+      4.5,
+    ];
+  });
 
   function modifierNoteKata(index, valeur) {
-    const nombre = Number(valeur);
+    let nombre = Number(valeur);
+
+    if (Number.isNaN(nombre)) {
+      nombre = 4.5;
+    }
+
+    if (nombre < 3.9) {
+      nombre = 3.9;
+    }
+
+    if (nombre > 4.9) {
+      nombre = 4.9;
+    }
+
+    nombre = Number(nombre.toFixed(1));
 
     setNotesKata((actuelles) =>
       actuelles.map((note, i) =>
@@ -30,27 +93,71 @@ function MatchManager({
   }
 
   function calculerKata() {
-    const notes = notesKata.map(Number);
-
-    const noteMax = Math.max(...notes);
-    const noteMin = Math.min(...notes);
-
-    const indexMax = notes.indexOf(noteMax);
-    const indexMin = notes.findIndex(
-      (note, index) =>
-        note === noteMin && index !== indexMax
+    const notes = notesKata.map((note) =>
+      Number(note)
     );
 
-    const notesRetenues = notes.filter(
-      (_, index) =>
-        index !== indexMax &&
-        index !== indexMin
-    );
+    /*
+     * On retire exactement UNE note haute
+     * et UNE note basse.
+     *
+     * Si plusieurs juges donnent la même
+     * note haute ou basse, une seule note
+     * est retirée.
+     */
 
-    const total = notesRetenues.reduce(
-      (somme, note) => somme + note,
-      0
-    );
+    let indexMax = 0;
+
+    for (
+      let index = 1;
+      index < notes.length;
+      index++
+    ) {
+      if (notes[index] > notes[indexMax]) {
+        indexMax = index;
+      }
+    }
+
+    let indexMin = null;
+
+    for (
+      let index = 0;
+      index < notes.length;
+      index++
+    ) {
+      if (index === indexMax) {
+        continue;
+      }
+
+      if (
+        indexMin === null ||
+        notes[index] < notes[indexMin]
+      ) {
+        indexMin = index;
+      }
+    }
+
+    const noteMax =
+      notes[indexMax];
+
+    const noteMin =
+      indexMin !== null
+        ? notes[indexMin]
+        : null;
+
+    const notesRetenues =
+      notes.filter(
+        (_, index) =>
+          index !== indexMax &&
+          index !== indexMin
+      );
+
+    const total =
+      notesRetenues.reduce(
+        (somme, note) =>
+          somme + note,
+        0
+      );
 
     return {
       notes,
@@ -59,11 +166,14 @@ function MatchManager({
       noteMax,
       noteMin,
       notesRetenues,
-      total: Number(total.toFixed(1)),
+      total: Number(
+        total.toFixed(1)
+      ),
     };
   }
 
-  const resultatKata = calculerKata();
+  const resultatKata =
+    calculerKata();
 
   /*
    * =========================================================
@@ -72,30 +182,37 @@ function MatchManager({
    */
 
   const [assauts, setAssauts] = useState(
-    Array.from({ length: 7 }, () => ({
-      juge1: "",
-      juge2: "",
-      juge3: "",
-    }))
+    Array.from(
+      { length: 7 },
+      () => ({
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      })
+    )
   );
 
-  const [penalitesAka, setPenalitesAka] =
-    useState({
-      keikoku: 0,
-      fujubun: 0,
-      chui: 0,
-      hansokuChui: 0,
-      shikaku: false,
-    });
+  const [
+    penalitesAka,
+    setPenalitesAka,
+  ] = useState({
+    keikoku: 0,
+    fujubun: 0,
+    chui: 0,
+    hansokuChui: 0,
+    shikaku: false,
+  });
 
-  const [penalitesShiro, setPenalitesShiro] =
-    useState({
-      keikoku: 0,
-      fujubun: 0,
-      chui: 0,
-      hansokuChui: 0,
-      shikaku: false,
-    });
+  const [
+    penalitesShiro,
+    setPenalitesShiro,
+  ] = useState({
+    keikoku: 0,
+    fujubun: 0,
+    chui: 0,
+    hansokuChui: 0,
+    shikaku: false,
+  });
 
   function modifierVote(
     numeroAssaut,
@@ -103,13 +220,14 @@ function MatchManager({
     valeur
   ) {
     setAssauts((actuels) =>
-      actuels.map((assaut, index) =>
-        index === numeroAssaut
-          ? {
-              ...assaut,
-              [juge]: valeur,
-            }
-          : assaut
+      actuels.map(
+        (assaut, index) =>
+          index === numeroAssaut
+            ? {
+                ...assaut,
+                [juge]: valeur,
+              }
+            : assaut
       )
     );
   }
@@ -119,22 +237,22 @@ function MatchManager({
     let shiro = 0;
 
     assauts.forEach((assaut) => {
-      Object.values(assaut).forEach(
-        (vote) => {
-          if (vote === "aka") {
-            aka += 1;
-          }
-
-          if (vote === "shiro") {
-            shiro += 1;
-          }
-
-          if (vote === "hikiwake") {
-            aka += 1;
-            shiro += 1;
-          }
+      Object.values(
+        assaut
+      ).forEach((vote) => {
+        if (vote === "aka") {
+          aka += 1;
         }
-      );
+
+        if (vote === "shiro") {
+          shiro += 1;
+        }
+
+        if (vote === "hikiwake") {
+          aka += 1;
+          shiro += 1;
+        }
+      });
     });
 
     return {
@@ -143,9 +261,13 @@ function MatchManager({
     };
   }
 
-  const score = calculerScore();
+  const score =
+    calculerScore();
 
-  function ajouterPenalite(couleur, type) {
+  function ajouterPenalite(
+    couleur,
+    type
+  ) {
     const setter =
       couleur === "aka"
         ? setPenalitesAka
@@ -165,7 +287,9 @@ function MatchManager({
       if (type === "keikoku") {
         nouvelles.keikoku += 1;
 
-        if (nouvelles.keikoku >= 3) {
+        if (
+          nouvelles.keikoku >= 3
+        ) {
           nouvelles.keikoku = 0;
           nouvelles.fujubun += 1;
         }
@@ -179,11 +303,15 @@ function MatchManager({
         nouvelles.chui += 1;
       }
 
-      if (type === "hansokuChui") {
+      if (
+        type === "hansokuChui"
+      ) {
         nouvelles.hansokuChui += 1;
       }
 
-      if (nouvelles.fujubun >= 3) {
+      if (
+        nouvelles.fujubun >= 3
+      ) {
         nouvelles.fujubun = 0;
         nouvelles.hansokuChui += 1;
       }
@@ -213,17 +341,21 @@ function MatchManager({
     );
 
   const scoreFinalAka =
-    score.aka - pointsNegatifsAka;
+    score.aka -
+    pointsNegatifsAka;
 
   const scoreFinalShiro =
-    score.shiro - pointsNegatifsShiro;
+    score.shiro -
+    pointsNegatifsShiro;
 
   const akaDisqualifie =
-    penalitesAka.hansokuChui > 0 ||
+    penalitesAka.hansokuChui >
+      0 ||
     penalitesAka.shikaku;
 
   const shiroDisqualifie =
-    penalitesShiro.hansokuChui > 0 ||
+    penalitesShiro.hansokuChui >
+      0 ||
     penalitesShiro.shikaku;
 
   function determinerVainqueur() {
@@ -274,18 +406,15 @@ function MatchManager({
    * =========================================================
    */
 
-  if (type === "kata") {
-    const competiteur =
-      match?.competiteur ||
-      match?.aka ||
-      null;
-
+  if (mode === "kata") {
     return (
       <section className="match-manager">
         <div className="manager-header">
           <div>
             <p className="surtitle">
-              KATA
+              {getEventLabel(
+                eventType
+              )}
             </p>
 
             <h2>
@@ -293,19 +422,29 @@ function MatchManager({
             </h2>
 
             <p>
-              {competiteur
-                ? `${competiteur.nom || ""} ${
-                    competiteur.prenom || ""
+              {competitor
+                ? `${
+                    competitor.nom ||
+                    ""
+                  } ${
+                    competitor.prenom ||
+                    ""
                   }`
                 : "Compétiteur"}
             </p>
+
+            {passage && (
+              <p>
+                Passage {passage}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="match-score">
           <div>
             <strong>
-              NOTE FINALE
+              NOTE DU PASSAGE
             </strong>
 
             <h2>
@@ -315,7 +454,7 @@ function MatchManager({
             </h2>
 
             <p>
-              Total des 3 notes
+              Somme des 3 notes
               retenues
             </p>
           </div>
@@ -323,23 +462,31 @@ function MatchManager({
 
         <div className="penalties">
           <h3>
-            Notes des arbitres
+            Notes des 5 juges
           </h3>
 
           <p>
-            Chaque arbitre part de 4,5.
-            Notes autorisées : 3,9 à
-            4,9.
+            Chaque juge attribue une
+            note comprise entre 3,9 et
+            4,9. La note la plus haute
+            et la note la plus basse
+            sont retirées.
           </p>
 
           <div className="penalties-grid">
             {notesKata.map(
               (note, index) => {
+                const noteHaute =
+                  index ===
+                  resultatKata.indexMax;
+
+                const noteBasse =
+                  index ===
+                  resultatKata.indexMin;
+
                 const eliminee =
-                  index ===
-                    resultatKata.indexMax ||
-                  index ===
-                    resultatKata.indexMin;
+                  noteHaute ||
+                  noteBasse;
 
                 return (
                   <div
@@ -347,7 +494,7 @@ function MatchManager({
                     key={index}
                   >
                     <h3>
-                      Arbitre {index + 1}
+                      Juge {index + 1}
                     </h3>
 
                     <h2>
@@ -367,7 +514,8 @@ function MatchManager({
                       ) =>
                         modifierNoteKata(
                           index,
-                          event.target
+                          event
+                            .target
                             .value
                         )
                       }
@@ -380,24 +528,13 @@ function MatchManager({
                       ) =>
                         modifierNoteKata(
                           index,
-                          event.target
+                          event
+                            .target
                             .value
                         )
                       }
                     >
-                      {[
-                        3.9,
-                        4.0,
-                        4.1,
-                        4.2,
-                        4.3,
-                        4.4,
-                        4.5,
-                        4.6,
-                        4.7,
-                        4.8,
-                        4.9,
-                      ].map(
+                      {KATA_NOTES.map(
                         (valeur) => (
                           <option
                             key={
@@ -415,16 +552,14 @@ function MatchManager({
                       )}
                     </select>
 
-                    {index ===
-                      resultatKata.indexMax && (
+                    {noteHaute && (
                       <p>
                         ⬆️ Note la plus
                         haute — retirée
                       </p>
                     )}
 
-                    {index ===
-                      resultatKata.indexMin && (
+                    {noteBasse && (
                       <p>
                         ⬇️ Note la plus
                         basse — retirée
@@ -445,16 +580,36 @@ function MatchManager({
 
         <div className="match-result">
           <h3>
-            Résultat
+            Résultat du passage
           </h3>
 
           <p>
-            Notes :{" "}
-            {resultatKata.notes
-              .map((note) =>
-                note.toFixed(1)
-              )
-              .join(" · ")}
+            Notes des juges :{" "}
+            <strong>
+              {resultatKata.notes
+                .map((note) =>
+                  note.toFixed(1)
+                )
+                .join(" · ")}
+            </strong>
+          </p>
+
+          <p>
+            Note haute retirée :{" "}
+            <strong>
+              {resultatKata.noteMax.toFixed(
+                1
+              )}
+            </strong>
+          </p>
+
+          <p>
+            Note basse retirée :{" "}
+            <strong>
+              {resultatKata.noteMin.toFixed(
+                1
+              )}
+            </strong>
           </p>
 
           <p>
@@ -469,13 +624,22 @@ function MatchManager({
           </p>
 
           <p>
-            Total :{" "}
+            Total du passage :{" "}
             <strong>
               {resultatKata.total.toFixed(
                 1
               )}
             </strong>
           </p>
+
+          {initialResult && (
+            <p>
+              Ce passage a déjà été
+              enregistré. Tu peux
+              modifier les notes puis
+              l'enregistrer à nouveau.
+            </p>
+          )}
 
           {onSave && (
             <button
@@ -491,18 +655,24 @@ function MatchManager({
                   notesRetenues:
                     resultatKata.notesRetenues,
 
-                  noteMax:
+                  noteRetireeHaute:
                     resultatKata.noteMax,
 
-                  noteMin:
+                  noteRetireeBasse:
                     resultatKata.noteMin,
 
-                  score:
+                  total:
                     resultatKata.total,
                 })
               }
             >
-              Enregistrer le Kata
+              {initialResult
+                ? `Modifier le passage ${
+                    passage || ""
+                  }`
+                : `Enregistrer le passage ${
+                    passage || ""
+                  }`}
             </button>
           )}
         </div>
@@ -512,7 +682,7 @@ function MatchManager({
 
   /*
    * =========================================================
-   * AFFICHAGE JU RANDORI
+   * AFFICHAGE COMBAT
    * =========================================================
    */
 
@@ -521,7 +691,9 @@ function MatchManager({
       <div className="manager-header">
         <div>
           <p className="surtitle">
-            JU RANDORI
+            {getEventLabel(
+              eventType
+            )}
           </p>
 
           <h2>
@@ -547,8 +719,15 @@ function MatchManager({
           </p>
 
           <p>
-            {match?.aka?.nom ||
-              "Compétiteur AKA"}
+            {match?.aka
+              ? `${
+                  match.aka.nom ||
+                  ""
+                } ${
+                  match.aka.prenom ||
+                  ""
+                }`
+              : "Compétiteur AKA"}
           </p>
         </div>
 
@@ -568,8 +747,15 @@ function MatchManager({
           </p>
 
           <p>
-            {match?.shiro?.nom ||
-              "Compétiteur SHIRO"}
+            {match?.shiro
+              ? `${
+                  match.shiro.nom ||
+                  ""
+                } ${
+                  match.shiro.prenom ||
+                  ""
+                }`
+              : "Compétiteur SHIRO"}
           </p>
         </div>
       </div>
@@ -692,8 +878,7 @@ function MatchManager({
               {" · "}
               Hansoku Chui :{" "}
               {
-                penalitesShiro
-                  .hansokuChui
+                penalitesShiro.hansokuChui
               }
             </p>
 
@@ -848,7 +1033,8 @@ function MatchManager({
                       className={
                         assaut[
                           juge
-                        ] === "shiro"
+                        ] ===
+                        "shiro"
                           ? "vote-button selected shiro"
                           : "vote-button"
                       }
@@ -888,21 +1074,40 @@ function MatchManager({
         </p>
 
         <p>
+          Score après pénalités :
+          {" "}
+          <strong>
+            {scoreFinalAka}
+          </strong>
+          {" — "}
+          <strong>
+            {scoreFinalShiro}
+          </strong>
+        </p>
+
+        <p>
           {akaDisqualifie &&
             !shiroDisqualifie && (
               <>
-                ⛔ AKA — HANSOKU
-                CHUI · 🏆 SHIRO
-                vainqueur
+                ⛔ AKA disqualifié ·
+                🏆 SHIRO vainqueur
               </>
             )}
 
           {shiroDisqualifie &&
             !akaDisqualifie && (
               <>
-                ⛔ SHIRO — HANSOKU
-                CHUI · 🏆 AKA
-                vainqueur
+                ⛔ SHIRO disqualifié ·
+                🏆 AKA vainqueur
+              </>
+            )}
+
+          {akaDisqualifie &&
+            shiroDisqualifie && (
+              <>
+                ⛔ Les deux
+                compétiteurs sont
+                disqualifiés
               </>
             )}
 
@@ -916,7 +1121,8 @@ function MatchManager({
 
           {!akaDisqualifie &&
             !shiroDisqualifie &&
-            vainqueur === "shiro" && (
+            vainqueur ===
+              "shiro" && (
               <>
                 🏆 SHIRO vainqueur
               </>
@@ -925,7 +1131,9 @@ function MatchManager({
           {!akaDisqualifie &&
             !shiroDisqualifie &&
             vainqueur === null && (
-              <>Égalité</>
+              <>
+                Égalité
+              </>
             )}
         </p>
 
