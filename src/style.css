@@ -613,3 +613,99 @@ footer span {
     margin: 15mm;
   }
 }
+/* ===== CORRECTION BANDEAU SUPÉRIEUR ===== */
+
+.top-banner {
+  width: 100%;
+  background: #071a33;
+  border-bottom: 4px solid #c9a227;
+  padding: 16px 7%;
+}
+
+.top-banner-inner {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+/* LOGO AFDP */
+
+.top-logo {
+  display: block !important;
+
+  width: 85px !important;
+  height: 85px !important;
+
+  max-width: 85px !important;
+  max-height: 85px !important;
+
+  object-fit: contain !important;
+
+  flex: 0 0 85px !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* TEXTE DU BANDEAU */
+
+.top-banner-text {
+  flex: 1;
+  min-width: 0;
+  color: white;
+}
+
+.top-banner-text .surtitle {
+  margin: 0 0 4px;
+  color: #c9a227;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.top-banner-text h1 {
+  margin: 0 0 5px;
+  color: white;
+  font-size: clamp(25px, 3vw, 38px);
+  line-height: 1.05;
+}
+
+.top-banner-text .subtitle {
+  margin: 0;
+  color: white;
+  opacity: 0.8;
+  font-size: 14px;
+}
+
+/* TABLETTE / MOBILE */
+
+@media (max-width: 700px) {
+  .top-banner {
+    padding: 12px 5%;
+  }
+
+  .top-banner-inner {
+    gap: 14px;
+  }
+
+  .top-logo {
+    width: 65px !important;
+    height: 65px !important;
+
+    max-width: 65px !important;
+    max-height: 65px !important;
+
+    flex-basis: 65px !important;
+  }
+
+  .top-banner-text h1 {
+    font-size: 25px;
+  }
+
+  .top-banner-text .subtitle {
+    font-size: 13px;
+  }
+}
