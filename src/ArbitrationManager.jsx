@@ -15,8 +15,10 @@ function ArbitrationManager({
   onUpdateCompetition,
 }) {
   const pools = competition.pools || [];
-  const competitors = competition.competitors || [];
-  const categories = competition.categories || [];
+  const competitors =
+    competition.competitors || [];
+  const categories =
+    competition.categories || [];
 
   const [selectedPoolId, setSelectedPoolId] =
     useState("");
@@ -28,23 +30,13 @@ function ArbitrationManager({
     useState("");
 
   const [
-    selectedKataCompetitorId,
-    setSelectedKataCompetitorId,
+    selectedKataPassageId,
+    setSelectedKataPassageId,
   ] = useState("");
 
   const [
-    selectedKataPassage,
-    setSelectedKataPassage,
-  ] = useState(null);
-
-  const [
-    selectedKataFinalType,
-    setSelectedKataFinalType,
-  ] = useState("");
-
-  const [
-    selectedKataClosingMode,
-    setSelectedKataClosingMode,
+    selectedKataPassageType,
+    setSelectedKataPassageType,
   ] = useState("");
 
   function getCompetitor(id) {
@@ -79,7 +71,8 @@ function ArbitrationManager({
 
   const selectedPool = pools.find(
     (pool) =>
-      String(pool.id) === String(selectedPoolId)
+      String(pool.id) ===
+      String(selectedPoolId)
   );
 
   const selectedCategory = selectedPool
@@ -91,13 +84,20 @@ function ArbitrationManager({
     selectedPool?.epreuve ||
     "";
 
-  const kataMode = isKataEvent(selectedEvent);
+  const kataMode =
+    isKataEvent(selectedEvent);
 
   const poolMatches =
     selectedPool?.matches || [];
 
   const finalMatches =
     selectedPool?.finalMatches || [];
+
+  const kataPassages =
+    selectedPool?.passages || [];
+
+  const finalPassages =
+    selectedPool?.finalPassages || [];
 
   const selectedMatch =
     selectedMatchType === "final"
@@ -112,10 +112,23 @@ function ArbitrationManager({
             String(selectedMatchId)
         );
 
+  const selectedKataPassage =
+    selectedKataPassageType === "final"
+      ? finalPassages.find(
+          (passage) =>
+            String(passage.id) ===
+            String(selectedKataPassageId)
+        )
+      : kataPassages.find(
+          (passage) =>
+            String(passage.id) ===
+            String(selectedKataPassageId)
+        );
+
   const selectedKataCompetitor =
-    selectedKataCompetitorId
+    selectedKataPassage
       ? getCompetitor(
-          selectedKataCompetitorId
+          selectedKataPassage.competitorId
         )
       : null;
 
@@ -123,9 +136,8 @@ function ArbitrationManager({
     setSelectedMatchId("");
     setSelectedMatchType("");
 
-    setSelectedKataCompetitorId("");
-    setSelectedKataPassage(null);
-    setSelectedKataFinalType("");
+    setSelectedKataPassageId("");
+    setSelectedKataPassageType("");
   }
 
   /*
@@ -138,12 +150,11 @@ function ArbitrationManager({
     setSelectedMatchId(match.id);
     setSelectedMatchType(type);
 
-    setSelectedKataCompetitorId("");
-    setSelectedKataPassage(null);
-    setSelectedKataFinalType("");
+    setSelectedKataPassageId("");
+    setSelectedKataPassageType("");
   }
 
-  function calculatePodium(
+  function calculateCombatPodium(
     finalMatchesList
   ) {
     const finale =
@@ -155,8 +166,7 @@ function ArbitrationManager({
     const petiteFinale =
       finalMatchesList.find(
         (match) =>
-          match.type ===
-          "petite-finale"
+          match.type === "petite-finale"
       );
 
     if (
@@ -182,9 +192,7 @@ function ArbitrationManager({
         : finale.akaId;
 
     const fourthId =
-      String(
-        petiteFinale.winnerId
-      ) ===
+      String(petiteFinale.winnerId) ===
       String(petiteFinale.akaId)
         ? petiteFinale.shiroId
         : petiteFinale.akaId;
@@ -192,8 +200,7 @@ function ArbitrationManager({
     return {
       firstId: finale.winnerId,
       secondId,
-      thirdId:
-        petiteFinale.winnerId,
+      thirdId: petiteFinale.winnerId,
       fourthId,
     };
   }
@@ -209,8 +216,7 @@ function ArbitrationManager({
     const winnerId =
       result.vainqueur === "aka"
         ? selectedMatch.akaId
-        : result.vainqueur ===
-          "shiro"
+        : result.vainqueur === "shiro"
         ? selectedMatch.shiroId
         : null;
 
@@ -220,8 +226,7 @@ function ArbitrationManager({
       assauts: result.assauts,
 
       akaScore: result.scoreAka,
-      shiroScore:
-        result.scoreShiro,
+      shiroScore: result.scoreShiro,
 
       scoreBrutAka:
         result.scoreBrutAka,
@@ -252,8 +257,8 @@ function ArbitrationManager({
       statut: "Terminé",
     };
 
-    const updatedPools =
-      pools.map((pool) => {
+    const updatedPools = pools.map(
+      (pool) => {
         if (
           String(pool.id) !==
           String(selectedPool.id)
@@ -262,21 +267,19 @@ function ArbitrationManager({
         }
 
         if (
-          selectedMatchType ===
-          "final"
+          selectedMatchType === "final"
         ) {
-          const updatedFinalMatches =
-            (
-              pool.finalMatches || []
-            ).map((match) =>
-              String(match.id) ===
-              String(selectedMatch.id)
-                ? savedMatch
-                : match
-            );
+          const updatedFinalMatches = (
+            pool.finalMatches || []
+          ).map((match) =>
+            String(match.id) ===
+            String(selectedMatch.id)
+              ? savedMatch
+              : match
+          );
 
           const podium =
-            calculatePodium(
+            calculateCombatPodium(
               updatedFinalMatches
             );
 
@@ -306,7 +309,8 @@ function ArbitrationManager({
               : match
           ),
         };
-      });
+      }
+    );
 
     onUpdateCompetition({
       ...competition,
@@ -319,173 +323,223 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * KATA — QUALIFICATIONS
+   * KATA
    * =========================================================
    */
 
-  function getKataResult(
-    competitorId,
-    pool = selectedPool
-  ) {
-    return (
-      pool?.kataResults ||
-      []
-    ).find(
-      (item) =>
-        String(item.competitorId) ===
-        String(competitorId)
-    );
-  }
-
   function selectKataPassage(
-    competitorId,
-    passage
+    passage,
+    type = "qualification"
   ) {
-    setSelectedKataCompetitorId(
-      competitorId
+    setSelectedKataPassageId(
+      passage.id
     );
 
-    setSelectedKataPassage(passage);
-
-    setSelectedKataFinalType("");
+    setSelectedKataPassageType(
+      type
+    );
 
     setSelectedMatchId("");
     setSelectedMatchType("");
   }
 
-  function createKataResultData(result) {
+  function makeSavedKataPassage(
+    passage,
+    result
+  ) {
     return {
-      notes: result.notes || [],
+      ...passage,
+
+      notes:
+        result.notes || [],
 
       notesRetenues:
         result.notesRetenues || [],
 
-      noteRetireeBasse:
+      noteMinRetiree:
         result.noteMin,
 
-      noteRetireeHaute:
+      noteMaxRetiree:
         result.noteMax,
 
-      total:
+      score:
         Number(result.score) || 0,
 
       statut: "Terminé",
     };
   }
 
+  function calculateKataFinalPodium(
+    passages
+  ) {
+    const finale = passages.filter(
+      (passage) =>
+        passage.type === "finale"
+    );
+
+    const petiteFinale =
+      passages.filter(
+        (passage) =>
+          passage.type ===
+          "petite-finale"
+      );
+
+    if (
+      finale.length !== 2 ||
+      petiteFinale.length !== 2
+    ) {
+      return null;
+    }
+
+    const allFinished = [
+      ...finale,
+      ...petiteFinale,
+    ].every(
+      (passage) =>
+        passage.statut === "Terminé"
+    );
+
+    if (!allFinished) {
+      return null;
+    }
+
+    const finaleSorted = [
+      ...finale,
+    ].sort(
+      (a, b) =>
+        Number(b.score) -
+        Number(a.score)
+    );
+
+    const bronzeSorted = [
+      ...petiteFinale,
+    ].sort(
+      (a, b) =>
+        Number(b.score) -
+        Number(a.score)
+    );
+
+    return {
+      firstId:
+        finaleSorted[0]?.competitorId ||
+        null,
+
+      secondId:
+        finaleSorted[1]?.competitorId ||
+        null,
+
+      thirdId:
+        bronzeSorted[0]?.competitorId ||
+        null,
+
+      fourthId:
+        bronzeSorted[1]?.competitorId ||
+        null,
+    };
+  }
+
   function saveKataPassage(result) {
     if (
       !selectedPool ||
-      !selectedKataCompetitor ||
       !selectedKataPassage
     ) {
       return;
     }
 
-    const currentKataResults =
-      selectedPool.kataResults || [];
-
-    const existingResult =
-      currentKataResults.find(
-        (item) =>
-          String(
-            item.competitorId
-          ) ===
-          String(
-            selectedKataCompetitor.id
-          )
+    const savedPassage =
+      makeSavedKataPassage(
+        selectedKataPassage,
+        result
       );
 
-    const passageData =
-      createKataResultData(result);
+    const updatedPools = pools.map(
+      (pool) => {
+        if (
+          String(pool.id) !==
+          String(selectedPool.id)
+        ) {
+          return pool;
+        }
 
-    let updatedKataResults;
+        if (
+          selectedKataPassageType ===
+          "final"
+        ) {
+          const updatedFinalPassages = (
+            pool.finalPassages || []
+          ).map((passage) =>
+            String(passage.id) ===
+            String(
+              selectedKataPassage.id
+            )
+              ? savedPassage
+              : passage
+          );
 
-    if (existingResult) {
-      updatedKataResults =
-        currentKataResults.map(
-          (item) => {
-            if (
-              String(
-                item.competitorId
-              ) !==
-              String(
-                selectedKataCompetitor.id
-              )
-            ) {
-              return item;
-            }
+          const podium =
+            calculateKataFinalPodium(
+              updatedFinalPassages
+            );
 
-            return {
-              ...item,
+          return {
+            ...pool,
 
-              [`passage${selectedKataPassage}`]:
-                passageData,
-            };
-          }
-        );
-    } else {
-      updatedKataResults = [
-        ...currentKataResults,
+            finalPassages:
+              updatedFinalPassages,
 
-        {
-          competitorId:
-            selectedKataCompetitor.id,
+            podium,
 
-          passage1:
-            selectedKataPassage === 1
-              ? passageData
-              : null,
+            statut: podium
+              ? "Terminée"
+              : "Phase finale",
+          };
+        }
 
-          passage2:
-            selectedKataPassage === 2
-              ? passageData
-              : null,
-        },
-      ];
-    }
+        return {
+          ...pool,
 
-    const updatedPools =
-      pools.map((pool) =>
-        String(pool.id) ===
-        String(selectedPool.id)
-          ? {
-              ...pool,
-
-              kataResults:
-                updatedKataResults,
-            }
-          : pool
-      );
+          passages: (
+            pool.passages || []
+          ).map((passage) =>
+            String(passage.id) ===
+            String(
+              selectedKataPassage.id
+            )
+              ? savedPassage
+              : passage
+          ),
+        };
+      }
+    );
 
     onUpdateCompetition({
       ...competition,
       pools: updatedPools,
     });
 
-    setSelectedKataCompetitorId("");
-    setSelectedKataPassage(null);
+    setSelectedKataPassageId("");
+    setSelectedKataPassageType("");
   }
 
-  function calculateKataTotal(
-    competitorId
+  /*
+   * =========================================================
+   * CLASSEMENT KATA
+   * =========================================================
+   */
+
+  function getKataPassage(
+    competitorId,
+    numero
   ) {
-    const result =
-      getKataResult(
-        competitorId
-      );
-
-    const passage1 =
-      Number(
-        result?.passage1?.total
-      ) || 0;
-
-    const passage2 =
-      Number(
-        result?.passage2?.total
-      ) || 0;
-
-    return passage1 + passage2;
+    return kataPassages.find(
+      (passage) =>
+        String(
+          passage.competitorId
+        ) ===
+          String(competitorId) &&
+        Number(passage.numero) ===
+          Number(numero)
+    );
   }
 
   function calculateKataRanking() {
@@ -493,443 +547,92 @@ function ArbitrationManager({
       return [];
     }
 
-    return (
-      selectedPool.competitorIds ||
-      []
-    )
-      .map((competitorId) => ({
-        competitorId,
-
-        passage1:
-          getKataResult(
-            competitorId
-          )?.passage1?.total ??
-          null,
-
-        passage2:
-          getKataResult(
-            competitorId
-          )?.passage2?.total ??
-          null,
-
-        total:
-          calculateKataTotal(
-            competitorId
-          ),
-      }))
-      .sort(
-        (a, b) =>
-          b.total - a.total
-      );
-  }
-
-  function kataQualificationsFinished() {
-    if (!selectedPool) {
-      return false;
-    }
-
     const competitorIds =
       selectedPool.competitorIds || [];
 
-    if (
-      competitorIds.length === 0
-    ) {
-      return false;
-    }
-
-    return competitorIds.every(
-      (competitorId) => {
-        const result =
-          getKataResult(
-            competitorId
+    return competitorIds
+      .map((competitorId) => {
+        const passage1 =
+          getKataPassage(
+            competitorId,
+            1
           );
 
-        return Boolean(
-          result?.passage1 &&
-          result?.passage2
-        );
-      }
-    );
-  }
+        const passage2 =
+          getKataPassage(
+            competitorId,
+            2
+          );
 
-  /*
-   * =========================================================
-   * KATA — CLÔTURE
-   * =========================================================
-   */
+        const score1 =
+          passage1?.statut ===
+          "Terminé"
+            ? Number(
+                passage1.score
+              ) || 0
+            : null;
 
-  function validateKataClosing() {
-    if (!selectedPool) {
-      return;
-    }
+        const score2 =
+          passage2?.statut ===
+          "Terminé"
+            ? Number(
+                passage2.score
+              ) || 0
+            : null;
 
-    if (
-      !kataQualificationsFinished()
-    ) {
-      alert(
-        "Les deux passages de tous les compétiteurs doivent être terminés."
-      );
-      return;
-    }
+        const total =
+          (score1 || 0) +
+          (score2 || 0);
 
-    if (!selectedKataClosingMode) {
-      alert(
-        "Choisis un mode de clôture."
-      );
-      return;
-    }
+        const passagesTermines =
+          Number(score1 !== null) +
+          Number(score2 !== null);
 
-    const ranking =
-      calculateKataRanking();
+        return {
+          competitorId,
+          passage1: score1,
+          passage2: score2,
+          total,
+          passagesTermines,
+        };
+      })
+      .sort((a, b) => {
+        if (
+          b.passagesTermines !==
+          a.passagesTermines
+        ) {
+          return (
+            b.passagesTermines -
+            a.passagesTermines
+          );
+        }
 
-    if (
-      selectedKataClosingMode ===
-      "direct"
-    ) {
-      const podium = {
-        firstId:
-          ranking[0]
-            ?.competitorId || null,
+        if (b.total !== a.total) {
+          return b.total - a.total;
+        }
 
-        secondId:
-          ranking[1]
-            ?.competitorId || null,
-
-        thirdId:
-          ranking[2]
-            ?.competitorId || null,
-
-        fourthId:
-          ranking[3]
-            ?.competitorId || null,
-      };
-
-      const updatedPools =
-        pools.map((pool) =>
-          String(pool.id) ===
-          String(selectedPool.id)
-            ? {
-                ...pool,
-
-                kataClosingMode:
-                  "direct",
-
-                kataRankingLocked:
-                  ranking,
-
-                podium,
-
-                statut:
-                  "Terminée",
-              }
-            : pool
+        const bestA = Math.max(
+          a.passage1 || 0,
+          a.passage2 || 0
         );
 
-      onUpdateCompetition({
-        ...competition,
-        pools: updatedPools,
+        const bestB = Math.max(
+          b.passage1 || 0,
+          b.passage2 || 0
+        );
+
+        return bestB - bestA;
       });
-
-      return;
-    }
-
-    if (
-      selectedKataClosingMode ===
-      "finals"
-    ) {
-      if (ranking.length < 4) {
-        alert(
-          "Il faut au moins 4 compétiteurs pour organiser une finale et une petite finale."
-        );
-        return;
-      }
-
-      const kataFinals = {
-        finale: {
-          label: "Finale",
-
-          competitorIds: [
-            ranking[0]
-              .competitorId,
-
-            ranking[1]
-              .competitorId,
-          ],
-
-          results: [],
-        },
-
-        petiteFinale: {
-          label:
-            "Petite finale",
-
-          competitorIds: [
-            ranking[2]
-              .competitorId,
-
-            ranking[3]
-              .competitorId,
-          ],
-
-          results: [],
-        },
-      };
-
-      const updatedPools =
-        pools.map((pool) =>
-          String(pool.id) ===
-          String(selectedPool.id)
-            ? {
-                ...pool,
-
-                kataClosingMode:
-                  "finals",
-
-                kataRankingLocked:
-                  ranking,
-
-                kataFinals,
-
-                podium: null,
-
-                statut:
-                  "Phase finale",
-              }
-            : pool
-        );
-
-      onUpdateCompetition({
-        ...competition,
-        pools: updatedPools,
-      });
-    }
   }
+
+  const kataRanking =
+    kataMode && selectedPool
+      ? calculateKataRanking()
+      : [];
 
   /*
    * =========================================================
-   * KATA — FINALES
-   * =========================================================
-   */
-
-  function getKataFinalResult(
-    finalType,
-    competitorId
-  ) {
-    return (
-      selectedPool
-        ?.kataFinals?.[
-          finalType
-        ]?.results || []
-    ).find(
-      (result) =>
-        String(
-          result.competitorId
-        ) ===
-        String(competitorId)
-    );
-  }
-
-  function selectKataFinal(
-    finalType,
-    competitorId
-  ) {
-    setSelectedKataFinalType(
-      finalType
-    );
-
-    setSelectedKataCompetitorId(
-      competitorId
-    );
-
-    setSelectedKataPassage(null);
-
-    setSelectedMatchId("");
-    setSelectedMatchType("");
-  }
-
-  function calculateKataFinalPodium(
-    kataFinals
-  ) {
-    const finale =
-      kataFinals?.finale;
-
-    const petiteFinale =
-      kataFinals?.petiteFinale;
-
-    if (
-      !finale ||
-      !petiteFinale
-    ) {
-      return null;
-    }
-
-    const finaleResults =
-      finale.results || [];
-
-    const bronzeResults =
-      petiteFinale.results || [];
-
-    if (
-      finaleResults.length < 2 ||
-      bronzeResults.length < 2
-    ) {
-      return null;
-    }
-
-    const finaleSorted = [
-      ...finaleResults,
-    ].sort(
-      (a, b) =>
-        Number(b.total) -
-        Number(a.total)
-    );
-
-    const bronzeSorted = [
-      ...bronzeResults,
-    ].sort(
-      (a, b) =>
-        Number(b.total) -
-        Number(a.total)
-    );
-
-    return {
-      firstId:
-        finaleSorted[0]
-          .competitorId,
-
-      secondId:
-        finaleSorted[1]
-          .competitorId,
-
-      thirdId:
-        bronzeSorted[0]
-          .competitorId,
-
-      fourthId:
-        bronzeSorted[1]
-          .competitorId,
-    };
-  }
-
-  function saveKataFinal(result) {
-    if (
-      !selectedPool ||
-      !selectedKataCompetitor ||
-      !selectedKataFinalType
-    ) {
-      return;
-    }
-
-    const currentFinals =
-      selectedPool.kataFinals;
-
-    if (!currentFinals) {
-      return;
-    }
-
-    const currentFinal =
-      currentFinals[
-        selectedKataFinalType
-      ];
-
-    if (!currentFinal) {
-      return;
-    }
-
-    const resultData = {
-      competitorId:
-        selectedKataCompetitor.id,
-
-      ...createKataResultData(
-        result
-      ),
-    };
-
-    const existing =
-      (
-        currentFinal.results ||
-        []
-      ).some(
-        (item) =>
-          String(
-            item.competitorId
-          ) ===
-          String(
-            selectedKataCompetitor.id
-          )
-      );
-
-    const updatedResults =
-      existing
-        ? (
-            currentFinal.results ||
-            []
-          ).map((item) =>
-            String(
-              item.competitorId
-            ) ===
-            String(
-              selectedKataCompetitor.id
-            )
-              ? resultData
-              : item
-          )
-        : [
-            ...(
-              currentFinal.results ||
-              []
-            ),
-            resultData,
-          ];
-
-    const updatedKataFinals = {
-      ...currentFinals,
-
-      [selectedKataFinalType]:
-        {
-          ...currentFinal,
-
-          results:
-            updatedResults,
-        },
-    };
-
-    const podium =
-      calculateKataFinalPodium(
-        updatedKataFinals
-      );
-
-    const updatedPools =
-      pools.map((pool) =>
-        String(pool.id) ===
-        String(selectedPool.id)
-          ? {
-              ...pool,
-
-              kataFinals:
-                updatedKataFinals,
-
-              podium,
-
-              statut: podium
-                ? "Terminée"
-                : "Phase finale",
-            }
-          : pool
-      );
-
-    onUpdateCompetition({
-      ...competition,
-      pools: updatedPools,
-    });
-
-    setSelectedKataCompetitorId("");
-    setSelectedKataFinalType("");
-  }
-
-  /*
-   * =========================================================
-   * AFFICHAGE JU RANDORI
+   * AFFICHAGE COMBAT
    * =========================================================
    */
 
@@ -939,14 +642,10 @@ function ArbitrationManager({
     matchType
   ) {
     const aka =
-      getCompetitor(
-        match.akaId
-      );
+      getCompetitor(match.akaId);
 
     const shiro =
-      getCompetitor(
-        match.shiroId
-      );
+      getCompetitor(match.shiroId);
 
     const winner =
       match.winnerId
@@ -958,8 +657,7 @@ function ArbitrationManager({
     return (
       <article
         className={`competition ${
-          match.statut ===
-          "Terminé"
+          match.statut === "Terminé"
             ? "competition-terminee"
             : ""
         }`}
@@ -1024,7 +722,7 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * AFFICHAGE KATA
+   * AFFICHAGE KATA QUALIFICATIONS
    * =========================================================
    */
 
@@ -1040,16 +738,17 @@ function ArbitrationManager({
       return null;
     }
 
-    const result =
-      getKataResult(
-        competitorId
+    const passage1 =
+      getKataPassage(
+        competitorId,
+        1
       );
 
-    const passage1 =
-      result?.passage1;
-
     const passage2 =
-      result?.passage2;
+      getKataPassage(
+        competitorId,
+        2
+      );
 
     return (
       <article
@@ -1074,32 +773,36 @@ function ArbitrationManager({
           <div className="competitor-events">
             <span>
               Passage 1 :{" "}
-              {passage1
+              {passage1?.statut ===
+              "Terminé"
                 ? Number(
-                    passage1.total
+                    passage1.score
                   ).toFixed(1)
                 : "À noter"}
             </span>
 
             <span>
               Passage 2 :{" "}
-              {passage2
+              {passage2?.statut ===
+              "Terminé"
                 ? Number(
-                    passage2.total
+                    passage2.score
                   ).toFixed(1)
                 : "À noter"}
             </span>
 
-            {passage1 &&
-              passage2 && (
+            {passage1?.statut ===
+              "Terminé" &&
+              passage2?.statut ===
+                "Terminé" && (
                 <span>
                   Total :{" "}
                   {(
                     Number(
-                      passage1.total
+                      passage1.score
                     ) +
                     Number(
-                      passage2.total
+                      passage2.score
                     )
                   ).toFixed(1)}
                 </span>
@@ -1108,50 +811,63 @@ function ArbitrationManager({
         </div>
 
         <div className="competition-actions">
-          <button
-            className="manage-button"
-            type="button"
-            onClick={() =>
-              selectKataPassage(
-                competitorId,
-                1
-              )
-            }
-          >
-            {passage1
-              ? "Modifier passage 1"
-              : "Noter passage 1"}
-          </button>
+          {passage1 && (
+            <button
+              className="manage-button"
+              type="button"
+              onClick={() =>
+                selectKataPassage(
+                  passage1,
+                  "qualification"
+                )
+              }
+            >
+              {passage1.statut ===
+              "Terminé"
+                ? "Modifier passage 1"
+                : "Noter passage 1"}
+            </button>
+          )}
 
-          <button
-            className="manage-button"
-            type="button"
-            onClick={() =>
-              selectKataPassage(
-                competitorId,
-                2
-              )
-            }
-          >
-            {passage2
-              ? "Modifier passage 2"
-              : "Noter passage 2"}
-          </button>
+          {passage2 && (
+            <button
+              className="manage-button"
+              type="button"
+              onClick={() =>
+                selectKataPassage(
+                  passage2,
+                  "qualification"
+                )
+              }
+            >
+              {passage2.statut ===
+              "Terminé"
+                ? "Modifier passage 2"
+                : "Noter passage 2"}
+            </button>
+          )}
         </div>
       </article>
     );
   }
 
-  function renderKataFinal(
-    finalType
-  ) {
-    const finalData =
-      selectedPool
-        ?.kataFinals?.[
-          finalType
-        ];
+  /*
+   * =========================================================
+   * AFFICHAGE PHASE FINALE KATA
+   * =========================================================
+   */
 
-    if (!finalData) {
+  function renderKataFinalGroup(
+    type,
+    title
+  ) {
+    const passages =
+      finalPassages.filter(
+        (passage) =>
+          passage.type === type
+      );
+
+    if (passages.length === 0) {
       return null;
     }
 
@@ -1163,58 +879,46 @@ function ArbitrationManager({
               PHASE FINALE KATA
             </p>
 
-            <h3>
-              {finalData.label}
-            </h3>
+            <h3>{title}</h3>
           </div>
         </div>
 
         <div className="competition-list">
-          {(
-            finalData.competitorIds ||
-            []
-          ).map(
-            (competitorId) => {
+          {passages.map(
+            (passage) => {
               const competitor =
                 getCompetitor(
-                  competitorId
-                );
-
-              if (!competitor) {
-                return null;
-              }
-
-              const result =
-                getKataFinalResult(
-                  finalType,
-                  competitorId
+                  passage.competitorId
                 );
 
               return (
                 <article
                   className={`competition ${
-                    result
+                    passage.statut ===
+                    "Terminé"
                       ? "competition-terminee"
                       : ""
                   }`}
-                  key={`${finalType}-${competitorId}`}
+                  key={passage.id}
                 >
                   <div>
                     <p className="surtitle">
-                      {finalData.label}
+                      {title}
                     </p>
 
                     <h3>
-                      {competitor.nom}{" "}
-                      {competitor.prenom}
+                      {competitor
+                        ? `${competitor.nom} ${competitor.prenom}`
+                        : "Compétiteur inconnu"}
                     </h3>
 
-                    {result && (
+                    {passage.statut ===
+                      "Terminé" && (
                       <div className="beta-note">
                         <strong>
                           Note :{" "}
                           {Number(
-                            result.total
+                            passage.score
                           ).toFixed(1)}
                         </strong>
                       </div>
@@ -1225,13 +929,14 @@ function ArbitrationManager({
                     className="manage-button"
                     type="button"
                     onClick={() =>
-                      selectKataFinal(
-                        finalType,
-                        competitorId
+                      selectKataPassage(
+                        passage,
+                        "final"
                       )
                     }
                   >
-                    {result
+                    {passage.statut ===
+                    "Terminé"
                       ? "Modifier la note"
                       : "Noter le Kata"}
                   </button>
@@ -1244,17 +949,52 @@ function ArbitrationManager({
     );
   }
 
-  const kataRanking =
-    kataMode &&
-    selectedPool
-      ? calculateKataRanking()
-      : [];
+  function renderPodium() {
+    if (!selectedPool?.podium) {
+      return null;
+    }
 
-  const qualificationsFinished =
-    kataMode &&
-    selectedPool
-      ? kataQualificationsFinished()
-      : false;
+    const podium =
+      selectedPool.podium;
+
+    return (
+      <section className="category-section">
+        <div className="pool-ranking">
+          <h3>Podium final</h3>
+
+          <p>
+            🥇{" "}
+            {getCompetitor(
+              podium.firstId
+            )?.nom || "—"}{" "}
+            {getCompetitor(
+              podium.firstId
+            )?.prenom || ""}
+          </p>
+
+          <p>
+            🥈{" "}
+            {getCompetitor(
+              podium.secondId
+            )?.nom || "—"}{" "}
+            {getCompetitor(
+              podium.secondId
+            )?.prenom || ""}
+          </p>
+
+          <p>
+            🥉{" "}
+            {getCompetitor(
+              podium.thirdId
+            )?.nom || "—"}{" "}
+            {getCompetitor(
+              podium.thirdId
+            )?.prenom || ""}
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="arbitration-manager">
@@ -1301,10 +1041,6 @@ function ArbitrationManager({
                   );
 
                   resetSelections();
-
-                  setSelectedKataClosingMode(
-                    ""
-                  );
                 }}
               >
                 <option value="">
@@ -1339,6 +1075,10 @@ function ArbitrationManager({
               </select>
             </label>
           </div>
+
+          {/* =====================================
+              KATA
+          ===================================== */}
 
           {selectedPool &&
             kataMode && (
@@ -1383,7 +1123,8 @@ function ArbitrationManager({
 
                       <h3>
                         {selectedPool
-                          .kataRankingLocked
+                          .rankingLocked
+                          ?.length
                           ? "Classement des qualifications"
                           : "Classement provisoire"}
                       </h3>
@@ -1401,13 +1142,9 @@ function ArbitrationManager({
                           Compétiteur
                         </span>
 
-                        <span>
-                          P1
-                        </span>
+                        <span>P1</span>
 
-                        <span>
-                          P2
-                        </span>
+                        <span>P2</span>
 
                         <span>
                           Total
@@ -1473,9 +1210,12 @@ function ArbitrationManager({
                               </span>
 
                               <strong>
-                                {item.total.toFixed(
-                                  1
-                                )}
+                                {item.passagesTermines ===
+                                2
+                                  ? item.total.toFixed(
+                                      1
+                                    )
+                                  : "—"}
                               </strong>
                             </div>
                           );
@@ -1485,134 +1225,23 @@ function ArbitrationManager({
                   </div>
                 </section>
 
-                {qualificationsFinished &&
-                  !selectedPool
-                    .kataClosingMode && (
-                    <div className="competition-form">
-                      <h3>
-                        Clôture de la
-                        catégorie Kata
-                      </h3>
-
-                      <label>
-                        Mode de clôture
-
-                        <select
-                          value={
-                            selectedKataClosingMode
-                          }
-                          onChange={(
-                            event
-                          ) =>
-                            setSelectedKataClosingMode(
-                              event
-                                .target
-                                .value
-                            )
-                          }
-                        >
-                          <option value="">
-                            Choisir
-                          </option>
-
-                          <option value="direct">
-                            Classement
-                            direct
-                          </option>
-
-                          <option value="finals">
-                            Finale +
-                            petite finale
-                          </option>
-                        </select>
-                      </label>
-
-                      <button
-                        className="primary"
-                        type="button"
-                        onClick={
-                          validateKataClosing
-                        }
-                      >
-                        Valider la
-                        clôture
-                      </button>
-                    </div>
-                  )}
-
-                {selectedPool
-                  .kataClosingMode ===
-                  "finals" && (
-                  <>
-                    {renderKataFinal(
-                      "finale"
-                    )}
-
-                    {renderKataFinal(
-                      "petiteFinale"
-                    )}
-                  </>
+                {renderKataFinalGroup(
+                  "finale",
+                  "Finale"
                 )}
 
-                {selectedPool.podium && (
-                  <section className="category-section">
-                    <div className="pool-ranking">
-                      <h3>
-                        Podium final
-                      </h3>
-
-                      <p>
-                        🥇{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .firstId
-                        )?.nom ||
-                          "—"}{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .firstId
-                        )?.prenom ||
-                          ""}
-                      </p>
-
-                      <p>
-                        🥈{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .secondId
-                        )?.nom ||
-                          "—"}{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .secondId
-                        )?.prenom ||
-                          ""}
-                      </p>
-
-                      <p>
-                        🥉{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .thirdId
-                        )?.nom ||
-                          "—"}{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .thirdId
-                        )?.prenom ||
-                          ""}
-                      </p>
-                    </div>
-                  </section>
+                {renderKataFinalGroup(
+                  "petite-finale",
+                  "Petite finale"
                 )}
+
+                {renderPodium()}
               </>
             )}
+
+          {/* =====================================
+              JU RANDORI / RANDORI
+          ===================================== */}
 
           {selectedPool &&
             !kataMode && (
@@ -1637,10 +1266,7 @@ function ArbitrationManager({
                             "Terminé"
                         ).length
                       }
-                      /
-                      {
-                        poolMatches.length
-                      }{" "}
+                      /{poolMatches.length}{" "}
                       terminées
                     </span>
                   </div>
@@ -1692,65 +1318,13 @@ function ArbitrationManager({
                   </section>
                 )}
 
-                {selectedPool.podium && (
-                  <section className="category-section">
-                    <div className="pool-ranking">
-                      <h3>
-                        Podium final
-                      </h3>
-
-                      <p>
-                        🥇{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .firstId
-                        )?.nom ||
-                          "—"}{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .firstId
-                        )?.prenom ||
-                          ""}
-                      </p>
-
-                      <p>
-                        🥈{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .secondId
-                        )?.nom ||
-                          "—"}{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .secondId
-                        )?.prenom ||
-                          ""}
-                      </p>
-
-                      <p>
-                        🥉{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .thirdId
-                        )?.nom ||
-                          "—"}{" "}
-                        {getCompetitor(
-                          selectedPool
-                            .podium
-                            .thirdId
-                        )?.prenom ||
-                          ""}
-                      </p>
-                    </div>
-                  </section>
-                )}
+                {renderPodium()}
               </>
             )}
+
+          {/* =====================================
+              FEUILLE JU RANDORI
+          ===================================== */}
 
           {selectedMatch &&
             !kataMode && (
@@ -1775,11 +1349,17 @@ function ArbitrationManager({
               />
             )}
 
-          {selectedKataCompetitor &&
-            selectedKataPassage &&
+          {/* =====================================
+              FEUILLE KATA
+          ===================================== */}
+
+          {selectedKataPassage &&
+            selectedKataCompetitor &&
             kataMode && (
               <MatchManager
-                key={`${selectedKataCompetitor.id}-${selectedKataPassage}`}
+                key={
+                  selectedKataPassage.id
+                }
                 type="kata"
                 match={{
                   competiteur:
@@ -1787,22 +1367,6 @@ function ArbitrationManager({
                 }}
                 onSave={
                   saveKataPassage
-                }
-              />
-            )}
-
-          {selectedKataCompetitor &&
-            selectedKataFinalType &&
-            kataMode && (
-              <MatchManager
-                key={`final-${selectedKataFinalType}-${selectedKataCompetitor.id}`}
-                type="kata"
-                match={{
-                  competiteur:
-                    selectedKataCompetitor,
-                }}
-                onSave={
-                  saveKataFinal
                 }
               />
             )}
