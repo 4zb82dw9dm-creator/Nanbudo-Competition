@@ -26,21 +26,23 @@ button {
   flex-direction: column;
 }
 
-/* =========================================================
-   BANDEAU PRINCIPAL
-   ========================================================= */
+/* ========================================
+   BANDEAU SUPÉRIEUR
+======================================== */
 
 .header {
   width: 100%;
   background: #071a33;
   color: white;
-  padding: 20px 7%;
+  padding: 22px 7%;
   border-bottom: 4px solid #c9a227;
 
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 24px;
+  gap: 30px;
+
+  overflow: hidden;
 }
 
 .header-text {
@@ -55,7 +57,7 @@ button {
 }
 
 .header .surtitle {
-  margin: 0;
+  color: #c9a227;
 }
 
 .subtitle {
@@ -65,35 +67,52 @@ button {
 
 /*
   IMPORTANT :
-  App.jsx utilise className="header-logo".
-  C'est donc cette classe qu'il faut dimensionner.
+  Dans App.jsx l'image utilise :
+  className="header-logo"
+
+  C'est donc CETTE classe qui doit
+  contrôler la taille du logo.
 */
 
 .header-logo {
-  width: 110px;
-  height: 110px;
-  max-width: 110px;
-  max-height: 110px;
-  object-fit: contain;
   display: block;
-  flex: 0 0 110px;
+
+  width: 100px !important;
+  height: 100px !important;
+
+  max-width: 100px !important;
+  max-height: 100px !important;
+
+  min-width: 0;
+  min-height: 0;
+
+  object-fit: contain;
+
+  flex: 0 0 100px;
+
+  margin: 0;
+  padding: 0;
 }
 
 /* Ancienne classe conservée au cas où */
 
 .afdp-logo {
-  width: 110px;
-  height: 110px;
-  max-width: 110px;
-  max-height: 110px;
-  object-fit: contain;
   display: block;
-  flex-shrink: 0;
+
+  width: 100px !important;
+  height: 100px !important;
+
+  max-width: 100px !important;
+  max-height: 100px !important;
+
+  object-fit: contain;
+
+  flex: 0 0 100px;
 }
 
-/* =========================================================
-   TEXTES
-   ========================================================= */
+/* ========================================
+   PETIT TITRE DORÉ
+======================================== */
 
 .surtitle {
   margin: 0;
@@ -103,9 +122,9 @@ button {
   font-size: 13px;
 }
 
-/* =========================================================
+/* ========================================
    NAVIGATION
-   ========================================================= */
+======================================== */
 
 .navigation {
   display: flex;
@@ -132,9 +151,9 @@ button {
   color: white;
 }
 
-/* =========================================================
-   CONTENU
-   ========================================================= */
+/* ========================================
+   CONTENU PRINCIPAL
+======================================== */
 
 .content {
   width: min(1100px, 88%);
@@ -143,9 +162,9 @@ button {
   padding: 45px 0 60px;
 }
 
-/* =========================================================
+/* ========================================
    ACCUEIL
-   ========================================================= */
+======================================== */
 
 .hero {
   background: #071a33;
@@ -172,6 +191,10 @@ button {
   letter-spacing: 2px;
 }
 
+/* ========================================
+   BOUTONS
+======================================== */
+
 .primary {
   margin-top: 20px;
   border: 0;
@@ -183,9 +206,9 @@ button {
   cursor: pointer;
 }
 
-/* =========================================================
+/* ========================================
    TABLEAU DE BORD
-   ========================================================= */
+======================================== */
 
 .dashboard {
   display: grid;
@@ -220,9 +243,9 @@ button {
   color: #c9a227;
 }
 
-/* =========================================================
-   SECTIONS
-   ========================================================= */
+/* ========================================
+   TITRES DE SECTIONS
+======================================== */
 
 .section-title {
   margin-bottom: 25px;
@@ -233,9 +256,9 @@ button {
   font-size: 36px;
 }
 
-/* =========================================================
+/* ========================================
    COMPÉTITIONS
-   ========================================================= */
+======================================== */
 
 .competition-list {
   display: grid;
@@ -276,9 +299,9 @@ button {
   font-weight: 700;
 }
 
-/* =========================================================
+/* ========================================
    ORGANISATEURS
-   ========================================================= */
+======================================== */
 
 .action-grid {
   display: grid;
@@ -286,9 +309,9 @@ button {
   gap: 18px;
 }
 
-/* =========================================================
+/* ========================================
    DOCUMENTS
-   ========================================================= */
+======================================== */
 
 .documents {
   display: grid;
@@ -299,11 +322,15 @@ button {
 .documents button {
   text-align: left;
   padding: 22px;
+
   background: white;
   color: #071a33;
+
   border: 1px solid #ddd;
   border-left: 4px solid #c9a227;
+
   border-radius: 10px;
+
   font-weight: 800;
   cursor: pointer;
 }
@@ -318,13 +345,14 @@ button {
   color: #657080;
 }
 
-/* =========================================================
+/* ========================================
    FOOTER
-   ========================================================= */
+======================================== */
 
 footer {
   background: #071a33;
   color: white;
+
   padding: 25px 7%;
 
   display: flex;
@@ -340,9 +368,9 @@ footer span {
   font-weight: 800;
 }
 
-/* =========================================================
-   VOTES D'ARBITRAGE
-   ========================================================= */
+/* ========================================
+   VOTES ARBITRAGE
+======================================== */
 
 .vote-button {
   padding: 10px 16px;
@@ -383,16 +411,14 @@ footer span {
   box-shadow: 0 0 0 2px #d1d5db;
 }
 
-/* =========================================================
+/* ========================================
    COMPÉTITION TERMINÉE
-   ========================================================= */
+======================================== */
 
 .competition.competition-terminee {
   background: #e8f5e9;
   border: 2px solid #2e7d32;
-
-  box-shadow:
-    0 0 0 1px rgba(46, 125, 50, 0.12);
+  box-shadow: 0 0 0 1px rgba(46, 125, 50, 0.12);
 }
 
 .competition.competition-terminee .manage-button {
@@ -400,9 +426,9 @@ footer span {
   color: white;
 }
 
-/* =========================================================
+/* ========================================
    CLASSEMENTS
-   ========================================================= */
+======================================== */
 
 .ranking-table {
   width: 100%;
@@ -450,34 +476,33 @@ footer span {
   font-weight: 700;
 }
 
-/* =========================================================
+/* ========================================
    TABLETTE / MOBILE
-   ========================================================= */
+======================================== */
 
 @media (max-width: 700px) {
-
   .header {
     padding: 18px 6%;
-    gap: 15px;
+    gap: 16px;
   }
 
   .header h1 {
-    font-size: clamp(25px, 7vw, 34px);
-  }
-
-  .header-logo,
-  .afdp-logo {
-    width: 75px;
-    height: 75px;
-
-    max-width: 75px;
-    max-height: 75px;
-
-    flex-basis: 75px;
+    font-size: 27px;
   }
 
   .subtitle {
     font-size: 14px;
+  }
+
+  .header-logo,
+  .afdp-logo {
+    width: 70px !important;
+    height: 70px !important;
+
+    max-width: 70px !important;
+    max-height: 70px !important;
+
+    flex: 0 0 70px;
   }
 
   .navigation {
@@ -514,48 +539,36 @@ footer span {
   }
 }
 
-/* =========================================================
+/* ========================================
    TRÈS PETITS ÉCRANS
-   ========================================================= */
+======================================== */
 
 @media (max-width: 450px) {
-
   .header {
-    padding: 15px 5%;
-    gap: 10px;
+    padding: 16px 5%;
   }
 
   .header h1 {
-    font-size: 25px;
+    font-size: 23px;
   }
 
   .header-logo,
   .afdp-logo {
-    width: 62px;
-    height: 62px;
+    width: 58px !important;
+    height: 58px !important;
 
-    max-width: 62px;
-    max-height: 62px;
+    max-width: 58px !important;
+    max-height: 58px !important;
 
-    flex-basis: 62px;
-  }
-
-  .surtitle {
-    font-size: 11px;
-    letter-spacing: 1.5px;
-  }
-
-  .subtitle {
-    font-size: 13px;
+    flex: 0 0 58px;
   }
 }
 
-/* =========================================================
+/* ========================================
    IMPRESSION
-   ========================================================= */
+======================================== */
 
 @media print {
-
   .header,
   .navigation,
   .competition-tabs,
