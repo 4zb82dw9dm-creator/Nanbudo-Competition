@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import CompetitionDashboard from "./CompetitionDashboard";
+import {
+  BACKUP_KINDS,
+  COMPETITIONS_STORAGE_KEY,
+  buildBackup,
+  cloneForStorage,
+  createBackupFilename,
+  downloadJsonFile,
+  parseBackupFileContent,
+} from "./backupUtils";
 function CompetitionManager() {
   const importFileRef = useRef(null);
   const [competitions, setCompetitions] = useState(() => {
     try {
-      const saved = localStorage.getItem("nanbudo_competitions");
+      const saved = localStorage.getItem(COMPETITIONS_STORAGE_KEY);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -12,6 +21,8 @@ function CompetitionManager() {
   });
 
   const [showForm, setShowForm] = useState(false);
+  const importCompetitionRef = useRef(null);
+  const importAllRef = useRef(null);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
   const [form, setForm] = useState({
     nom: "",
@@ -23,7 +34,7 @@ function CompetitionManager() {
 
   useEffect(() => {
     localStorage.setItem(
-      "nanbudo_competitions",
+      COMPETITIONS_STORAGE_KEY,
       JSON.stringify(competitions)
     );
   }, [competitions]);
@@ -137,6 +148,134 @@ function CompetitionManager() {
       current.filter((competition) => competition.id !== id)
     );
   }
+
+
+  function exportCompetition(competition) {
+    const backup = buildBackup(BACKUP_KINDS.singleCompetition, {
+      competition: cloneForStorage(competition),
+    });
+
+    downloadJsonFile(
+      backup,
+      createBackupFilename("competition", competition)
+    );
+  }
+
+  function exportAllCompetitions() {
+    if (competitions.length === 0) {
+      alert("Aucune compétition à sauvegarder.");
+      return;
+    }
+
+    const backup = buildBackup(BACKUP_KINDS.allCompetitions, {
+      competitions: cloneForStorage(competitions),
+    });
+
+    downloadJsonFile(
+      backup,
+      createBackupFilename("toutes-les-competitions")
+    );
+  }
+
+  function importCompetitionBackup(file) {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const backup = parseBackupFileContent(String(reader.result || ""));
+
+        if (backup.kind !== BACKUP_KINDS.singleCompetition) {
+          alert("Ce fichier n'est pas une sauvegarde d'une compétition seule.");
+          return;
+        }
+
+        const importedCompetition = cloneForStorage(
+          backup.data.competition
+        );
+        const conflictingCompetition = competitions.find(
+          (competition) =>
+            String(competition.id) === String(importedCompetition.id)
+        );
+
+        if (conflictingCompetition) {
+          const replace = window.confirm(
+            `Une compétition avec le même identifiant existe déjà : ${conflictingCompetition.nom}.\n\nOK : remplacer cette compétition.\nAnnuler : annuler totalement l'import.`
+          );
+
+          if (!replace) {
+            alert("Import annulé. Aucune donnée existante n'a été modifiée.");
+            return;
+          }
+
+          setCompetitions((current) =>
+            current.map((competition) =>
+              String(competition.id) === String(importedCompetition.id)
+                ? importedCompetition
+                : competition
+            )
+          );
+          alert("Compétition restaurée en remplaçant l'ancienne version.");
+          return;
+        }
+
+        setCompetitions((current) => [...current, importedCompetition]);
+        alert("Compétition restaurée avec succès.");
+      } catch (error) {
+        alert(`Import refusé : ${error.message}`);
+      }
+    };
+
+    reader.onerror = () => {
+      alert("Impossible de lire le fichier de sauvegarde.");
+    };
+
+    reader.readAsText(file, "UTF-8");
+  }
+
+  function importAllCompetitionsBackup(file) {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const backup = parseBackupFileContent(String(reader.result || ""));
+
+        if (backup.kind !== BACKUP_KINDS.allCompetitions) {
+          alert("Ce fichier n'est pas une sauvegarde complète.");
+          return;
+        }
+
+        const importedCompetitions = cloneForStorage(
+          backup.data.competitions
+        );
+        const confirmed = window.confirm(
+          `Restaurer cette sauvegarde complète de ${importedCompetitions.length} compétition(s) ?\n\nLes compétitions actuellement présentes seront remplacées uniquement après cette confirmation.`
+        );
+
+        if (!confirmed) return;
+
+        setCompetitions(importedCompetitions);
+        setSelectedCompetitionId(null);
+        alert("Sauvegarde complète restaurée avec succès.");
+      } catch (error) {
+        alert(`Restauration refusée : ${error.message}`);
+      }
+    };
+
+    reader.onerror = () => {
+      alert("Impossible de lire le fichier de sauvegarde.");
+    };
+
+    reader.readAsText(file, "UTF-8");
+  }
+
+  function handleBackupFile(event, importer) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    importer(file);
+    event.target.value = "";
+  }
 function updateCompetition(updatedCompetition) {
   setCompetitions((current) =>
     current.map((competition) =>
@@ -194,6 +333,62 @@ if (selectedCompetition) {
           Importer une compétition
         </button>
       </div>
+
+      <section className="backup-panel" aria-labelledby="backup-title">
+        <div>
+          <p className="surtitle">SAUVEGARDE</p>
+          <h3 id="backup-title">Sauvegarde et restauration</h3>
+          <p>
+            Exportez les données locales avant une compétition ou
+            restaurez une sauvegarde JSON Nanbudo Competition.
+          </p>
+        </div>
+
+        <div className="backup-actions">
+          <input
+            ref={importCompetitionRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) =>
+              handleBackupFile(event, importCompetitionBackup)
+            }
+            style={{ display: "none" }}
+          />
+          <input
+            ref={importAllRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) =>
+              handleBackupFile(event, importAllCompetitionsBackup)
+            }
+            style={{ display: "none" }}
+          />
+
+          <button
+            className="manage-button"
+            type="button"
+            onClick={() => importCompetitionRef.current?.click()}
+          >
+            Restaurer une compétition
+          </button>
+
+          <button
+            className="manage-button"
+            type="button"
+            onClick={exportAllCompetitions}
+          >
+            Sauvegarder toutes les compétitions
+          </button>
+
+          <button
+            className="delete-button"
+            type="button"
+            onClick={() => importAllRef.current?.click()}
+          >
+            Restaurer une sauvegarde complète
+          </button>
+        </div>
+      </section>
 
       {showForm && (
         <form
@@ -335,9 +530,18 @@ if (selectedCompetition) {
                 <button
                   className="manage-button"
                   type="button"
+                  onClick={() => exportCompetition(competition)}
+                >
+                  Sauvegarder
+                </button>
+
+                <button
+                  className="manage-button"
+                  type="button"
                   onClick={() =>
-  setSelectedCompetitionId(competition.id)
-}                >
+                    setSelectedCompetitionId(competition.id)
+                  }
+                >
                   Gérer
                 </button>
 
