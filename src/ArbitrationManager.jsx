@@ -155,7 +155,7 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * COMBAT
+   * JU RANDORI — SÉLECTION D'UN COMBAT
    * =========================================================
    */
 
@@ -169,6 +169,381 @@ function ArbitrationManager({
     scrollToNotationSheet();
   }
 
+  /*
+   * =========================================================
+   * JU RANDORI — CLASSEMENT DE POULE
+   * =========================================================
+   */
+
+  function combatQualificationsFinished() {
+    if (!selectedPool) {
+      return false;
+    }
+
+    const matches = selectedPool.matches || [];
+
+    if (matches.length === 0) {
+      return false;
+    }
+
+    return matches.every(
+      (match) =>
+        match.statut === "Terminé" &&
+        Boolean(match.winnerId)
+    );
+  }
+
+  function calculateCombatRanking() {
+    if (!selectedPool) {
+      return [];
+    }
+
+    const competitorIds =
+      selectedPool.competitorIds || [];
+
+    const ranking = competitorIds.map(
+      (competitorId) => ({
+        competitorId,
+
+        combats: 0,
+        victoires: 0,
+        defaites: 0,
+
+        pointsPour: 0,
+        pointsContre: 0,
+
+        difference: 0,
+      })
+    );
+
+    function getRankingItem(id) {
+      return ranking.find((item) =>
+        sameId(item.competitorId, id)
+      );
+    }
+
+    (selectedPool.matches || []).forEach(
+      (match) => {
+        if (match.statut !== "Terminé") {
+          return;
+        }
+
+        const aka =
+          getRankingItem(match.akaId);
+
+        const shiro =
+          getRankingItem(match.shiroId);
+
+        if (!aka || !shiro) {
+          return;
+        }
+
+        const akaScore =
+          Number(match.akaScore) || 0;
+
+        const shiroScore =
+          Number(match.shiroScore) || 0;
+
+        aka.combats += 1;
+        shiro.combats += 1;
+
+        aka.pointsPour += akaScore;
+        aka.pointsContre += shiroScore;
+
+        shiro.pointsPour += shiroScore;
+        shiro.pointsContre += akaScore;
+
+        if (
+          sameId(
+            match.winnerId,
+            match.akaId
+          )
+        ) {
+          aka.victoires += 1;
+          shiro.defaites += 1;
+        }
+
+        if (
+          sameId(
+            match.winnerId,
+            match.shiroId
+          )
+        ) {
+          shiro.victoires += 1;
+          aka.defaites += 1;
+        }
+      }
+    );
+
+    ranking.forEach((item) => {
+      item.difference =
+        item.pointsPour -
+        item.pointsContre;
+    });
+
+    return ranking.sort((a, b) => {
+      /*
+       * 1 — Nombre de victoires
+       */
+
+      if (b.victoires !== a.victoires) {
+        return b.victoires - a.victoires;
+      }
+
+      /*
+       * 2 — Différence de points
+       */
+
+      if (
+        b.difference !== a.difference
+      ) {
+        return (
+          b.difference -
+          a.difference
+        );
+      }
+
+      /*
+       * 3 — Points marqués
+       */
+
+      if (
+        b.pointsPour !== a.pointsPour
+      ) {
+        return (
+          b.pointsPour -
+          a.pointsPour
+        );
+      }
+
+      /*
+       * 4 — Stabilité du classement
+       */
+
+      return String(
+        a.competitorId
+      ).localeCompare(
+        String(b.competitorId)
+      );
+    });
+  }
+
+  /*
+   * =========================================================
+   * JU RANDORI — CRÉATION DES FINALES
+   * =========================================================
+   */
+
+  function createCombatFinal({
+    id,
+    type,
+    label,
+    akaId,
+    shiroId,
+  }) {
+    return {
+      id,
+
+      type,
+      label,
+
+      akaId,
+      shiroId,
+
+      assauts: Array.from(
+        { length: 7 },
+        () => ({
+          juge1: "",
+          juge2: "",
+          juge3: "",
+        })
+      ),
+
+      akaScore: null,
+      shiroScore: null,
+
+      winnerId: null,
+
+      penalitesAka: {
+        keikoku: 0,
+        fujubun: 0,
+        chui: 0,
+        hansokuChui: 0,
+        shikaku: false,
+      },
+
+      penalitesShiro: {
+        keikoku: 0,
+        fujubun: 0,
+        chui: 0,
+        hansokuChui: 0,
+        shikaku: false,
+      },
+
+      decisionType: null,
+      decisionDrapeaux: null,
+
+      statut: "À arbitrer",
+    };
+  }
+
+  /*
+   * =========================================================
+   * JU RANDORI — CLÔTURE DE LA POULE
+   * =========================================================
+   */
+
+  function validateCombatClosing() {
+    if (!selectedPool) {
+      return;
+    }
+
+    if (!combatQualificationsFinished()) {
+      alert(
+        "Tous les combats de poule doivent être terminés avant la clôture."
+      );
+      return;
+    }
+
+    if (!selectedClosingMode) {
+      alert("Choisis un mode de clôture.");
+      return;
+    }
+
+    const ranking =
+      calculateCombatRanking();
+
+    /*
+     * ---------------------------------------------------------
+     * CLASSEMENT DIRECT
+     * ---------------------------------------------------------
+     */
+
+    if (selectedClosingMode === "direct") {
+      const podium = {
+        firstId:
+          ranking[0]?.competitorId || null,
+
+        secondId:
+          ranking[1]?.competitorId || null,
+
+        thirdId:
+          ranking[2]?.competitorId || null,
+
+        fourthId:
+          ranking[3]?.competitorId || null,
+      };
+
+      const updatedPools = pools.map(
+        (pool) =>
+          sameId(pool.id, selectedPool.id)
+            ? {
+                ...pool,
+
+                closingMode: "direct",
+
+                rankingLocked: ranking,
+
+                finalMatches: [],
+
+                podium,
+
+                statut: "Terminée",
+              }
+            : pool
+      );
+
+      onUpdateCompetition({
+        ...competition,
+        pools: updatedPools,
+      });
+
+      setSelectedClosingMode("");
+
+      return;
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * FINALE + PETITE FINALE
+     * ---------------------------------------------------------
+     */
+
+    if (selectedClosingMode === "finals") {
+      if (ranking.length < 4) {
+        alert(
+          "Il faut au moins 4 compétiteurs pour organiser une finale et une petite finale."
+        );
+        return;
+      }
+
+      const now = Date.now();
+
+      const newFinalMatches = [
+        createCombatFinal({
+          id: `${now}-combat-finale`,
+
+          type: "finale",
+
+          label: "FINALE",
+
+          akaId:
+            ranking[0].competitorId,
+
+          shiroId:
+            ranking[1].competitorId,
+        }),
+
+        createCombatFinal({
+          id: `${now}-combat-petite-finale`,
+
+          type: "petite-finale",
+
+          label: "PETITE FINALE",
+
+          akaId:
+            ranking[2].competitorId,
+
+          shiroId:
+            ranking[3].competitorId,
+        }),
+      ];
+
+      const updatedPools = pools.map(
+        (pool) =>
+          sameId(pool.id, selectedPool.id)
+            ? {
+                ...pool,
+
+                closingMode: "finals",
+
+                rankingLocked: ranking,
+
+                finalMatches:
+                  newFinalMatches,
+
+                podium: null,
+
+                statut: "Phase finale",
+              }
+            : pool
+      );
+
+      onUpdateCompetition({
+        ...competition,
+        pools: updatedPools,
+      });
+
+      setSelectedClosingMode("");
+    }
+  }
+
+  /*
+   * =========================================================
+   * JU RANDORI — PODIUM
+   * =========================================================
+   */
+
   function calculateCombatPodium(
     finalMatchesList
   ) {
@@ -176,10 +551,11 @@ function ArbitrationManager({
       (match) => match.type === "finale"
     );
 
-    const petiteFinale = finalMatchesList.find(
-      (match) =>
-        match.type === "petite-finale"
-    );
+    const petiteFinale =
+      finalMatchesList.find(
+        (match) =>
+          match.type === "petite-finale"
+      );
 
     if (
       !finale ||
@@ -219,6 +595,12 @@ function ArbitrationManager({
     };
   }
 
+  /*
+   * =========================================================
+   * JU RANDORI — SAUVEGARDE
+   * =========================================================
+   */
+
   function saveOfficialMatch(result) {
     if (!selectedPool || !selectedMatch) {
       return;
@@ -246,11 +628,17 @@ function ArbitrationManager({
       akaScore: result.scoreAka,
       shiroScore: result.scoreShiro,
 
-      scoreBrutAka: result.scoreBrutAka,
-      scoreBrutShiro: result.scoreBrutShiro,
+      scoreBrutAka:
+        result.scoreBrutAka,
 
-      penalitesAka: result.penalitesAka,
-      penalitesShiro: result.penalitesShiro,
+      scoreBrutShiro:
+        result.scoreBrutShiro,
+
+      penalitesAka:
+        result.penalitesAka,
+
+      penalitesShiro:
+        result.penalitesShiro,
 
       pointsNegatifsAka:
         result.pointsNegatifsAka,
@@ -258,61 +646,93 @@ function ArbitrationManager({
       pointsNegatifsShiro:
         result.pointsNegatifsShiro,
 
-      akaDisqualifie: result.akaDisqualifie,
+      akaDisqualifie:
+        result.akaDisqualifie,
+
       shiroDisqualifie:
         result.shiroDisqualifie,
 
       winnerId,
 
       decisionType:
-        result.decisionType || "score",
+        result.decisionType ||
+        "score",
 
       decisionDrapeaux:
-        result.decisionDrapeaux || null,
+        result.decisionDrapeaux ||
+        null,
 
       statut: "Terminé",
     };
 
-    const updatedPools = pools.map((pool) => {
-      if (!sameId(pool.id, selectedPool.id)) {
-        return pool;
-      }
+    const updatedPools = pools.map(
+      (pool) => {
+        if (
+          !sameId(
+            pool.id,
+            selectedPool.id
+          )
+        ) {
+          return pool;
+        }
 
-      if (selectedMatchType === "final") {
-        const updatedFinalMatches = (
-          pool.finalMatches || []
-        ).map((match) =>
-          sameId(match.id, selectedMatch.id)
-            ? savedMatch
-            : match
-        );
+        /*
+         * PHASE FINALE
+         */
 
-        const podium =
-          calculateCombatPodium(
-            updatedFinalMatches
+        if (
+          selectedMatchType === "final"
+        ) {
+          const updatedFinalMatches = (
+            pool.finalMatches || []
+          ).map((match) =>
+            sameId(
+              match.id,
+              selectedMatch.id
+            )
+              ? savedMatch
+              : match
           );
+
+          const podium =
+            calculateCombatPodium(
+              updatedFinalMatches
+            );
+
+          return {
+            ...pool,
+
+            finalMatches:
+              updatedFinalMatches,
+
+            podium,
+
+            statut: podium
+              ? "Terminée"
+              : "Phase finale",
+          };
+        }
+
+        /*
+         * RENCONTRE DE POULE
+         */
 
         return {
           ...pool,
-          finalMatches: updatedFinalMatches,
-          podium,
-          statut: podium
-            ? "Terminée"
-            : "Phase finale",
-        };
-      }
 
-      return {
-        ...pool,
-
-        matches: (pool.matches || []).map(
-          (match) =>
-            sameId(match.id, selectedMatch.id)
+          matches: (
+            pool.matches || []
+          ).map((match) =>
+            sameId(
+              match.id,
+              selectedMatch.id
+            )
               ? savedMatch
               : match
-        ),
-      };
-    });
+          ),
+        };
+      }
+    );
 
     onUpdateCompetition({
       ...competition,
@@ -339,7 +759,8 @@ function ArbitrationManager({
           passage.competitorId,
           competitorId
         ) &&
-        Number(passage.numero) === Number(numero)
+        Number(passage.numero) ===
+          Number(numero)
     );
   }
 
@@ -357,7 +778,10 @@ function ArbitrationManager({
   }
 
   function saveKataPassage(result) {
-    if (!selectedPool || !selectedPassage) {
+    if (
+      !selectedPool ||
+      !selectedPassage
+    ) {
       return;
     }
 
@@ -381,22 +805,31 @@ function ArbitrationManager({
         notesRetenues:
           result.notesRetenues || [],
 
-        noteMinRetiree: result.noteMin,
-        noteMaxRetiree: result.noteMax,
+        noteMinRetiree:
+          result.noteMin,
 
-        score: Number(result.score) || 0,
+        noteMaxRetiree:
+          result.noteMax,
+
+        score:
+          Number(result.score) || 0,
 
         statut: "Terminé",
       };
     });
 
-    const updatedPools = pools.map((pool) =>
-      sameId(pool.id, selectedPool.id)
-        ? {
-            ...pool,
-            passages: updatedPassages,
-          }
-        : pool
+    const updatedPools = pools.map(
+      (pool) =>
+        sameId(
+          pool.id,
+          selectedPool.id
+        )
+          ? {
+              ...pool,
+              passages:
+                updatedPassages,
+            }
+          : pool
     );
 
     onUpdateCompetition({
@@ -422,29 +855,39 @@ function ArbitrationManager({
       selectedPool.competitorIds || []
     )
       .map((competitorId) => {
-        const passage1 = getKataPassage(
-          competitorId,
-          1
-        );
+        const passage1 =
+          getKataPassage(
+            competitorId,
+            1
+          );
 
-        const passage2 = getKataPassage(
-          competitorId,
-          2
-        );
+        const passage2 =
+          getKataPassage(
+            competitorId,
+            2
+          );
 
         const passage1Finished =
-          passage1?.statut === "Terminé";
+          passage1?.statut ===
+          "Terminé";
 
         const passage2Finished =
-          passage2?.statut === "Terminé";
+          passage2?.statut ===
+          "Terminé";
 
-        const score1 = passage1Finished
-          ? Number(passage1.score) || 0
-          : null;
+        const score1 =
+          passage1Finished
+            ? Number(
+                passage1.score
+              ) || 0
+            : null;
 
-        const score2 = passage2Finished
-          ? Number(passage2.score) || 0
-          : null;
+        const score2 =
+          passage2Finished
+            ? Number(
+                passage2.score
+              ) || 0
+            : null;
 
         const passagesTermines =
           Number(passage1Finished) +
@@ -455,8 +898,10 @@ function ArbitrationManager({
           passage1: score1,
           passage2: score2,
           passagesTermines,
+
           total:
-            (score1 || 0) + (score2 || 0),
+            (score1 || 0) +
+            (score2 || 0),
         };
       })
       .sort((a, b) => {
@@ -496,25 +941,31 @@ function ArbitrationManager({
     const competitorIds =
       selectedPool.competitorIds || [];
 
-    if (competitorIds.length === 0) {
+    if (
+      competitorIds.length === 0
+    ) {
       return false;
     }
 
     return competitorIds.every(
       (competitorId) => {
-        const passage1 = getKataPassage(
-          competitorId,
-          1
-        );
+        const passage1 =
+          getKataPassage(
+            competitorId,
+            1
+          );
 
-        const passage2 = getKataPassage(
-          competitorId,
-          2
-        );
+        const passage2 =
+          getKataPassage(
+            competitorId,
+            2
+          );
 
         return (
-          passage1?.statut === "Terminé" &&
-          passage2?.statut === "Terminé"
+          passage1?.statut ===
+            "Terminé" &&
+          passage2?.statut ===
+            "Terminé"
         );
       }
     );
@@ -522,7 +973,7 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * KATA — CLÔTURE
+   * KATA — CRÉATION D'UN PASSAGE
    * =========================================================
    */
 
@@ -559,12 +1010,20 @@ function ArbitrationManager({
     };
   }
 
+  /*
+   * =========================================================
+   * KATA — CLÔTURE
+   * =========================================================
+   */
+
   function validateKataClosing() {
     if (!selectedPool) {
       return;
     }
 
-    if (!kataQualificationsFinished()) {
+    if (
+      !kataQualificationsFinished()
+    ) {
       alert(
         "Les deux passages de tous les compétiteurs doivent être terminés."
       );
@@ -572,36 +1031,51 @@ function ArbitrationManager({
     }
 
     if (!selectedClosingMode) {
-      alert("Choisis un mode de clôture.");
+      alert(
+        "Choisis un mode de clôture."
+      );
       return;
     }
 
-    const ranking = calculateKataRanking();
+    const ranking =
+      calculateKataRanking();
 
-    if (selectedClosingMode === "direct") {
+    if (
+      selectedClosingMode ===
+      "direct"
+    ) {
       const podium = {
         firstId:
-          ranking[0]?.competitorId || null,
+          ranking[0]
+            ?.competitorId || null,
 
         secondId:
-          ranking[1]?.competitorId || null,
+          ranking[1]
+            ?.competitorId || null,
 
         thirdId:
-          ranking[2]?.competitorId || null,
+          ranking[2]
+            ?.competitorId || null,
 
         fourthId:
-          ranking[3]?.competitorId || null,
+          ranking[3]
+            ?.competitorId || null,
       };
 
-      const updatedPools = pools.map(
-        (pool) =>
-          sameId(pool.id, selectedPool.id)
+      const updatedPools =
+        pools.map((pool) =>
+          sameId(
+            pool.id,
+            selectedPool.id
+          )
             ? {
                 ...pool,
 
-                closingMode: "direct",
+                closingMode:
+                  "direct",
 
-                rankingLocked: ranking,
+                rankingLocked:
+                  ranking,
 
                 finalPassages: [],
                 finalMatches: [],
@@ -613,7 +1087,7 @@ function ArbitrationManager({
                 statut: "Terminée",
               }
             : pool
-      );
+        );
 
       onUpdateCompetition({
         ...competition,
@@ -621,10 +1095,14 @@ function ArbitrationManager({
       });
 
       setSelectedClosingMode("");
+
       return;
     }
 
-    if (selectedClosingMode === "finals") {
+    if (
+      selectedClosingMode ===
+      "finals"
+    ) {
       if (ranking.length < 4) {
         alert(
           "Il faut au moins 4 compétiteurs pour organiser une finale et une petite finale."
@@ -668,15 +1146,20 @@ function ArbitrationManager({
         }),
       ];
 
-      const updatedPools = pools.map(
-        (pool) =>
-          sameId(pool.id, selectedPool.id)
+      const updatedPools =
+        pools.map((pool) =>
+          sameId(
+            pool.id,
+            selectedPool.id
+          )
             ? {
                 ...pool,
 
-                closingMode: "finals",
+                closingMode:
+                  "finals",
 
-                rankingLocked: ranking,
+                rankingLocked:
+                  ranking,
 
                 finalPassages:
                   newFinalPassages,
@@ -685,17 +1168,19 @@ function ArbitrationManager({
 
                 kataFinalResults: {
                   finale: null,
-                  "petite-finale": null,
+                  "petite-finale":
+                    null,
                 },
 
                 kataTieBreaks: {},
 
                 podium: null,
 
-                statut: "Phase finale",
+                statut:
+                  "Phase finale",
               }
             : pool
-      );
+        );
 
       onUpdateCompetition({
         ...competition,
@@ -712,12 +1197,16 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function selectKataFinalPassage(passage) {
+  function selectKataFinalPassage(
+    passage
+  ) {
     if (!passage) {
       return;
     }
 
-    setSelectedFinalPassageId(passage.id);
+    setSelectedFinalPassageId(
+      passage.id
+    );
 
     setSelectedPassageId("");
     setSelectedMatchId("");
@@ -730,7 +1219,9 @@ function ArbitrationManager({
     pool,
     finalType
   ) {
-    return (pool.finalPassages || []).filter(
+    return (
+      pool.finalPassages || []
+    ).filter(
       (passage) =>
         passage.type === finalType
     );
@@ -738,7 +1229,7 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * RÉSOLUTION D'UNE CONFRONTATION KATA
+   * KATA — RÉSOLUTION FINALE
    * =========================================================
    */
 
@@ -747,7 +1238,9 @@ function ArbitrationManager({
     finalType
   ) {
     const savedResult =
-      pool.kataFinalResults?.[finalType];
+      pool.kataFinalResults?.[
+        finalType
+      ];
 
     if (savedResult?.winnerId) {
       return {
@@ -756,10 +1249,11 @@ function ArbitrationManager({
       };
     }
 
-    const group = getKataFinalGroup(
-      pool,
-      finalType
-    );
+    const group =
+      getKataFinalGroup(
+        pool,
+        finalType
+      );
 
     if (group.length !== 2) {
       return {
@@ -767,10 +1261,12 @@ function ArbitrationManager({
       };
     }
 
-    const allFinished = group.every(
-      (passage) =>
-        passage.statut === "Terminé"
-    );
+    const allFinished =
+      group.every(
+        (passage) =>
+          passage.statut ===
+          "Terminé"
+      );
 
     if (!allFinished) {
       return {
@@ -787,10 +1283,13 @@ function ArbitrationManager({
     if (scoreA > scoreB) {
       return {
         status: "score",
+
         winnerId:
           group[0].competitorId,
+
         loserId:
           group[1].competitorId,
+
         scoreA,
         scoreB,
       };
@@ -799,17 +1298,22 @@ function ArbitrationManager({
     if (scoreB > scoreA) {
       return {
         status: "score",
+
         winnerId:
           group[1].competitorId,
+
         loserId:
           group[0].competitorId,
+
         scoreA,
         scoreB,
       };
     }
 
     const tieBreak =
-      pool.kataTieBreaks?.[finalType];
+      pool.kataTieBreaks?.[
+        finalType
+      ];
 
     if (!tieBreak) {
       return {
@@ -823,10 +1327,13 @@ function ArbitrationManager({
     if (tieBreak.winnerId) {
       return {
         status: "resolved",
+
         winnerId:
           tieBreak.winnerId,
+
         loserId:
           tieBreak.loserId,
+
         decisionType:
           tieBreak.decisionType,
       };
@@ -835,7 +1342,9 @@ function ArbitrationManager({
     const tiePassages =
       tieBreak.passages || [];
 
-    if (tiePassages.length !== 2) {
+    if (
+      tiePassages.length !== 2
+    ) {
       return {
         status: "tie",
         competitors: group,
@@ -845,7 +1354,8 @@ function ArbitrationManager({
     const tieFinished =
       tiePassages.every(
         (passage) =>
-          passage.statut === "Terminé"
+          passage.statut ===
+          "Terminé"
       );
 
     if (!tieFinished) {
@@ -856,20 +1366,27 @@ function ArbitrationManager({
     }
 
     const tieScoreA =
-      Number(tiePassages[0].score) || 0;
+      Number(
+        tiePassages[0].score
+      ) || 0;
 
     const tieScoreB =
-      Number(tiePassages[1].score) || 0;
+      Number(
+        tiePassages[1].score
+      ) || 0;
 
     if (tieScoreA > tieScoreB) {
       return {
-        status: "tiebreak-score",
+        status:
+          "tiebreak-score",
 
         winnerId:
-          tiePassages[0].competitorId,
+          tiePassages[0]
+            .competitorId,
 
         loserId:
-          tiePassages[1].competitorId,
+          tiePassages[1]
+            .competitorId,
 
         scoreA: tieScoreA,
         scoreB: tieScoreB,
@@ -878,13 +1395,16 @@ function ArbitrationManager({
 
     if (tieScoreB > tieScoreA) {
       return {
-        status: "tiebreak-score",
+        status:
+          "tiebreak-score",
 
         winnerId:
-          tiePassages[1].competitorId,
+          tiePassages[1]
+            .competitorId,
 
         loserId:
-          tiePassages[0].competitorId,
+          tiePassages[0]
+            .competitorId,
 
         scoreA: tieScoreA,
         scoreB: tieScoreB,
@@ -901,18 +1421,21 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * ENREGISTREMENT AUTOMATIQUE DES RÉSULTATS KATA
+   * KATA — RÉSOLUTION AUTOMATIQUE
    * =========================================================
    */
 
-  function resolveKataFinalResults(pool) {
+  function resolveKataFinalResults(
+    pool
+  ) {
     const types = [
       "finale",
       "petite-finale",
     ];
 
     const currentResults = {
-      ...(pool.kataFinalResults || {}),
+      ...(pool.kataFinalResults ||
+        {}),
     };
 
     types.forEach((finalType) => {
@@ -927,16 +1450,24 @@ function ArbitrationManager({
         getKataFinalStatus(
           {
             ...pool,
+
             kataFinalResults:
               currentResults,
           },
+
           finalType
         );
 
-      if (status.status === "score") {
+      if (
+        status.status === "score"
+      ) {
         currentResults[finalType] = {
-          winnerId: status.winnerId,
-          loserId: status.loserId,
+          winnerId:
+            status.winnerId,
+
+          loserId:
+            status.loserId,
+
           decisionType: "score",
         };
       }
@@ -946,20 +1477,29 @@ function ArbitrationManager({
         "tiebreak-score"
       ) {
         currentResults[finalType] = {
-          winnerId: status.winnerId,
-          loserId: status.loserId,
+          winnerId:
+            status.winnerId,
+
+          loserId:
+            status.loserId,
+
           decisionType:
             "kata-impose",
         };
       }
 
       if (
-        status.status === "resolved" &&
+        status.status ===
+          "resolved" &&
         status.winnerId
       ) {
         currentResults[finalType] = {
-          winnerId: status.winnerId,
-          loserId: status.loserId,
+          winnerId:
+            status.winnerId,
+
+          loserId:
+            status.loserId,
+
           decisionType:
             status.decisionType ||
             "drapeaux",
@@ -971,7 +1511,9 @@ function ArbitrationManager({
       currentResults.finale;
 
     const bronze =
-      currentResults["petite-finale"];
+      currentResults[
+        "petite-finale"
+      ];
 
     const podium =
       finale?.winnerId &&
@@ -1007,11 +1549,13 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * SAUVEGARDE D'UN PASSAGE DE FINALE
+   * KATA — SAUVEGARDE FINALE
    * =========================================================
    */
 
-  function saveKataFinalPassage(result) {
+  function saveKataFinalPassage(
+    result
+  ) {
     if (
       !selectedPool ||
       !selectedFinalPassage
@@ -1029,7 +1573,8 @@ function ArbitrationManager({
 
     if (!isTieBreak) {
       const updatedFinalPassages = (
-        selectedPool.finalPassages || []
+        selectedPool.finalPassages ||
+        []
       ).map((passage) => {
         if (
           !sameId(
@@ -1043,10 +1588,12 @@ function ArbitrationManager({
         return {
           ...passage,
 
-          notes: result.notes || [],
+          notes:
+            result.notes || [],
 
           notesRetenues:
-            result.notesRetenues || [],
+            result.notesRetenues ||
+            [],
 
           noteMinRetiree:
             result.noteMin,
@@ -1055,7 +1602,8 @@ function ArbitrationManager({
             result.noteMax,
 
           score:
-            Number(result.score) || 0,
+            Number(result.score) ||
+            0,
 
           statut: "Terminé",
         };
@@ -1063,6 +1611,7 @@ function ArbitrationManager({
 
       updatedPool = {
         ...updatedPool,
+
         finalPassages:
           updatedFinalPassages,
       };
@@ -1096,10 +1645,12 @@ function ArbitrationManager({
         return {
           ...passage,
 
-          notes: result.notes || [],
+          notes:
+            result.notes || [],
 
           notesRetenues:
-            result.notesRetenues || [],
+            result.notesRetenues ||
+            [],
 
           noteMinRetiree:
             result.noteMin,
@@ -1108,7 +1659,8 @@ function ArbitrationManager({
             result.noteMax,
 
           score:
-            Number(result.score) || 0,
+            Number(result.score) ||
+            0,
 
           statut: "Terminé",
         };
@@ -1141,12 +1693,15 @@ function ArbitrationManager({
       ...resolution,
     };
 
-    const updatedPools = pools.map(
-      (pool) =>
-        sameId(pool.id, selectedPool.id)
+    const updatedPools =
+      pools.map((pool) =>
+        sameId(
+          pool.id,
+          selectedPool.id
+        )
           ? updatedPool
           : pool
-    );
+      );
 
     onUpdateCompetition({
       ...competition,
@@ -1158,11 +1713,13 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * LANCER LE KATA IMPOSÉ
+   * KATA — LANCER DÉPARTAGE
    * =========================================================
    */
 
-  function startKataTieBreak(finalType) {
+  function startKataTieBreak(
+    finalType
+  ) {
     if (!selectedPool) {
       return;
     }
@@ -1189,31 +1746,38 @@ function ArbitrationManager({
 
     const now = Date.now();
 
-    const tiePassages = group.map(
-      (passage, index) =>
-        createEmptyKataPassage({
-          id: `${now}-${finalType}-departage-${
-            index + 1
-          }`,
+    const tiePassages =
+      group.map(
+        (passage, index) =>
+          createEmptyKataPassage({
+            id: `${now}-${finalType}-departage-${
+              index + 1
+            }`,
 
-          type: "departage",
+            type: "departage",
 
-          label: "Kata imposé",
+            label: "Kata imposé",
 
-          competitorId:
-            passage.competitorId,
+            competitorId:
+              passage.competitorId,
 
-          phase: "departage",
-        })
+            phase: "departage",
+          })
+      );
+
+    tiePassages.forEach(
+      (passage) => {
+        passage.finalType =
+          finalType;
+      }
     );
 
-    tiePassages.forEach((passage) => {
-      passage.finalType = finalType;
-    });
-
-    const updatedPools = pools.map(
-      (pool) =>
-        sameId(pool.id, selectedPool.id)
+    const updatedPools =
+      pools.map((pool) =>
+        sameId(
+          pool.id,
+          selectedPool.id
+        )
           ? {
               ...pool,
 
@@ -1234,10 +1798,11 @@ function ArbitrationManager({
 
               podium: null,
 
-              statut: "Phase finale",
+              statut:
+                "Phase finale",
             }
           : pool
-    );
+      );
 
     onUpdateCompetition({
       ...competition,
@@ -1247,7 +1812,7 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * DÉCISION AUX DRAPEAUX KATA
+   * KATA — DRAPEAUX
    * =========================================================
    */
 
@@ -1278,7 +1843,10 @@ function ArbitrationManager({
     const loserId =
       competitorIds.find(
         (id) =>
-          !sameId(id, winnerId)
+          !sameId(
+            id,
+            winnerId
+          )
       ) || null;
 
     if (!loserId) {
@@ -1327,12 +1895,15 @@ function ArbitrationManager({
       ...resolution,
     };
 
-    const updatedPools = pools.map(
-      (pool) =>
-        sameId(pool.id, selectedPool.id)
+    const updatedPools =
+      pools.map((pool) =>
+        sameId(
+          pool.id,
+          selectedPool.id
+        )
           ? updatedPool
           : pool
-    );
+      );
 
     onUpdateCompetition({
       ...competition,
@@ -1357,9 +1928,12 @@ function ArbitrationManager({
     const shiro =
       getCompetitor(match.shiroId);
 
-    const winner = match.winnerId
-      ? getCompetitor(match.winnerId)
-      : null;
+    const winner =
+      match.winnerId
+        ? getCompetitor(
+            match.winnerId
+          )
+        : null;
 
     return (
       <article
@@ -1391,7 +1965,8 @@ function ArbitrationManager({
               : "Inconnu"}
           </h3>
 
-          {match.statut === "Terminé" && (
+          {match.statut ===
+            "Terminé" && (
             <div className="beta-note">
               <strong>
                 {match.akaScore}
@@ -1408,7 +1983,8 @@ function ArbitrationManager({
               {match.decisionType ===
                 "drapeaux" && (
                 <p>
-                  🏁 Décision aux drapeaux
+                  🏁 Décision aux
+                  drapeaux
                 </p>
               )}
 
@@ -1427,10 +2003,14 @@ function ArbitrationManager({
           className="manage-button"
           type="button"
           onClick={() =>
-            selectMatch(match, matchType)
+            selectMatch(
+              match,
+              matchType
+            )
           }
         >
-          {match.statut === "Terminé"
+          {match.statut ===
+          "Terminé"
             ? "Modifier"
             : "Arbitrer"}
         </button>
@@ -1454,28 +2034,36 @@ function ArbitrationManager({
       return null;
     }
 
-    const passage1 = getKataPassage(
-      competitorId,
-      1
-    );
+    const passage1 =
+      getKataPassage(
+        competitorId,
+        1
+      );
 
-    const passage2 = getKataPassage(
-      competitorId,
-      2
-    );
+    const passage2 =
+      getKataPassage(
+        competitorId,
+        2
+      );
 
     const passage1Finished =
-      passage1?.statut === "Terminé";
+      passage1?.statut ===
+      "Terminé";
 
     const passage2Finished =
-      passage2?.statut === "Terminé";
+      passage2?.statut ===
+      "Terminé";
 
     const total =
       (passage1Finished
-        ? Number(passage1.score) || 0
+        ? Number(
+            passage1.score
+          ) || 0
         : 0) +
       (passage2Finished
-        ? Number(passage2.score) || 0
+        ? Number(
+            passage2.score
+          ) || 0
         : 0);
 
     return (
@@ -1577,10 +2165,13 @@ function ArbitrationManager({
     const groupPassages =
       finalPassages.filter(
         (passage) =>
-          passage.type === finalType
+          passage.type ===
+          finalType
       );
 
-    if (groupPassages.length === 0) {
+    if (
+      groupPassages.length === 0
+    ) {
       return null;
     }
 
@@ -1608,70 +2199,77 @@ function ArbitrationManager({
         </div>
 
         <div className="competition-list">
-          {groupPassages.map((passage) => {
-            const competitor =
-              getCompetitor(
-                passage.competitorId
-              );
+          {groupPassages.map(
+            (passage) => {
+              const competitor =
+                getCompetitor(
+                  passage.competitorId
+                );
 
-            if (!competitor) {
-              return null;
-            }
+              if (!competitor) {
+                return null;
+              }
 
-            return (
-              <article
-                className={`competition ${
-                  passage.statut === "Terminé"
-                    ? "competition-terminee"
-                    : ""
-                }`}
-                key={passage.id}
-              >
-                <div>
-                  <p className="surtitle">
-                    {passage.label}
-                  </p>
-
-                  <h3>
-                    {competitor.nom}{" "}
-                    {competitor.prenom}
-                  </h3>
-
-                  <p>
-                    {competitor.club ||
-                      "Club non renseigné"}
-                  </p>
-
-                  {passage.statut ===
-                    "Terminé" && (
-                    <div className="beta-note">
-                      <strong>
-                        Note :{" "}
-                        {Number(
-                          passage.score
-                        ).toFixed(1)}
-                      </strong>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  className="manage-button"
-                  type="button"
-                  onClick={() =>
-                    selectKataFinalPassage(
-                      passage
-                    )
-                  }
+              return (
+                <article
+                  className={`competition ${
+                    passage.statut ===
+                    "Terminé"
+                      ? "competition-terminee"
+                      : ""
+                  }`}
+                  key={passage.id}
                 >
-                  {passage.statut ===
-                  "Terminé"
-                    ? "Modifier la note"
-                    : "Noter le Kata"}
-                </button>
-              </article>
-            );
-          })}
+                  <div>
+                    <p className="surtitle">
+                      {passage.label}
+                    </p>
+
+                    <h3>
+                      {competitor.nom}{" "}
+                      {
+                        competitor.prenom
+                      }
+                    </h3>
+
+                    <p>
+                      {competitor.club ||
+                        "Club non renseigné"}
+                    </p>
+
+                    {passage.statut ===
+                      "Terminé" && (
+                      <div className="beta-note">
+                        <strong>
+                          Note :{" "}
+                          {Number(
+                            passage.score
+                          ).toFixed(
+                            1
+                          )}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    className="manage-button"
+                    type="button"
+                    onClick={() =>
+                      selectKataFinalPassage(
+                        passage
+                      )
+                    }
+                  >
+                    {passage.statut ===
+                    "Terminé"
+                      ? "Modifier la note"
+                      : "Noter le Kata"}
+                  </button>
+                </article>
+              );
+            }
+          )}
         </div>
 
         {status.status === "tie" && (
@@ -1728,75 +2326,81 @@ function ArbitrationManager({
               </h3>
 
               <div className="competition-list">
-                {(tieBreak.passages || []).map(
-                  (passage) => {
-                    const competitor =
-                      getCompetitor(
-                        passage.competitorId
-                      );
-
-                    if (!competitor) {
-                      return null;
-                    }
-
-                    return (
-                      <article
-                        className={`competition ${
-                          passage.statut ===
-                          "Terminé"
-                            ? "competition-terminee"
-                            : ""
-                        }`}
-                        key={passage.id}
-                      >
-                        <div>
-                          <p className="surtitle">
-                            KATA IMPOSÉ
-                          </p>
-
-                          <h3>
-                            {competitor.nom}{" "}
-                            {competitor.prenom}
-                          </h3>
-
-                          {passage.statut ===
-                            "Terminé" && (
-                            <p>
-                              Note :{" "}
-                              <strong>
-                                {Number(
-                                  passage.score
-                                ).toFixed(
-                                  1
-                                )}
-                              </strong>
-                            </p>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          className="manage-button"
-                          onClick={() =>
-                            selectKataFinalPassage(
-                              passage
-                            )
-                          }
-                        >
-                          {passage.statut ===
-                          "Terminé"
-                            ? "Modifier la note"
-                            : "Noter le Kata imposé"}
-                        </button>
-                      </article>
+                {(
+                  tieBreak.passages ||
+                  []
+                ).map((passage) => {
+                  const competitor =
+                    getCompetitor(
+                      passage.competitorId
                     );
+
+                  if (!competitor) {
+                    return null;
                   }
-                )}
+
+                  return (
+                    <article
+                      className={`competition ${
+                        passage.statut ===
+                        "Terminé"
+                          ? "competition-terminee"
+                          : ""
+                      }`}
+                      key={passage.id}
+                    >
+                      <div>
+                        <p className="surtitle">
+                          KATA IMPOSÉ
+                        </p>
+
+                        <h3>
+                          {
+                            competitor.nom
+                          }{" "}
+                          {
+                            competitor.prenom
+                          }
+                        </h3>
+
+                        {passage.statut ===
+                          "Terminé" && (
+                          <p>
+                            Note :{" "}
+                            <strong>
+                              {Number(
+                                passage.score
+                              ).toFixed(
+                                1
+                              )}
+                            </strong>
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        className="manage-button"
+                        onClick={() =>
+                          selectKataFinalPassage(
+                            passage
+                          )
+                        }
+                      >
+                        {passage.statut ===
+                        "Terminé"
+                          ? "Modifier la note"
+                          : "Noter le Kata imposé"}
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
             </div>
           )}
 
-        {status.status === "flags" && (
+        {status.status ===
+          "flags" && (
           <div className="competition-form">
             <p className="surtitle">
               ÉGALITÉ PERSISTANTE
@@ -1807,9 +2411,9 @@ function ArbitrationManager({
             </h3>
 
             <p>
-              Les compétiteurs sont encore
-              à égalité après le Kata
-              imposé.
+              Les compétiteurs sont
+              encore à égalité après le
+              Kata imposé.
             </p>
 
             <p>
@@ -1845,8 +2449,12 @@ function ArbitrationManager({
                       }
                     >
                       🏁{" "}
-                      {competitor.nom}{" "}
-                      {competitor.prenom}
+                      {
+                        competitor.nom
+                      }{" "}
+                      {
+                        competitor.prenom
+                      }
                     </button>
                   );
                 }
@@ -1855,7 +2463,8 @@ function ArbitrationManager({
           </div>
         )}
 
-        {(status.status === "score" ||
+        {(status.status ===
+          "score" ||
           status.status ===
             "tiebreak-score" ||
           status.status ===
@@ -1892,8 +2501,8 @@ function ArbitrationManager({
               {status.decisionType ===
                 "drapeaux" && (
                 <p>
-                  🏁 Victoire par décision
-                  aux drapeaux.
+                  🏁 Victoire par
+                  décision aux drapeaux.
                 </p>
               )}
             </div>
@@ -1901,6 +2510,12 @@ function ArbitrationManager({
       </section>
     );
   }
+
+  /*
+   * =========================================================
+   * CLASSEMENTS CALCULÉS
+   * =========================================================
+   */
 
   const kataRanking =
     kataMode && selectedPool
@@ -1910,6 +2525,16 @@ function ArbitrationManager({
   const qualificationsFinished =
     kataMode && selectedPool
       ? kataQualificationsFinished()
+      : false;
+
+  const combatRanking =
+    !kataMode && selectedPool
+      ? calculateCombatRanking()
+      : [];
+
+  const combatFinished =
+    !kataMode && selectedPool
+      ? combatQualificationsFinished()
       : false;
 
   /*
@@ -1962,7 +2587,9 @@ function ArbitrationManager({
 
                   resetSelections();
 
-                  setSelectedClosingMode("");
+                  setSelectedClosingMode(
+                    ""
+                  );
                 }}
               >
                 <option value="">
@@ -1996,11 +2623,12 @@ function ArbitrationManager({
             </label>
           </div>
 
-          {/* ===============================
+          {/* ==========================================
               KATA
-          =============================== */}
+          ========================================== */}
 
-          {selectedPool && kataMode && (
+          {selectedPool &&
+            kataMode && (
             <>
               <section className="category-section">
                 <div className="category-section-header">
@@ -2017,7 +2645,8 @@ function ArbitrationManager({
 
                     <p>
                       Chaque compétiteur
-                      effectue deux passages.
+                      effectue deux
+                      passages.
                     </p>
                   </div>
                 </div>
@@ -2053,24 +2682,27 @@ function ArbitrationManager({
                   <div className="ranking-table">
                     <div className="ranking-header">
                       <span>Place</span>
-
                       <span>
                         Compétiteur
                       </span>
-
                       <span>P1</span>
                       <span>P2</span>
                       <span>Total</span>
                     </div>
 
                     {kataRanking.map(
-                      (item, index) => {
+                      (
+                        item,
+                        index
+                      ) => {
                         const competitor =
                           getCompetitor(
                             item.competitorId
                           );
 
-                        if (!competitor) {
+                        if (
+                          !competitor
+                        ) {
                           return null;
                         }
 
@@ -2082,11 +2714,14 @@ function ArbitrationManager({
                             }
                           >
                             <strong>
-                              {index + 1}
+                              {index +
+                                1}
                             </strong>
 
                             <strong>
-                              {competitor.nom}{" "}
+                              {
+                                competitor.nom
+                              }{" "}
                               {
                                 competitor.prenom
                               }
@@ -2140,13 +2775,15 @@ function ArbitrationManager({
                     </p>
 
                     <h3>
-                      Clôture de la catégorie
+                      Clôture de la
+                      catégorie
                     </h3>
 
                     <p>
-                      Les deux passages de
-                      tous les compétiteurs
-                      sont terminés.
+                      Les deux passages
+                      de tous les
+                      compétiteurs sont
+                      terminés.
                     </p>
 
                     <label>
@@ -2156,9 +2793,12 @@ function ArbitrationManager({
                         value={
                           selectedClosingMode
                         }
-                        onChange={(event) =>
+                        onChange={(
+                          event
+                        ) =>
                           setSelectedClosingMode(
-                            event.target.value
+                            event.target
+                              .value
                           )
                         }
                       >
@@ -2167,7 +2807,8 @@ function ArbitrationManager({
                         </option>
 
                         <option value="direct">
-                          Classement direct
+                          Classement
+                          direct
                         </option>
 
                         <option value="finals">
@@ -2220,11 +2861,13 @@ function ArbitrationManager({
                     <p>
                       🥇{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .firstId
                       )?.nom || "—"}{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .firstId
                       )?.prenom || ""}
                     </p>
@@ -2232,11 +2875,13 @@ function ArbitrationManager({
                     <p>
                       🥈{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .secondId
                       )?.nom || "—"}{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .secondId
                       )?.prenom || ""}
                     </p>
@@ -2244,11 +2889,13 @@ function ArbitrationManager({
                     <p>
                       🥉{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .thirdId
                       )?.nom || "—"}{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .thirdId
                       )?.prenom || ""}
                     </p>
@@ -2258,11 +2905,12 @@ function ArbitrationManager({
             </>
           )}
 
-          {/* ===============================
-              COMBAT
-          =============================== */}
+          {/* ==========================================
+              JU RANDORI
+          ========================================== */}
 
-          {selectedPool && !kataMode && (
+          {selectedPool &&
+            !kataMode && (
             <>
               <section className="category-section">
                 <div className="category-section-header">
@@ -2284,15 +2932,17 @@ function ArbitrationManager({
                           "Terminé"
                       ).length
                     }
-                    /
-                    {poolMatches.length}{" "}
+                    /{poolMatches.length}{" "}
                     terminées
                   </span>
                 </div>
 
                 <div className="competition-list">
                   {poolMatches.map(
-                    (match, index) =>
+                    (
+                      match,
+                      index
+                    ) =>
                       renderMatch(
                         match,
                         `RENCONTRE ${
@@ -2304,7 +2954,178 @@ function ArbitrationManager({
                 </div>
               </section>
 
-              {finalMatches.length > 0 && (
+              {/* CLASSEMENT DE POULE */}
+
+              <section className="category-section">
+                <div className="category-section-header">
+                  <div>
+                    <p className="surtitle">
+                      CLASSEMENT
+                    </p>
+
+                    <h3>
+                      {selectedPool
+                        .rankingLocked
+                        ?.length
+                        ? "Classement de la poule"
+                        : "Classement provisoire"}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="pool-ranking">
+                  <div className="ranking-table">
+                    <div className="ranking-header">
+                      <span>Place</span>
+
+                      <span>
+                        Compétiteur
+                      </span>
+
+                      <span>V</span>
+
+                      <span>+/-</span>
+
+                      <span>Pts</span>
+                    </div>
+
+                    {combatRanking.map(
+                      (
+                        item,
+                        index
+                      ) => {
+                        const competitor =
+                          getCompetitor(
+                            item.competitorId
+                          );
+
+                        if (
+                          !competitor
+                        ) {
+                          return null;
+                        }
+
+                        return (
+                          <div
+                            className="ranking-row"
+                            key={
+                              item.competitorId
+                            }
+                          >
+                            <strong>
+                              {index +
+                                1}
+                            </strong>
+
+                            <strong>
+                              {
+                                competitor.nom
+                              }{" "}
+                              {
+                                competitor.prenom
+                              }
+                            </strong>
+
+                            <span>
+                              {
+                                item.victoires
+                              }
+                            </span>
+
+                            <span>
+                              {item.difference >
+                              0
+                                ? "+"
+                                : ""}
+                              {
+                                item.difference
+                              }
+                            </span>
+
+                            <strong>
+                              {
+                                item.pointsPour
+                              }
+                            </strong>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* CLÔTURE JU RANDORI */}
+
+              {combatFinished &&
+                !selectedPool.closingMode &&
+                finalMatches.length ===
+                  0 && (
+                  <div className="competition-form">
+                    <p className="surtitle">
+                      CLÔTURE
+                    </p>
+
+                    <h3>
+                      Clôture de la
+                      catégorie
+                    </h3>
+
+                    <p>
+                      Toutes les
+                      rencontres de
+                      poule sont
+                      terminées.
+                    </p>
+
+                    <label>
+                      Mode de clôture
+
+                      <select
+                        value={
+                          selectedClosingMode
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setSelectedClosingMode(
+                            event.target
+                              .value
+                          )
+                        }
+                      >
+                        <option value="">
+                          Choisir
+                        </option>
+
+                        <option value="direct">
+                          Classement
+                          direct
+                        </option>
+
+                        <option value="finals">
+                          Finale + petite
+                          finale
+                        </option>
+                      </select>
+                    </label>
+
+                    <button
+                      className="primary"
+                      type="button"
+                      onClick={
+                        validateCombatClosing
+                      }
+                    >
+                      Valider la clôture
+                    </button>
+                  </div>
+                )}
+
+              {/* PHASE FINALE JU RANDORI */}
+
+              {finalMatches.length >
+                0 && (
                 <section className="category-section">
                   <div className="category-section-header">
                     <div>
@@ -2324,14 +3145,18 @@ function ArbitrationManager({
                       (match) =>
                         renderMatch(
                           match,
+
                           match.label ||
                             "PHASE FINALE",
+
                           "final"
                         )
                     )}
                   </div>
                 </section>
               )}
+
+              {/* PODIUM JU RANDORI */}
 
               {selectedPool.podium && (
                 <section className="category-section">
@@ -2347,11 +3172,13 @@ function ArbitrationManager({
                     <p>
                       🥇{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .firstId
                       )?.nom || "—"}{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .firstId
                       )?.prenom || ""}
                     </p>
@@ -2359,11 +3186,13 @@ function ArbitrationManager({
                     <p>
                       🥈{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .secondId
                       )?.nom || "—"}{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .secondId
                       )?.prenom || ""}
                     </p>
@@ -2371,11 +3200,13 @@ function ArbitrationManager({
                     <p>
                       🥉{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .thirdId
                       )?.nom || "—"}{" "}
                       {getCompetitor(
-                        selectedPool.podium
+                        selectedPool
+                          .podium
                           .thirdId
                       )?.prenom || ""}
                     </p>
@@ -2385,15 +3216,17 @@ function ArbitrationManager({
             </>
           )}
 
-          {/* ===============================
+          {/* ==========================================
               FEUILLE DE NOTATION
-          =============================== */}
+          ========================================== */}
 
           {(selectedMatch ||
             selectedPassage ||
             selectedFinalPassage) && (
             <div
-              ref={notationSheetRef}
+              ref={
+                notationSheetRef
+              }
               className="notation-sheet-anchor"
             >
               {selectedMatch &&
@@ -2407,13 +3240,15 @@ function ArbitrationManager({
                     match={{
                       ...selectedMatch,
 
-                      aka: getCompetitor(
-                        selectedMatch.akaId
-                      ),
+                      aka:
+                        getCompetitor(
+                          selectedMatch.akaId
+                        ),
 
-                      shiro: getCompetitor(
-                        selectedMatch.shiroId
-                      ),
+                      shiro:
+                        getCompetitor(
+                          selectedMatch.shiroId
+                        ),
                     }}
                     onSave={
                       saveOfficialMatch
