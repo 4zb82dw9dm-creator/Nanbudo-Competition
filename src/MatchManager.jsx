@@ -16,9 +16,6 @@ function MatchManager({
    * =========================================================
    */
 
-  // Compatible avec :
-  // mode="kata"
-  // ou type="kata"
   const kataMode =
     mode === "kata" || type === "kata";
 
@@ -36,13 +33,7 @@ function MatchManager({
       return initialResult.notes.map(Number);
     }
 
-    return [
-      4.5,
-      4.5,
-      4.5,
-      4.5,
-      4.5,
-    ];
+    return [4.5, 4.5, 4.5, 4.5, 4.5];
   });
 
   function modifierNoteKata(index, valeur) {
@@ -61,121 +52,119 @@ function MatchManager({
     const noteMax = Math.max(...notes);
     const noteMin = Math.min(...notes);
 
-    /*
-     * On retire UNE note maximale
-     * et UNE note minimale.
-     *
-     * Si plusieurs juges ont la même note,
-     * une seule occurrence est retirée.
-     */
+    const indexMax = notes.indexOf(noteMax);
 
-    const indexMax =
-      notes.indexOf(noteMax);
-
-    let indexMin =
-      notes.indexOf(noteMin);
+    let indexMin = notes.indexOf(noteMin);
 
     /*
-     * Cas particulier :
-     * si les 5 notes sont identiques,
-     * indexMax et indexMin seraient identiques.
-     * On retire alors deux juges différents.
+     * Si toutes les notes sont identiques,
+     * on retire deux juges différents.
      */
 
     if (indexMin === indexMax) {
       indexMin = notes.findIndex(
-        (_, index) =>
-          index !== indexMax
+        (_, index) => index !== indexMax
       );
     }
 
-    const notesRetenues =
-      notes.filter(
-        (_, index) =>
-          index !== indexMax &&
-          index !== indexMin
-      );
+    const notesRetenues = notes.filter(
+      (_, index) =>
+        index !== indexMax &&
+        index !== indexMin
+    );
 
-    const total =
-      notesRetenues.reduce(
-        (somme, note) =>
-          somme + note,
-        0
-      );
+    const total = notesRetenues.reduce(
+      (somme, note) => somme + note,
+      0
+    );
 
     return {
       notes,
-
       indexMax,
       indexMin,
-
       noteMax,
       noteMin,
-
       notesRetenues,
-
-      total: Number(
-        total.toFixed(1)
-      ),
+      total: Number(total.toFixed(1)),
     };
   }
 
-  const resultatKata =
-    calculerKata();
+  const resultatKata = calculerKata();
 
   /*
    * =========================================================
-   * JU RANDORI
+   * JU RANDORI — ASSAUTS
    * =========================================================
    */
 
-  const [assauts, setAssauts] =
-    useState(() => {
-      if (
-        match?.assauts &&
-        match.assauts.length === 7
-      ) {
-        return match.assauts;
-      }
+  const [assauts, setAssauts] = useState(() => {
+    if (
+      match?.assauts &&
+      match.assauts.length === 7
+    ) {
+      return match.assauts;
+    }
 
-      return Array.from(
-        { length: 7 },
-        () => ({
-          juge1: "",
-          juge2: "",
-          juge3: "",
-        })
-      );
-    });
-
-  const [
-    penalitesAka,
-    setPenalitesAka,
-  ] = useState(() => {
-    return (
-      match?.penalitesAka || {
-        keikoku: 0,
-        fujubun: 0,
-        chui: 0,
-        hansokuChui: 0,
-        shikaku: false,
-      }
+    return Array.from(
+      { length: 7 },
+      () => ({
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      })
     );
   });
 
+  /*
+   * =========================================================
+   * JU RANDORI — PÉNALITÉS
+   * =========================================================
+   */
+
+  const [penalitesAka, setPenalitesAka] =
+    useState(() => {
+      return (
+        match?.penalitesAka || {
+          keikoku: 0,
+          fujubun: 0,
+          chui: 0,
+          hansokuChui: 0,
+          shikaku: false,
+        }
+      );
+    });
+
+  const [penalitesShiro, setPenalitesShiro] =
+    useState(() => {
+      return (
+        match?.penalitesShiro || {
+          keikoku: 0,
+          fujubun: 0,
+          chui: 0,
+          hansokuChui: 0,
+          shikaku: false,
+        }
+      );
+    });
+
+  /*
+   * =========================================================
+   * JU RANDORI — DÉCISION AUX DRAPEAUX
+   * =========================================================
+   */
+
   const [
-    penalitesShiro,
-    setPenalitesShiro,
+    decisionDrapeaux,
+    setDecisionDrapeaux,
   ] = useState(() => {
-    return (
-      match?.penalitesShiro || {
-        keikoku: 0,
-        fujubun: 0,
-        chui: 0,
-        hansokuChui: 0,
-        shikaku: false,
-      }
-    );
+    if (
+      match?.decisionDrapeaux === "aka" ||
+      match?.decisionDrapeaux === "shiro"
+    ) {
+      return match.decisionDrapeaux;
+    }
+
+    return "";
   });
 
   function modifierVote(
@@ -184,26 +173,35 @@ function MatchManager({
     valeur
   ) {
     setAssauts((actuels) =>
-      actuels.map(
-        (assaut, index) =>
-          index === numeroAssaut
-            ? {
-                ...assaut,
-                [juge]: valeur,
-              }
-            : assaut
+      actuels.map((assaut, index) =>
+        index === numeroAssaut
+          ? {
+              ...assaut,
+              [juge]: valeur,
+            }
+          : assaut
       )
     );
+
+    /*
+     * Si le combat est modifié, l'ancienne
+     * décision aux drapeaux n'est plus valable.
+     */
+    setDecisionDrapeaux("");
   }
+
+  /*
+   * =========================================================
+   * CALCUL DU SCORE
+   * =========================================================
+   */
 
   function calculerScore() {
     let aka = 0;
     let shiro = 0;
 
     assauts.forEach((assaut) => {
-      Object.values(
-        assaut
-      ).forEach((vote) => {
+      Object.values(assaut).forEach((vote) => {
         if (vote === "aka") {
           aka += 1;
         }
@@ -212,9 +210,7 @@ function MatchManager({
           shiro += 1;
         }
 
-        if (
-          vote === "hikiwake"
-        ) {
+        if (vote === "hikiwake") {
           aka += 1;
           shiro += 1;
         }
@@ -227,8 +223,13 @@ function MatchManager({
     };
   }
 
-  const score =
-    calculerScore();
+  const score = calculerScore();
+
+  /*
+   * =========================================================
+   * GESTION DES PÉNALITÉS
+   * =========================================================
+   */
 
   function ajouterPenalite(
     couleur,
@@ -244,112 +245,87 @@ function MatchManager({
         ...actuelles,
       };
 
-      if (
-        typePenalite ===
-        "shikaku"
-      ) {
-        nouvelles.shikaku =
-          true;
+      if (typePenalite === "shikaku") {
+        nouvelles.shikaku = true;
 
         return nouvelles;
       }
 
-      if (
-        typePenalite ===
-        "keikoku"
-      ) {
-        nouvelles.keikoku +=
-          1;
+      if (typePenalite === "keikoku") {
+        nouvelles.keikoku += 1;
 
-        // 3 Keikoku = 1 Fujubun
-        if (
-          nouvelles.keikoku >=
-          3
-        ) {
-          nouvelles.keikoku =
-            0;
-
-          nouvelles.fujubun +=
-            1;
+        if (nouvelles.keikoku >= 3) {
+          nouvelles.keikoku = 0;
+          nouvelles.fujubun += 1;
         }
       }
 
-      if (
-        typePenalite ===
-        "fujubun"
-      ) {
-        nouvelles.fujubun +=
-          1;
+      if (typePenalite === "fujubun") {
+        nouvelles.fujubun += 1;
       }
 
-      if (
-        typePenalite === "chui"
-      ) {
+      if (typePenalite === "chui") {
         nouvelles.chui += 1;
       }
 
-      if (
-        typePenalite ===
-        "hansokuChui"
-      ) {
-        nouvelles.hansokuChui +=
-          1;
+      if (typePenalite === "hansokuChui") {
+        nouvelles.hansokuChui += 1;
       }
 
-      // 3 Fujubun = Hansoku Chui
-      if (
-        nouvelles.fujubun >=
-        3
-      ) {
-        nouvelles.fujubun =
-          0;
-
-        nouvelles.hansokuChui +=
-          1;
+      if (nouvelles.fujubun >= 3) {
+        nouvelles.fujubun = 0;
+        nouvelles.hansokuChui += 1;
       }
 
       return nouvelles;
     });
+
+    /*
+     * Une modification des pénalités peut
+     * changer le résultat du combat.
+     */
+    setDecisionDrapeaux("");
   }
 
-  function calculerPointsNegatifs(
-    penalites
-  ) {
+  function calculerPointsNegatifs(penalites) {
     return (
       penalites.fujubun +
       penalites.chui * 2 +
-      penalites.hansokuChui *
-        3
+      penalites.hansokuChui * 3
     );
   }
 
   const pointsNegatifsAka =
-    calculerPointsNegatifs(
-      penalitesAka
-    );
+    calculerPointsNegatifs(penalitesAka);
 
   const pointsNegatifsShiro =
-    calculerPointsNegatifs(
-      penalitesShiro
-    );
+    calculerPointsNegatifs(penalitesShiro);
 
   const scoreFinalAka =
-    score.aka -
-    pointsNegatifsAka;
+    score.aka - pointsNegatifsAka;
 
   const scoreFinalShiro =
-    score.shiro -
-    pointsNegatifsShiro;
+    score.shiro - pointsNegatifsShiro;
+
+  /*
+   * =========================================================
+   * DISQUALIFICATION
+   * =========================================================
+   */
 
   const akaDisqualifie =
-    penalitesAka.hansokuChui >
-      0 ||
+    penalitesAka.hansokuChui > 0 ||
     penalitesAka.shikaku;
 
   const shiroDisqualifie =
-    penalitesShiro
-      .hansokuChui > 0 ||
+    penalitesShiro.hansokuChui > 0 ||
     penalitesShiro.shikaku;
+
+  /*
+   * =========================================================
+   * DÉTERMINATION AUTOMATIQUE DU VAINQUEUR
+   * =========================================================
+   */
 
   function determinerVainqueur() {
     if (
@@ -366,6 +342,10 @@ function MatchManager({
       return "aka";
     }
 
+    /*
+     * Si les deux sont disqualifiés,
+     * aucun vainqueur automatique.
+     */
     if (
       akaDisqualifie &&
       shiroDisqualifie
@@ -390,8 +370,31 @@ function MatchManager({
     return null;
   }
 
-  const vainqueur =
+  const vainqueurAutomatique =
     determinerVainqueur();
+
+  /*
+   * Une égalité nécessitant les drapeaux
+   * existe uniquement si aucun combattant
+   * n'est disqualifié et que les scores
+   * restent identiques.
+   */
+
+  const egaliteAResoudre =
+    !akaDisqualifie &&
+    !shiroDisqualifie &&
+    vainqueurAutomatique === null;
+
+  /*
+   * Vainqueur réellement enregistré.
+   */
+
+  const vainqueurOfficiel =
+    vainqueurAutomatique ||
+    (egaliteAResoudre &&
+    decisionDrapeaux
+      ? decisionDrapeaux
+      : null);
 
   /*
    * =========================================================
@@ -420,12 +423,8 @@ function MatchManager({
 
             <p>
               {competiteur
-                ? `${
-                    competiteur.nom ||
-                    ""
-                  } ${
-                    competiteur.prenom ||
-                    ""
+                ? `${competiteur.nom || ""} ${
+                    competiteur.prenom || ""
                   }`
                 : "Compétiteur"}
             </p>
@@ -445,14 +444,11 @@ function MatchManager({
             </strong>
 
             <h2>
-              {resultatKata.total.toFixed(
-                1
-              )}
+              {resultatKata.total.toFixed(1)}
             </h2>
 
             <p>
-              Total des 3 notes
-              retenues
+              Total des 3 notes retenues
             </p>
           </div>
         </div>
@@ -463,126 +459,97 @@ function MatchManager({
           </h3>
 
           <p>
-            Notes autorisées :
-            3,9 à 4,9.
+            Notes autorisées : 3,9 à 4,9.
           </p>
 
           <div className="penalties-grid">
-            {notesKata.map(
-              (note, index) => {
-                const eliminee =
-                  index ===
-                    resultatKata.indexMax ||
-                  index ===
-                    resultatKata.indexMin;
+            {notesKata.map((note, index) => {
+              const eliminee =
+                index === resultatKata.indexMax ||
+                index === resultatKata.indexMin;
 
-                return (
-                  <div
-                    className="penalty-card"
-                    key={index}
+              return (
+                <div
+                  className="penalty-card"
+                  key={index}
+                >
+                  <h3>
+                    Juge {index + 1}
+                  </h3>
+
+                  <h2>
+                    {Number(note).toFixed(1)}
+                  </h2>
+
+                  <input
+                    type="range"
+                    min="3.9"
+                    max="4.9"
+                    step="0.1"
+                    value={note}
+                    onChange={(event) =>
+                      modifierNoteKata(
+                        index,
+                        event.target.value
+                      )
+                    }
+                  />
+
+                  <select
+                    value={note}
+                    onChange={(event) =>
+                      modifierNoteKata(
+                        index,
+                        event.target.value
+                      )
+                    }
                   >
-                    <h3>
-                      Juge{" "}
-                      {index + 1}
-                    </h3>
+                    {[
+                      3.9,
+                      4.0,
+                      4.1,
+                      4.2,
+                      4.3,
+                      4.4,
+                      4.5,
+                      4.6,
+                      4.7,
+                      4.8,
+                      4.9,
+                    ].map((valeur) => (
+                      <option
+                        key={valeur}
+                        value={valeur}
+                      >
+                        {valeur.toFixed(1)}
+                      </option>
+                    ))}
+                  </select>
 
-                    <h2>
-                      {Number(
-                        note
-                      ).toFixed(1)}
-                    </h2>
+                  {index ===
+                    resultatKata.indexMax && (
+                    <p>
+                      ⬆️ Note la plus haute —
+                      retirée
+                    </p>
+                  )}
 
-                    <input
-                      type="range"
-                      min="3.9"
-                      max="4.9"
-                      step="0.1"
-                      value={note}
-                      onChange={(
-                        event
-                      ) =>
-                        modifierNoteKata(
-                          index,
-                          event
-                            .target
-                            .value
-                        )
-                      }
-                    />
+                  {index ===
+                    resultatKata.indexMin && (
+                    <p>
+                      ⬇️ Note la plus basse —
+                      retirée
+                    </p>
+                  )}
 
-                    <select
-                      value={note}
-                      onChange={(
-                        event
-                      ) =>
-                        modifierNoteKata(
-                          index,
-                          event
-                            .target
-                            .value
-                        )
-                      }
-                    >
-                      {[
-                        3.9,
-                        4.0,
-                        4.1,
-                        4.2,
-                        4.3,
-                        4.4,
-                        4.5,
-                        4.6,
-                        4.7,
-                        4.8,
-                        4.9,
-                      ].map(
-                        (
-                          valeur
-                        ) => (
-                          <option
-                            key={
-                              valeur
-                            }
-                            value={
-                              valeur
-                            }
-                          >
-                            {valeur.toFixed(
-                              1
-                            )}
-                          </option>
-                        )
-                      )}
-                    </select>
-
-                    {index ===
-                      resultatKata.indexMax && (
-                      <p>
-                        ⬆️ Note la
-                        plus haute —
-                        retirée
-                      </p>
-                    )}
-
-                    {index ===
-                      resultatKata.indexMin && (
-                      <p>
-                        ⬇️ Note la
-                        plus basse —
-                        retirée
-                      </p>
-                    )}
-
-                    {!eliminee && (
-                      <p>
-                        ✅ Note
-                        retenue
-                      </p>
-                    )}
-                  </div>
-                );
-              }
-            )}
+                  {!eliminee && (
+                    <p>
+                      ✅ Note retenue
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -594,29 +561,21 @@ function MatchManager({
           <p>
             Notes :{" "}
             {resultatKata.notes
-              .map((note) =>
-                note.toFixed(1)
-              )
+              .map((note) => note.toFixed(1))
               .join(" · ")}
           </p>
 
           <p>
-            Note la plus basse
-            retirée :{" "}
+            Note la plus basse retirée :{" "}
             <strong>
-              {resultatKata.noteMin.toFixed(
-                1
-              )}
+              {resultatKata.noteMin.toFixed(1)}
             </strong>
           </p>
 
           <p>
-            Note la plus haute
-            retirée :{" "}
+            Note la plus haute retirée :{" "}
             <strong>
-              {resultatKata.noteMax.toFixed(
-                1
-              )}
+              {resultatKata.noteMax.toFixed(1)}
             </strong>
           </p>
 
@@ -624,9 +583,7 @@ function MatchManager({
             Notes retenues :{" "}
             <strong>
               {resultatKata.notesRetenues
-                .map((note) =>
-                  note.toFixed(1)
-                )
+                .map((note) => note.toFixed(1))
                 .join(" + ")}
             </strong>
           </p>
@@ -634,9 +591,7 @@ function MatchManager({
           <p>
             Total :{" "}
             <strong>
-              {resultatKata.total.toFixed(
-                1
-              )}
+              {resultatKata.total.toFixed(1)}
             </strong>
           </p>
 
@@ -676,12 +631,10 @@ function MatchManager({
             >
               {initialResult
                 ? `Enregistrer les modifications du passage ${
-                    passage ||
-                    ""
+                    passage || ""
                   }`
                 : `Enregistrer le passage ${
-                    passage ||
-                    ""
+                    passage || ""
                   }`}
             </button>
           )}
@@ -728,15 +681,13 @@ function MatchManager({
 
           <p>
             Assauts : {score.aka} ·
-            Pénalités : -
-            {pointsNegatifsAka}
+            Pénalités : -{pointsNegatifsAka}
           </p>
 
           <p>
             {match?.aka?.nom ||
               "Compétiteur AKA"}{" "}
-            {match?.aka?.prenom ||
-              ""}
+            {match?.aka?.prenom || ""}
           </p>
         </div>
 
@@ -750,20 +701,21 @@ function MatchManager({
           </h2>
 
           <p>
-            Assauts :{" "}
-            {score.shiro} ·
-            Pénalités : -
-            {pointsNegatifsShiro}
+            Assauts : {score.shiro} ·
+            Pénalités : -{pointsNegatifsShiro}
           </p>
 
           <p>
             {match?.shiro?.nom ||
               "Compétiteur SHIRO"}{" "}
-            {match?.shiro?.prenom ||
-              ""}
+            {match?.shiro?.prenom || ""}
           </p>
         </div>
       </div>
+
+      {/* =====================================================
+          PÉNALITÉS
+      ===================================================== */}
 
       <div className="penalties">
         <h3>
@@ -777,19 +729,14 @@ function MatchManager({
             </h3>
 
             <p>
-              Keikoku :{" "}
-              {penalitesAka.keikoku}
+              Keikoku : {penalitesAka.keikoku}
               {" · "}
-              Fujubun :{" "}
-              {penalitesAka.fujubun}
+              Fujubun : {penalitesAka.fujubun}
               {" · "}
-              Chui :{" "}
-              {penalitesAka.chui}
+              Chui : {penalitesAka.chui}
               {" · "}
               Hansoku Chui :{" "}
-              {
-                penalitesAka.hansokuChui
-              }
+              {penalitesAka.hansokuChui}
             </p>
 
             <p>
@@ -872,31 +819,20 @@ function MatchManager({
             </h3>
 
             <p>
-              Keikoku :{" "}
-              {
-                penalitesShiro.keikoku
-              }
+              Keikoku : {penalitesShiro.keikoku}
               {" · "}
-              Fujubun :{" "}
-              {
-                penalitesShiro.fujubun
-              }
+              Fujubun : {penalitesShiro.fujubun}
               {" · "}
-              Chui :{" "}
-              {penalitesShiro.chui}
+              Chui : {penalitesShiro.chui}
               {" · "}
               Hansoku Chui :{" "}
-              {
-                penalitesShiro.hansokuChui
-              }
+              {penalitesShiro.hansokuChui}
             </p>
 
             <p>
               Points négatifs :{" "}
               <strong>
-                {
-                  pointsNegatifsShiro
-                }
+                {pointsNegatifsShiro}
               </strong>
             </p>
 
@@ -969,176 +905,279 @@ function MatchManager({
         </div>
       </div>
 
+      {/* =====================================================
+          ASSAUTS
+      ===================================================== */}
+
       <div className="assauts">
-        {assauts.map(
-          (assaut, index) => (
-            <div
-              className="assaut-card"
-              key={index}
-            >
-              <h3>
-                Assaut {index + 1}
-              </h3>
+        {assauts.map((assaut, index) => (
+          <div
+            className="assaut-card"
+            key={index}
+          >
+            <h3>
+              Assaut {index + 1}
+            </h3>
 
-              {[
-                "juge1",
-                "juge2",
-                "juge3",
-              ].map(
-                (
-                  juge,
-                  jugeIndex
-                ) => (
-                  <div
-                    className="juge"
-                    key={juge}
-                  >
-                    <span>
-                      Fukushin{" "}
-                      {jugeIndex +
-                        1}
-                    </span>
+            {[
+              "juge1",
+              "juge2",
+              "juge3",
+            ].map((juge, jugeIndex) => (
+              <div
+                className="juge"
+                key={juge}
+              >
+                <span>
+                  Fukushin {jugeIndex + 1}
+                </span>
 
-                    <button
-                      type="button"
-                      className={
-                        assaut[
-                          juge
-                        ] === "aka"
-                          ? "vote-button selected aka"
-                          : "vote-button"
-                      }
-                      onClick={() =>
-                        modifierVote(
-                          index,
-                          juge,
-                          "aka"
-                        )
-                      }
-                    >
-                      AKA
-                    </button>
+                <button
+                  type="button"
+                  className={
+                    assaut[juge] === "aka"
+                      ? "vote-button selected aka"
+                      : "vote-button"
+                  }
+                  onClick={() =>
+                    modifierVote(
+                      index,
+                      juge,
+                      "aka"
+                    )
+                  }
+                >
+                  AKA
+                </button>
 
-                    <button
-                      type="button"
-                      className={
-                        assaut[
-                          juge
-                        ] ===
-                        "hikiwake"
-                          ? "vote-button selected hikiwake"
-                          : "vote-button"
-                      }
-                      onClick={() =>
-                        modifierVote(
-                          index,
-                          juge,
-                          "hikiwake"
-                        )
-                      }
-                    >
-                      Hikiwake
-                    </button>
+                <button
+                  type="button"
+                  className={
+                    assaut[juge] ===
+                    "hikiwake"
+                      ? "vote-button selected hikiwake"
+                      : "vote-button"
+                  }
+                  onClick={() =>
+                    modifierVote(
+                      index,
+                      juge,
+                      "hikiwake"
+                    )
+                  }
+                >
+                  Hikiwake
+                </button>
 
-                    <button
-                      type="button"
-                      className={
-                        assaut[
-                          juge
-                        ] ===
-                        "shiro"
-                          ? "vote-button selected shiro"
-                          : "vote-button"
-                      }
-                      onClick={() =>
-                        modifierVote(
-                          index,
-                          juge,
-                          "shiro"
-                        )
-                      }
-                    >
-                      SHIRO
-                    </button>
-                  </div>
-                )
-              )}
-            </div>
-          )
-        )}
+                <button
+                  type="button"
+                  className={
+                    assaut[juge] === "shiro"
+                      ? "vote-button selected shiro"
+                      : "vote-button"
+                  }
+                  onClick={() =>
+                    modifierVote(
+                      index,
+                      juge,
+                      "shiro"
+                    )
+                  }
+                >
+                  SHIRO
+                </button>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
+
+      {/* =====================================================
+          RÉSULTAT
+      ===================================================== */}
 
       <div className="match-result">
         <h3>
-          Résultat provisoire
+          Résultat
         </h3>
 
         <p>
           AKA :{" "}
           <strong>
-            {score.aka}
+            {scoreFinalAka}
           </strong>
           {" — "}
           SHIRO :{" "}
           <strong>
-            {score.shiro}
+            {scoreFinalShiro}
           </strong>
         </p>
 
-        <p>
-          {akaDisqualifie &&
-            !shiroDisqualifie && (
-              <>
-                ⛔ AKA —
-                HANSOKU CHUI · 🏆
-                SHIRO vainqueur
-              </>
-            )}
+        {/* DISQUALIFICATION AKA */}
 
-          {shiroDisqualifie &&
-            !akaDisqualifie && (
-              <>
-                ⛔ SHIRO —
-                HANSOKU CHUI · 🏆
-                AKA vainqueur
-              </>
-            )}
+        {akaDisqualifie &&
+          !shiroDisqualifie && (
+            <div className="beta-note">
+              <strong>
+                🏆 SHIRO vainqueur
+              </strong>
 
-          {!akaDisqualifie &&
-            !shiroDisqualifie &&
-            vainqueur ===
-              "aka" && (
-              <>
+              <p>
+                AKA est disqualifié.
+              </p>
+            </div>
+          )}
+
+        {/* DISQUALIFICATION SHIRO */}
+
+        {shiroDisqualifie &&
+          !akaDisqualifie && (
+            <div className="beta-note">
+              <strong>
                 🏆 AKA vainqueur
-              </>
-            )}
+              </strong>
 
-          {!akaDisqualifie &&
-            !shiroDisqualifie &&
-            vainqueur ===
-              "shiro" && (
-              <>
-                🏆 SHIRO
-                vainqueur
-              </>
-            )}
+              <p>
+                SHIRO est disqualifié.
+              </p>
+            </div>
+          )}
 
-          {!akaDisqualifie &&
-            !shiroDisqualifie &&
-            vainqueur ===
-              null && (
-              <>Égalité</>
+        {/* DOUBLE DISQUALIFICATION */}
+
+        {akaDisqualifie &&
+          shiroDisqualifie && (
+            <div className="beta-note">
+              <strong>
+                ⛔ Double disqualification
+              </strong>
+
+              <p>
+                Le combat ne peut pas être
+                enregistré avec un vainqueur
+                automatique.
+              </p>
+            </div>
+          )}
+
+        {/* VICTOIRE AUTOMATIQUE AKA */}
+
+        {!akaDisqualifie &&
+          !shiroDisqualifie &&
+          vainqueurAutomatique === "aka" && (
+            <div className="beta-note">
+              <strong>
+                🏆 AKA vainqueur
+              </strong>
+
+              <p>
+                Victoire au score.
+              </p>
+            </div>
+          )}
+
+        {/* VICTOIRE AUTOMATIQUE SHIRO */}
+
+        {!akaDisqualifie &&
+          !shiroDisqualifie &&
+          vainqueurAutomatique === "shiro" && (
+            <div className="beta-note">
+              <strong>
+                🏆 SHIRO vainqueur
+              </strong>
+
+              <p>
+                Victoire au score.
+              </p>
+            </div>
+          )}
+
+        {/* ===================================================
+            ÉGALITÉ — DÉCISION AUX DRAPEAUX
+        =================================================== */}
+
+        {egaliteAResoudre && (
+          <div className="beta-note">
+            <strong>
+              🏁 Égalité — décision des arbitres requise
+            </strong>
+
+            <p>
+              Le score est de{" "}
+              <strong>
+                {scoreFinalAka} — {scoreFinalShiro}
+              </strong>.
+            </p>
+
+            <p>
+              Désigne le vainqueur conformément
+              à la décision arbitrale.
+            </p>
+
+            <div className="competition-actions">
+              <button
+                type="button"
+                className={
+                  decisionDrapeaux === "aka"
+                    ? "vote-button selected aka"
+                    : "vote-button"
+                }
+                onClick={() =>
+                  setDecisionDrapeaux("aka")
+                }
+              >
+                🔴 AKA vainqueur
+              </button>
+
+              <button
+                type="button"
+                className={
+                  decisionDrapeaux === "shiro"
+                    ? "vote-button selected shiro"
+                    : "vote-button"
+                }
+                onClick={() =>
+                  setDecisionDrapeaux("shiro")
+                }
+              >
+                ⚪ SHIRO vainqueur
+              </button>
+            </div>
+
+            {decisionDrapeaux && (
+              <div className="match-result">
+                <p>
+                  🏁 Décision aux drapeaux
+                </p>
+
+                <strong>
+                  🏆{" "}
+                  {decisionDrapeaux === "aka"
+                    ? "AKA"
+                    : "SHIRO"}{" "}
+                  vainqueur
+                </strong>
+              </div>
             )}
-        </p>
+          </div>
+        )}
+
+        {/* ===================================================
+            ENREGISTREMENT
+        =================================================== */}
 
         {onSave && (
           <button
             type="button"
             className="primary"
-            onClick={() =>
+            disabled={!vainqueurOfficiel}
+            onClick={() => {
+              if (!vainqueurOfficiel) {
+                return;
+              }
+
               onSave({
-                type:
-                  "ju-randori",
+                type: "ju-randori",
 
                 assauts,
 
@@ -1166,11 +1205,30 @@ function MatchManager({
 
                 shiroDisqualifie,
 
-                vainqueur,
-              })
-            }
+                vainqueur:
+                  vainqueurOfficiel,
+
+                decisionType:
+                  egaliteAResoudre
+                    ? "drapeaux"
+                    : akaDisqualifie ||
+                      shiroDisqualifie
+                    ? "disqualification"
+                    : "score",
+
+                decisionDrapeaux:
+                  egaliteAResoudre
+                    ? decisionDrapeaux
+                    : null,
+              });
+            }}
           >
-            Enregistrer le combat
+            {egaliteAResoudre &&
+            !decisionDrapeaux
+              ? "Désigner un vainqueur avant d'enregistrer"
+              : match?.statut === "Terminé"
+              ? "Enregistrer les modifications"
+              : "Enregistrer le combat"}
           </button>
         )}
       </div>
