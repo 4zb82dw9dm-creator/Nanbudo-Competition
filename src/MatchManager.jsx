@@ -9,6 +9,10 @@ function MatchManager({
   mode,
   type,
   eventType,
+
+  // Utilisé pour distinguer un passage normal,
+  // une finale et un Kata imposé de départage.
+  kataStage = "",
 }) {
   /*
    * =========================================================
@@ -21,7 +25,54 @@ function MatchManager({
 
   /*
    * =========================================================
-   * KATA
+   * KATA — TYPE DE PASSAGE
+   * =========================================================
+   */
+
+  const kataTieBreakMode =
+    kataStage === "tie-break" ||
+    passage === "Kata imposé";
+
+  const kataFinalMode =
+    kataStage === "final" ||
+    kataStage === "finale" ||
+    kataStage === "petite-finale";
+
+  function getKataTitle() {
+    if (kataTieBreakMode) {
+      return "Kata imposé de départage";
+    }
+
+    if (kataFinalMode) {
+      return "Notation de la phase finale";
+    }
+
+    return "Feuille de notation";
+  }
+
+  function getKataPassageLabel() {
+    if (kataTieBreakMode) {
+      return "Kata imposé par l'équipe d'arbitrage";
+    }
+
+    if (kataStage === "finale") {
+      return "Finale";
+    }
+
+    if (kataStage === "petite-finale") {
+      return "Petite finale";
+    }
+
+    if (passage) {
+      return `Passage ${passage}`;
+    }
+
+    return "";
+  }
+
+  /*
+   * =========================================================
+   * KATA — NOTES
    * =========================================================
    */
 
@@ -57,7 +108,7 @@ function MatchManager({
     let indexMin = notes.indexOf(noteMin);
 
     /*
-     * Si toutes les notes sont identiques,
+     * Si les 5 notes sont identiques,
      * on retire deux juges différents.
      */
 
@@ -183,16 +234,12 @@ function MatchManager({
       )
     );
 
-    /*
-     * Si le combat est modifié, l'ancienne
-     * décision aux drapeaux n'est plus valable.
-     */
     setDecisionDrapeaux("");
   }
 
   /*
    * =========================================================
-   * CALCUL DU SCORE
+   * JU RANDORI — SCORE
    * =========================================================
    */
 
@@ -227,7 +274,7 @@ function MatchManager({
 
   /*
    * =========================================================
-   * GESTION DES PÉNALITÉS
+   * JU RANDORI — PÉNALITÉS
    * =========================================================
    */
 
@@ -280,10 +327,6 @@ function MatchManager({
       return nouvelles;
     });
 
-    /*
-     * Une modification des pénalités peut
-     * changer le résultat du combat.
-     */
     setDecisionDrapeaux("");
   }
 
@@ -309,7 +352,7 @@ function MatchManager({
 
   /*
    * =========================================================
-   * DISQUALIFICATION
+   * JU RANDORI — DISQUALIFICATION
    * =========================================================
    */
 
@@ -323,7 +366,7 @@ function MatchManager({
 
   /*
    * =========================================================
-   * DÉTERMINATION AUTOMATIQUE DU VAINQUEUR
+   * JU RANDORI — VAINQUEUR
    * =========================================================
    */
 
@@ -342,10 +385,6 @@ function MatchManager({
       return "aka";
     }
 
-    /*
-     * Si les deux sont disqualifiés,
-     * aucun vainqueur automatique.
-     */
     if (
       akaDisqualifie &&
       shiroDisqualifie
@@ -373,21 +412,10 @@ function MatchManager({
   const vainqueurAutomatique =
     determinerVainqueur();
 
-  /*
-   * Une égalité nécessitant les drapeaux
-   * existe uniquement si aucun combattant
-   * n'est disqualifié et que les scores
-   * restent identiques.
-   */
-
   const egaliteAResoudre =
     !akaDisqualifie &&
     !shiroDisqualifie &&
     vainqueurAutomatique === null;
-
-  /*
-   * Vainqueur réellement enregistré.
-   */
 
   const vainqueurOfficiel =
     vainqueurAutomatique ||
@@ -409,16 +437,23 @@ function MatchManager({
       match?.aka ||
       null;
 
+    const passageLabel =
+      getKataPassageLabel();
+
     return (
       <section className="match-manager">
         <div className="manager-header">
           <div>
             <p className="surtitle">
-              KATA
+              {kataTieBreakMode
+                ? "DÉPARTAGE KATA"
+                : kataFinalMode
+                ? "PHASE FINALE KATA"
+                : "KATA"}
             </p>
 
             <h2>
-              Feuille de notation
+              {getKataTitle()}
             </h2>
 
             <p>
@@ -429,13 +464,32 @@ function MatchManager({
                 : "Compétiteur"}
             </p>
 
-            {passage && (
+            {passageLabel && (
               <p>
-                Passage {passage}
+                {passageLabel}
               </p>
             )}
           </div>
         </div>
+
+        {kataTieBreakMode && (
+          <div className="beta-note">
+            <strong>
+              ⚖️ Kata de départage
+            </strong>
+
+            <p>
+              Ce passage est utilisé pour départager
+              les compétiteurs après une égalité en
+              finale ou en petite finale.
+            </p>
+
+            <p>
+              Le Kata est imposé par l'équipe
+              d'arbitrage.
+            </p>
+          </div>
+        )}
 
         <div className="match-score">
           <div>
@@ -555,7 +609,9 @@ function MatchManager({
 
         <div className="match-result">
           <h3>
-            Résultat
+            {kataTieBreakMode
+              ? "Résultat du Kata imposé"
+              : "Résultat"}
           </h3>
 
           <p>
@@ -603,6 +659,12 @@ function MatchManager({
                 onSave({
                   type: "kata",
 
+                  kataStage:
+                    kataStage ||
+                    (kataTieBreakMode
+                      ? "tie-break"
+                      : ""),
+
                   notes:
                     resultatKata.notes,
 
@@ -629,13 +691,17 @@ function MatchManager({
                 })
               }
             >
-              {initialResult
-                ? `Enregistrer les modifications du passage ${
-                    passage || ""
-                  }`
-                : `Enregistrer le passage ${
-                    passage || ""
-                  }`}
+              {kataTieBreakMode
+                ? initialResult
+                  ? "Enregistrer les modifications du Kata imposé"
+                  : "Enregistrer le Kata imposé"
+                : initialResult
+                ? passage
+                  ? `Enregistrer les modifications du passage ${passage}`
+                  : "Enregistrer les modifications"
+                : passage
+                ? `Enregistrer le passage ${passage}`
+                : "Enregistrer la note"}
             </button>
           )}
         </div>
@@ -712,10 +778,6 @@ function MatchManager({
           </p>
         </div>
       </div>
-
-      {/* =====================================================
-          PÉNALITÉS
-      ===================================================== */}
 
       <div className="penalties">
         <h3>
@@ -905,10 +967,6 @@ function MatchManager({
         </div>
       </div>
 
-      {/* =====================================================
-          ASSAUTS
-      ===================================================== */}
-
       <div className="assauts">
         {assauts.map((assaut, index) => (
           <div
@@ -992,10 +1050,6 @@ function MatchManager({
         ))}
       </div>
 
-      {/* =====================================================
-          RÉSULTAT
-      ===================================================== */}
-
       <div className="match-result">
         <h3>
           Résultat
@@ -1013,8 +1067,6 @@ function MatchManager({
           </strong>
         </p>
 
-        {/* DISQUALIFICATION AKA */}
-
         {akaDisqualifie &&
           !shiroDisqualifie && (
             <div className="beta-note">
@@ -1028,8 +1080,6 @@ function MatchManager({
             </div>
           )}
 
-        {/* DISQUALIFICATION SHIRO */}
-
         {shiroDisqualifie &&
           !akaDisqualifie && (
             <div className="beta-note">
@@ -1042,8 +1092,6 @@ function MatchManager({
               </p>
             </div>
           )}
-
-        {/* DOUBLE DISQUALIFICATION */}
 
         {akaDisqualifie &&
           shiroDisqualifie && (
@@ -1060,8 +1108,6 @@ function MatchManager({
             </div>
           )}
 
-        {/* VICTOIRE AUTOMATIQUE AKA */}
-
         {!akaDisqualifie &&
           !shiroDisqualifie &&
           vainqueurAutomatique === "aka" && (
@@ -1076,8 +1122,6 @@ function MatchManager({
             </div>
           )}
 
-        {/* VICTOIRE AUTOMATIQUE SHIRO */}
-
         {!akaDisqualifie &&
           !shiroDisqualifie &&
           vainqueurAutomatique === "shiro" && (
@@ -1091,10 +1135,6 @@ function MatchManager({
               </p>
             </div>
           )}
-
-        {/* ===================================================
-            ÉGALITÉ — DÉCISION AUX DRAPEAUX
-        =================================================== */}
 
         {egaliteAResoudre && (
           <div className="beta-note">
@@ -1161,10 +1201,6 @@ function MatchManager({
             )}
           </div>
         )}
-
-        {/* ===================================================
-            ENREGISTREMENT
-        =================================================== */}
 
         {onSave && (
           <button
