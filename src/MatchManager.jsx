@@ -168,6 +168,66 @@ function MatchManager({
 
   /*
    * =========================================================
+   * JU RANDORI — DÉPARTAGE
+   * =========================================================
+   *
+   * En cas d'égalité après les 7 assauts :
+   *
+   * 1. Tsuki
+   * 2. Mae Geri
+   * 3. Mawashi Geri
+   *
+   * Chaque technique est jugée par
+   * les 3 Fukushin.
+   *
+   * Si l'égalité persiste après ces
+   * trois assauts, décision aux drapeaux.
+   */
+
+  const [departageActif, setDepartageActif] =
+    useState(() => {
+      return (
+        match?.departageActif ||
+        (match?.assautsDepartage &&
+          match.assautsDepartage.length === 3)
+      );
+    });
+
+  const [
+    assautsDepartage,
+    setAssautsDepartage,
+  ] = useState(() => {
+    if (
+      match?.assautsDepartage &&
+      match.assautsDepartage.length === 3
+    ) {
+      return match.assautsDepartage;
+    }
+
+    return [
+      {
+        technique: "Tsuki",
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      },
+      {
+        technique: "Mae Geri",
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      },
+      {
+        technique: "Mawashi Geri",
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      },
+    ];
+  });
+
+  /*
+   * =========================================================
    * JU RANDORI — PÉNALITÉS
    * =========================================================
    */
@@ -218,6 +278,12 @@ function MatchManager({
     return "";
   });
 
+  /*
+   * =========================================================
+   * JU RANDORI — MODIFICATION DES VOTES
+   * =========================================================
+   */
+
   function modifierVote(
     numeroAssaut,
     juge,
@@ -234,12 +300,60 @@ function MatchManager({
       )
     );
 
+    /*
+     * Si le combat principal est modifié,
+     * un éventuel départage précédent
+     * n'est plus valable.
+     */
+
+    setDepartageActif(false);
+
+    setAssautsDepartage([
+      {
+        technique: "Tsuki",
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      },
+      {
+        technique: "Mae Geri",
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      },
+      {
+        technique: "Mawashi Geri",
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      },
+    ]);
+
+    setDecisionDrapeaux("");
+  }
+
+  function modifierVoteDepartage(
+    numeroAssaut,
+    juge,
+    valeur
+  ) {
+    setAssautsDepartage((actuels) =>
+      actuels.map((assaut, index) =>
+        index === numeroAssaut
+          ? {
+              ...assaut,
+              [juge]: valeur,
+            }
+          : assaut
+      )
+    );
+
     setDecisionDrapeaux("");
   }
 
   /*
    * =========================================================
-   * JU RANDORI — SCORE
+   * JU RANDORI — SCORE PRINCIPAL
    * =========================================================
    */
 
@@ -271,6 +385,64 @@ function MatchManager({
   }
 
   const score = calculerScore();
+
+  /*
+   * =========================================================
+   * JU RANDORI — SCORE DU DÉPARTAGE
+   * =========================================================
+   */
+
+  function calculerScoreDepartage() {
+    let aka = 0;
+    let shiro = 0;
+
+    assautsDepartage.forEach((assaut) => {
+      ["juge1", "juge2", "juge3"].forEach(
+        (juge) => {
+          const vote = assaut[juge];
+
+          if (vote === "aka") {
+            aka += 1;
+          }
+
+          if (vote === "shiro") {
+            shiro += 1;
+          }
+
+          if (vote === "hikiwake") {
+            aka += 1;
+            shiro += 1;
+          }
+        }
+      );
+    });
+
+    return {
+      aka,
+      shiro,
+    };
+  }
+
+  const scoreDepartage =
+    calculerScoreDepartage();
+
+  /*
+   * =========================================================
+   * JU RANDORI — DÉPARTAGE TERMINÉ ?
+   * =========================================================
+   */
+
+  function departageEstComplet() {
+    return assautsDepartage.every(
+      (assaut) =>
+        assaut.juge1 &&
+        assaut.juge2 &&
+        assaut.juge3
+    );
+  }
+
+  const departageComplet =
+    departageEstComplet();
 
   /*
    * =========================================================
@@ -327,6 +499,34 @@ function MatchManager({
       return nouvelles;
     });
 
+    /*
+     * Une modification des pénalités
+     * peut modifier le résultat principal.
+     */
+
+    setDepartageActif(false);
+
+    setAssautsDepartage([
+      {
+        technique: "Tsuki",
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      },
+      {
+        technique: "Mae Geri",
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      },
+      {
+        technique: "Mawashi Geri",
+        juge1: "",
+        juge2: "",
+        juge3: "",
+      },
+    ]);
+
     setDecisionDrapeaux("");
   }
 
@@ -366,11 +566,11 @@ function MatchManager({
 
   /*
    * =========================================================
-   * JU RANDORI — VAINQUEUR
+   * JU RANDORI — VAINQUEUR PRINCIPAL
    * =========================================================
    */
 
-  function determinerVainqueur() {
+  function determinerVainqueurPrincipal() {
     if (
       akaDisqualifie &&
       !shiroDisqualifie
@@ -409,20 +609,101 @@ function MatchManager({
     return null;
   }
 
-  const vainqueurAutomatique =
-    determinerVainqueur();
+  const vainqueurPrincipal =
+    determinerVainqueurPrincipal();
 
-  const egaliteAResoudre =
+  const egalitePrincipale =
     !akaDisqualifie &&
     !shiroDisqualifie &&
-    vainqueurAutomatique === null;
+    vainqueurPrincipal === null;
 
-  const vainqueurOfficiel =
-    vainqueurAutomatique ||
-    (egaliteAResoudre &&
+  /*
+   * =========================================================
+   * JU RANDORI — VAINQUEUR DU DÉPARTAGE
+   * =========================================================
+   */
+
+  function determinerVainqueurDepartage() {
+    if (!departageComplet) {
+      return null;
+    }
+
+    if (
+      scoreDepartage.aka >
+      scoreDepartage.shiro
+    ) {
+      return "aka";
+    }
+
+    if (
+      scoreDepartage.shiro >
+      scoreDepartage.aka
+    ) {
+      return "shiro";
+    }
+
+    return null;
+  }
+
+  const vainqueurDepartage =
+    determinerVainqueurDepartage();
+
+  const egaliteApresDepartage =
+    egalitePrincipale &&
+    departageActif &&
+    departageComplet &&
+    vainqueurDepartage === null;
+
+  /*
+   * =========================================================
+   * JU RANDORI — VAINQUEUR OFFICIEL
+   * =========================================================
+   */
+
+  let vainqueurOfficiel = null;
+
+  let decisionType = null;
+
+  if (
+    akaDisqualifie &&
+    !shiroDisqualifie
+  ) {
+    vainqueurOfficiel = "shiro";
+    decisionType = "disqualification";
+  } else if (
+    shiroDisqualifie &&
+    !akaDisqualifie
+  ) {
+    vainqueurOfficiel = "aka";
+    decisionType = "disqualification";
+  } else if (
+    !akaDisqualifie &&
+    !shiroDisqualifie &&
+    vainqueurPrincipal
+  ) {
+    vainqueurOfficiel =
+      vainqueurPrincipal;
+
+    decisionType = "score";
+  } else if (
+    egalitePrincipale &&
+    departageActif &&
+    departageComplet &&
+    vainqueurDepartage
+  ) {
+    vainqueurOfficiel =
+      vainqueurDepartage;
+
+    decisionType = "departage";
+  } else if (
+    egaliteApresDepartage &&
     decisionDrapeaux
-      ? decisionDrapeaux
-      : null);
+  ) {
+    vainqueurOfficiel =
+      decisionDrapeaux;
+
+    decisionType = "drapeaux";
+  }
 
   /*
    * =========================================================
@@ -465,9 +746,7 @@ function MatchManager({
             </p>
 
             {passageLabel && (
-              <p>
-                {passageLabel}
-              </p>
+              <p>{passageLabel}</p>
             )}
           </div>
         </div>
@@ -479,14 +758,15 @@ function MatchManager({
             </strong>
 
             <p>
-              Ce passage est utilisé pour départager
-              les compétiteurs après une égalité en
-              finale ou en petite finale.
+              Ce passage est utilisé pour
+              départager les compétiteurs
+              après une égalité en finale
+              ou en petite finale.
             </p>
 
             <p>
-              Le Kata est imposé par l'équipe
-              d'arbitrage.
+              Le Kata est imposé par
+              l'équipe d'arbitrage.
             </p>
           </div>
         )}
@@ -617,7 +897,9 @@ function MatchManager({
           <p>
             Notes :{" "}
             {resultatKata.notes
-              .map((note) => note.toFixed(1))
+              .map((note) =>
+                note.toFixed(1)
+              )
               .join(" · ")}
           </p>
 
@@ -639,7 +921,9 @@ function MatchManager({
             Notes retenues :{" "}
             <strong>
               {resultatKata.notesRetenues
-                .map((note) => note.toFixed(1))
+                .map((note) =>
+                  note.toFixed(1)
+                )
                 .join(" + ")}
             </strong>
           </p>
@@ -728,12 +1012,12 @@ function MatchManager({
           </h2>
 
           {eventType && (
-            <p>
-              {eventType}
-            </p>
+            <p>{eventType}</p>
           )}
         </div>
       </div>
+
+      {/* SCORE */}
 
       <div className="match-score">
         <div>
@@ -778,6 +1062,8 @@ function MatchManager({
           </p>
         </div>
       </div>
+
+      {/* PÉNALITÉS */}
 
       <div className="penalties">
         <h3>
@@ -967,7 +1253,13 @@ function MatchManager({
         </div>
       </div>
 
+      {/* 7 ASSAUTS PRINCIPAUX */}
+
       <div className="assauts">
+        <h3>
+          Assauts réglementaires
+        </h3>
+
         {assauts.map((assaut, index) => (
           <div
             className="assaut-card"
@@ -1050,6 +1342,8 @@ function MatchManager({
         ))}
       </div>
 
+      {/* RÉSULTAT PRINCIPAL */}
+
       <div className="match-result">
         <h3>
           Résultat
@@ -1110,7 +1404,7 @@ function MatchManager({
 
         {!akaDisqualifie &&
           !shiroDisqualifie &&
-          vainqueurAutomatique === "aka" && (
+          vainqueurPrincipal === "aka" && (
             <div className="beta-note">
               <strong>
                 🏆 AKA vainqueur
@@ -1124,7 +1418,7 @@ function MatchManager({
 
         {!akaDisqualifie &&
           !shiroDisqualifie &&
-          vainqueurAutomatique === "shiro" && (
+          vainqueurPrincipal === "shiro" && (
             <div className="beta-note">
               <strong>
                 🏆 SHIRO vainqueur
@@ -1136,22 +1430,251 @@ function MatchManager({
             </div>
           )}
 
-        {egaliteAResoudre && (
+        {/* =========================================
+            ÉGALITÉ → DÉPARTAGE
+        ========================================= */}
+
+        {egalitePrincipale &&
+          !departageActif && (
+            <div className="beta-note">
+              <strong>
+                ⚖️ Égalité après les 7 assauts
+              </strong>
+
+              <p>
+                Le score est de{" "}
+                <strong>
+                  {scoreFinalAka}
+                  {" — "}
+                  {scoreFinalShiro}
+                </strong>.
+              </p>
+
+              <p>
+                Un départage est nécessaire.
+              </p>
+
+              <button
+                type="button"
+                className="primary"
+                onClick={() => {
+                  setDepartageActif(true);
+                  setDecisionDrapeaux("");
+                }}
+              >
+                Lancer le départage
+              </button>
+            </div>
+          )}
+      </div>
+
+      {/* =========================================
+          DÉPARTAGE
+      ========================================= */}
+
+      {egalitePrincipale &&
+        departageActif && (
+          <div className="assauts">
+            <div className="beta-note">
+              <strong>
+                ⚖️ DÉPARTAGE
+              </strong>
+
+              <p>
+                Tsuki · Mae Geri ·
+                Mawashi Geri
+              </p>
+
+              <p>
+                Chaque technique est jugée
+                par les trois Fukushin.
+              </p>
+            </div>
+
+            {assautsDepartage.map(
+              (assaut, index) => (
+                <div
+                  className="assaut-card"
+                  key={assaut.technique}
+                >
+                  <p className="surtitle">
+                    DÉPARTAGE
+                  </p>
+
+                  <h3>
+                    {assaut.technique}
+                  </h3>
+
+                  {[
+                    "juge1",
+                    "juge2",
+                    "juge3",
+                  ].map(
+                    (
+                      juge,
+                      jugeIndex
+                    ) => (
+                      <div
+                        className="juge"
+                        key={juge}
+                      >
+                        <span>
+                          Fukushin{" "}
+                          {jugeIndex + 1}
+                        </span>
+
+                        <button
+                          type="button"
+                          className={
+                            assaut[
+                              juge
+                            ] === "aka"
+                              ? "vote-button selected aka"
+                              : "vote-button"
+                          }
+                          onClick={() =>
+                            modifierVoteDepartage(
+                              index,
+                              juge,
+                              "aka"
+                            )
+                          }
+                        >
+                          AKA
+                        </button>
+
+                        <button
+                          type="button"
+                          className={
+                            assaut[
+                              juge
+                            ] ===
+                            "hikiwake"
+                              ? "vote-button selected hikiwake"
+                              : "vote-button"
+                          }
+                          onClick={() =>
+                            modifierVoteDepartage(
+                              index,
+                              juge,
+                              "hikiwake"
+                            )
+                          }
+                        >
+                          Hikiwake
+                        </button>
+
+                        <button
+                          type="button"
+                          className={
+                            assaut[
+                              juge
+                            ] === "shiro"
+                              ? "vote-button selected shiro"
+                              : "vote-button"
+                          }
+                          onClick={() =>
+                            modifierVoteDepartage(
+                              index,
+                              juge,
+                              "shiro"
+                            )
+                          }
+                        >
+                          SHIRO
+                        </button>
+                      </div>
+                    )
+                  )}
+                </div>
+              )
+            )}
+
+            <div className="match-result">
+              <h3>
+                Résultat du départage
+              </h3>
+
+              <p>
+                AKA :{" "}
+                <strong>
+                  {scoreDepartage.aka}
+                </strong>
+                {" — "}
+                SHIRO :{" "}
+                <strong>
+                  {scoreDepartage.shiro}
+                </strong>
+              </p>
+
+              {!departageComplet && (
+                <p>
+                  Les trois techniques
+                  doivent être entièrement
+                  jugées.
+                </p>
+              )}
+
+              {departageComplet &&
+                vainqueurDepartage ===
+                  "aka" && (
+                  <div className="beta-note">
+                    <strong>
+                      🏆 AKA vainqueur
+                    </strong>
+
+                    <p>
+                      Victoire après
+                      départage.
+                    </p>
+                  </div>
+                )}
+
+              {departageComplet &&
+                vainqueurDepartage ===
+                  "shiro" && (
+                  <div className="beta-note">
+                    <strong>
+                      🏆 SHIRO vainqueur
+                    </strong>
+
+                    <p>
+                      Victoire après
+                      départage.
+                    </p>
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+      {/* =========================================
+          ÉGALITÉ APRÈS DÉPARTAGE → DRAPEAUX
+      ========================================= */}
+
+      {egaliteApresDepartage && (
+        <div className="match-result">
           <div className="beta-note">
             <strong>
-              🏁 Égalité — décision des arbitres requise
+              🏁 Égalité persistante
             </strong>
 
             <p>
-              Le score est de{" "}
-              <strong>
-                {scoreFinalAka} — {scoreFinalShiro}
-              </strong>.
+              Le départage se termine
+              également à égalité :
             </p>
 
             <p>
-              Désigne le vainqueur conformément
-              à la décision arbitrale.
+              <strong>
+                AKA {scoreDepartage.aka}
+                {" — "}
+                {scoreDepartage.shiro} SHIRO
+              </strong>
+            </p>
+
+            <p>
+              La décision finale doit être
+              prise aux drapeaux.
             </p>
 
             <div className="competition-actions">
@@ -1163,7 +1686,9 @@ function MatchManager({
                     : "vote-button"
                 }
                 onClick={() =>
-                  setDecisionDrapeaux("aka")
+                  setDecisionDrapeaux(
+                    "aka"
+                  )
                 }
               >
                 🔴 AKA vainqueur
@@ -1177,7 +1702,9 @@ function MatchManager({
                     : "vote-button"
                 }
                 onClick={() =>
-                  setDecisionDrapeaux("shiro")
+                  setDecisionDrapeaux(
+                    "shiro"
+                  )
                 }
               >
                 ⚪ SHIRO vainqueur
@@ -1192,7 +1719,8 @@ function MatchManager({
 
                 <strong>
                   🏆{" "}
-                  {decisionDrapeaux === "aka"
+                  {decisionDrapeaux ===
+                  "aka"
                     ? "AKA"
                     : "SHIRO"}{" "}
                   vainqueur
@@ -1200,9 +1728,15 @@ function MatchManager({
               </div>
             )}
           </div>
-        )}
+        </div>
+      )}
 
-        {onSave && (
+      {/* =========================================
+          ENREGISTREMENT
+      ========================================= */}
+
+      {onSave && (
+        <div className="match-result">
           <button
             type="button"
             className="primary"
@@ -1216,6 +1750,29 @@ function MatchManager({
                 type: "ju-randori",
 
                 assauts,
+
+                /*
+                 * Départage conservé dans
+                 * le résultat du combat.
+                 */
+
+                departageActif:
+                  egalitePrincipale,
+
+                assautsDepartage:
+                  egalitePrincipale
+                    ? assautsDepartage
+                    : [],
+
+                scoreDepartageAka:
+                  egalitePrincipale
+                    ? scoreDepartage.aka
+                    : null,
+
+                scoreDepartageShiro:
+                  egalitePrincipale
+                    ? scoreDepartage.shiro
+                    : null,
 
                 scoreBrutAka:
                   score.aka,
@@ -1244,30 +1801,34 @@ function MatchManager({
                 vainqueur:
                   vainqueurOfficiel,
 
-                decisionType:
-                  egaliteAResoudre
-                    ? "drapeaux"
-                    : akaDisqualifie ||
-                      shiroDisqualifie
-                    ? "disqualification"
-                    : "score",
+                decisionType,
 
                 decisionDrapeaux:
-                  egaliteAResoudre
+                  decisionType ===
+                  "drapeaux"
                     ? decisionDrapeaux
                     : null,
               });
             }}
           >
-            {egaliteAResoudre &&
-            !decisionDrapeaux
-              ? "Désigner un vainqueur avant d'enregistrer"
+            {!vainqueurOfficiel
+              ? egalitePrincipale &&
+                !departageActif
+                ? "Effectuer le départage avant d'enregistrer"
+                : egalitePrincipale &&
+                  departageActif &&
+                  !departageComplet
+                ? "Terminer le départage avant d'enregistrer"
+                : egaliteApresDepartage &&
+                  !decisionDrapeaux
+                ? "Désigner le vainqueur aux drapeaux"
+                : "Résultat incomplet"
               : match?.statut === "Terminé"
               ? "Enregistrer les modifications"
               : "Enregistrer le combat"}
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }
