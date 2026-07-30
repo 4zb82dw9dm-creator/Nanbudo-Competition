@@ -1041,6 +1041,85 @@ footer span {
 }
 
 /* ========================================
+   RÉSULTATS — STATISTIQUES
+======================================== */
+
+.results-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  margin-top: 20px;
+  margin-bottom: 32px;
+}
+
+.result-stat-card {
+  background: #ffffff;
+  border: 1px solid #dce2eb;
+  border-radius: 16px;
+  padding: 22px;
+  min-height: 145px;
+  box-sizing: border-box;
+  box-shadow: 0 4px 14px rgba(18, 32, 59, 0.04);
+}
+
+.result-stat-card strong {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  color: #5f6c80;
+}
+
+.result-stat-card h2 {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  color: #14213d;
+}
+
+.result-stat-card p {
+  margin: 0;
+  color: #667085;
+  line-height: 1.4;
+}
+
+/* ========================================
+   RÉSULTATS — DOCUMENT IMPRIMABLE
+======================================== */
+
+.print-results-header,
+.print-results-footer {
+  display: none;
+}
+
+.results-print-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.results-podium-header {
+  margin-top: 25px;
+}
+
+.results-category {
+  margin-top: 32px;
+}
+
+/*
+ * Le tableau podium comporte seulement
+ * trois colonnes : place, compétiteur, club.
+ */
+
+.results-podium .ranking-header,
+.results-podium .ranking-row {
+  grid-template-columns:
+    80px
+    minmax(220px, 2fr)
+    minmax(160px, 1fr);
+}
+
+/* ========================================
    TABLETTE
 ======================================== */
 
@@ -1069,6 +1148,10 @@ footer span {
   }
 
   .event-selection {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .results-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1208,6 +1291,28 @@ footer span {
   footer {
     flex-direction: column;
   }
+
+  .results-podium .ranking-header,
+  .results-podium .ranking-row {
+    grid-template-columns:
+      65px
+      minmax(180px, 2fr)
+      minmax(140px, 1fr);
+  }
+}
+
+/* ========================================
+   RÉSULTATS — TÉLÉPHONE
+======================================== */
+
+@media (max-width: 520px) {
+  .results-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .result-stat-card {
+    min-height: auto;
+  }
 }
 
 /* ========================================
@@ -1237,8 +1342,10 @@ footer span {
   .top-logo {
     width: 55px !important;
     height: 55px !important;
+
     max-width: 55px !important;
     max-height: 55px !important;
+
     flex-basis: 55px !important;
   }
 
@@ -1251,122 +1358,463 @@ footer span {
   }
 }
 
-/* ========================================
-   IMPRESSION
-======================================== */
+/* =========================================================
+   IMPRESSION — RÉSULTATS OFFICIELS
+   GARDER CE BLOC TOUT À LA FIN DU FICHIER
+========================================================= */
 
 @media print {
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm 14mm;
+  }
+
+  /* =====================================
+     BASE
+  ===================================== */
+
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    min-height: 0 !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    background: #ffffff !important;
+    color: #14213d !important;
+
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 10pt !important;
+  }
+
+  /* =====================================
+     MASQUER L'INTERFACE
+  ===================================== */
+
   .header,
   .top-banner,
   .navigation,
   .competition-menu,
   .competition-tabs,
-  .manage-button,
-  .delete-button,
+  .competition-dashboard-header,
   .back-button,
-  button,
-  footer {
+  .results-print-actions,
+  .results-print-button,
+  .screen-only,
+  button {
     display: none !important;
   }
 
-  body {
-    background: white !important;
-    color: #000 !important;
+  body > footer,
+  .app > footer {
+    display: none !important;
+  }
+
+  /* =====================================
+     CONTENU PRINCIPAL
+  ===================================== */
+
+  .app {
+    display: block !important;
+    min-height: 0 !important;
   }
 
   .content {
-    width: 100%;
-    max-width: none;
-    margin: 0;
-    padding: 20px;
+    display: block !important;
+
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .results-manager {
-    width: 100%;
+    display: block !important;
+
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    background: #ffffff !important;
   }
 
-  .results-manager .manager-header {
-    margin-bottom: 25px;
+  /* =====================================
+     ENTÊTE DU DOCUMENT
+  ===================================== */
+
+  .print-results-header {
+    display: block !important;
+
+    margin: 0 0 7mm !important;
+    padding: 0 0 4mm !important;
+
+    border-bottom: 2px solid #c9a227 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  .results-manager .competition {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  .print-results-brand {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
 
-    border: 1px solid #999;
+    gap: 4px !important;
 
-    box-shadow: none;
+    margin: 0 0 4mm !important;
 
-    margin-bottom: 20px;
+    color: #14213d !important;
+
+    font-size: 8pt !important;
+    line-height: 1.2 !important;
   }
 
-  @page {
-    size: A4;
-    margin: 15mm;
-  }
-}
-/* =========================================================
-   RÉSULTATS — STATISTIQUES
-   ========================================================= */
-
-.results-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  width: 100%;
-  margin-top: 20px;
-  margin-bottom: 32px;
-}
-
-.result-stat-card {
-  background: #ffffff;
-  border: 1px solid #dce2eb;
-  border-radius: 16px;
-  padding: 22px;
-  min-height: 145px;
-  box-sizing: border-box;
-  box-shadow: 0 4px 14px rgba(18, 32, 59, 0.04);
-}
-
-.result-stat-card strong {
-  display: block;
-  margin-bottom: 12px;
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
-  color: #5f6c80;
-}
-
-.result-stat-card h2 {
-  margin: 0 0 8px;
-  font-size: 2rem;
-  color: #14213d;
-}
-
-.result-stat-card p {
-  margin: 0;
-  color: #667085;
-  line-height: 1.4;
-}
-
-/* TABLETTE */
-
-@media (max-width: 900px) {
-  .results-stats {
-    grid-template-columns: repeat(
-      2,
-      minmax(0, 1fr)
-    );
-  }
-}
-
-/* TÉLÉPHONE */
-
-@media (max-width: 520px) {
-  .results-stats {
-    grid-template-columns: 1fr;
+  .print-results-brand strong {
+    font-weight: 800 !important;
   }
 
+  .print-results-brand span {
+    color: #657080 !important;
+  }
+
+  .print-results-brand span::before {
+    content: " — ";
+  }
+
+  .print-results-title {
+    margin: 0 !important;
+  }
+
+  .print-results-title > p {
+    margin: 0 0 1.5mm !important;
+
+    color: #c9a227 !important;
+
+    font-size: 8pt !important;
+    font-weight: 800 !important;
+
+    letter-spacing: 1.3px !important;
+
+    text-transform: uppercase !important;
+  }
+
+  .print-results-title h1 {
+    margin: 0 0 2mm !important;
+
+    color: #14213d !important;
+
+    font-size: 20pt !important;
+    line-height: 1.1 !important;
+
+    font-weight: 800 !important;
+  }
+
+  .print-results-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+
+    gap: 4px !important;
+
+    margin: 0 !important;
+
+    color: #657080 !important;
+
+    font-size: 8.5pt !important;
+  }
+
+  /* =====================================
+     STATISTIQUES
+     NON IMPRIMÉES
+  ===================================== */
+
+  .results-stats,
   .result-stat-card {
-    min-height: auto;
+    display: none !important;
+  }
+
+  /* =====================================
+     TITRE PODIUMS
+  ===================================== */
+
+  .results-podium-header {
+    display: block !important;
+
+    margin: 0 0 4mm !important;
+    padding: 0 !important;
+
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .results-podium-header .surtitle {
+    margin: 0 0 1mm !important;
+
+    color: #c9a227 !important;
+
+    font-size: 7.5pt !important;
+    font-weight: 800 !important;
+
+    letter-spacing: 1.4px !important;
+  }
+
+  .results-podium-header h2 {
+    margin: 0 !important;
+
+    color: #14213d !important;
+
+    font-size: 15pt !important;
+    line-height: 1.15 !important;
+  }
+
+  /* =====================================
+     LISTE DES RÉSULTATS
+  ===================================== */
+
+  .official-results-list {
+    display: block !important;
+
+    width: 100% !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* =====================================
+     CATÉGORIES
+  ===================================== */
+
+  .results-category {
+    display: block !important;
+
+    width: 100% !important;
+
+    margin: 0 0 6mm !important;
+    padding: 0 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .results-category:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  .results-category .category-section-header {
+    display: block !important;
+
+    margin: 0 0 2.5mm !important;
+    padding: 0 !important;
+
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .results-category .category-section-header > div {
+    display: block !important;
+  }
+
+  .results-category .surtitle {
+    margin: 0 0 1mm !important;
+
+    color: #c9a227 !important;
+
+    font-size: 7.5pt !important;
+    font-weight: 800 !important;
+
+    letter-spacing: 1.3px !important;
+
+    text-transform: uppercase !important;
+  }
+
+  .results-category .category-section-header h3 {
+    margin: 0 !important;
+
+    color: #14213d !important;
+
+    font-size: 12pt !important;
+    line-height: 1.15 !important;
+  }
+
+  /* =====================================
+     PODIUM
+  ===================================== */
+
+  .results-podium {
+    display: block !important;
+
+    width: 100% !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* =====================================
+     TABLEAU PODIUM
+  ===================================== */
+
+  .results-podium .ranking-table {
+    display: block !important;
+
+    width: 100% !important;
+    min-width: 0 !important;
+
+    margin: 0 !important;
+
+    overflow: visible !important;
+
+    border: 1px solid #d9dee7 !important;
+    border-radius: 4px !important;
+
+    background: #ffffff !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .results-podium .ranking-header,
+  .results-podium .ranking-row {
+    display: grid !important;
+
+    grid-template-columns:
+      18mm
+      minmax(65mm, 1.8fr)
+      minmax(45mm, 1fr) !important;
+
+    width: 100% !important;
+    min-width: 0 !important;
+
+    gap: 0 !important;
+
+    align-items: center !important;
+
+    padding: 2.2mm 3mm !important;
+  }
+
+  .results-podium .ranking-header {
+    background: #275296 !important;
+    color: #ffffff !important;
+
+    font-size: 8pt !important;
+    font-weight: 800 !important;
+
+    border: 0 !important;
+
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .results-podium .ranking-row {
+    min-height: 7.5mm !important;
+
+    background: #ffffff !important;
+
+    border-top: 1px solid #e5e7eb !important;
+
+    font-size: 8pt !important;
+    line-height: 1.15 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .results-podium .ranking-row > strong,
+  .results-podium .ranking-row > span {
+    min-width: 0 !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    text-align: left !important;
+  }
+
+  .results-podium .ranking-row > strong:first-child {
+    text-align: center !important;
+  }
+
+  .results-podium .ranking-row > strong:nth-child(2) {
+    font-weight: 800 !important;
+  }
+
+  /* =====================================
+     COULEURS
+  ===================================== */
+
+  .results-manager .surtitle {
+    color: #c9a227 !important;
+  }
+
+  .results-manager h1,
+  .results-manager h2,
+  .results-manager h3,
+  .results-manager strong {
+    color: #14213d;
+  }
+
+  .results-podium .ranking-header,
+  .results-podium .ranking-header strong,
+  .results-podium .ranking-header span {
+    color: #ffffff !important;
+  }
+
+  /* =====================================
+     PIED DU DOCUMENT
+  ===================================== */
+
+  .print-results-footer {
+    display: flex !important;
+
+    justify-content: space-between !important;
+    align-items: center !important;
+
+    gap: 10mm !important;
+
+    width: 100% !important;
+
+    margin: 7mm 0 0 !important;
+    padding: 3mm 0 0 !important;
+
+    background: transparent !important;
+
+    color: #657080 !important;
+
+    border-top: 1px solid #c9a227 !important;
+
+    font-size: 7pt !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-results-footer p {
+    margin: 0 !important;
+  }
+
+  .print-results-footer p:last-child {
+    text-align: right !important;
+  }
+
+  /* =====================================
+     ÉLÉMENTS À NE JAMAIS IMPRIMER
+  ===================================== */
+
+  .results-manager .empty-state,
+  .results-manager .competition-list,
+  .results-manager .competition-form {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }
