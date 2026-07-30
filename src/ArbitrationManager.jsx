@@ -145,17 +145,6 @@ function ArbitrationManager({
     setSelectedFinalPassageId("");
   }
 
-  /*
-   * Le podium n'est créé que lorsque :
-   *
-   * - la finale est terminée,
-   * - la petite finale est terminée,
-   * - chacune possède un vainqueur.
-   *
-   * Une égalité non résolue ne peut donc
-   * jamais produire de podium.
-   */
-
   function calculateCombatPodium(
     finalMatchesList
   ) {
@@ -207,26 +196,10 @@ function ArbitrationManager({
     };
   }
 
-  /*
-   * =========================================================
-   * ENREGISTREMENT COMBAT
-   * =========================================================
-   */
-
   function saveOfficialMatch(result) {
     if (!selectedPool || !selectedMatch) {
       return;
     }
-
-    /*
-     * MatchManager transmet maintenant
-     * toujours un vainqueur lorsque le combat
-     * peut être enregistré :
-     *
-     * - score,
-     * - disqualification,
-     * - décision aux drapeaux.
-     */
 
     const winnerId =
       result.vainqueur === "aka"
@@ -234,24 +207,6 @@ function ArbitrationManager({
         : result.vainqueur === "shiro"
         ? selectedMatch.shiroId
         : null;
-
-    /*
-     * Protection supplémentaire.
-     *
-     * Même si MatchManager bloque déjà
-     * l'enregistrement d'une égalité non
-     * résolue, ArbitrationManager refuse
-     * également de terminer le combat sans
-     * vainqueur.
-     */
-
-    if (!winnerId) {
-      alert(
-        "Impossible d'enregistrer ce combat sans vainqueur. En cas d'égalité, une décision arbitrale doit être enregistrée."
-      );
-
-      return;
-    }
 
     const savedMatch = {
       ...selectedMatch,
@@ -279,31 +234,7 @@ function ArbitrationManager({
       shiroDisqualifie:
         result.shiroDisqualifie,
 
-      /*
-       * Vainqueur officiel
-       */
-
       winnerId,
-
-      /*
-       * Manière dont le vainqueur
-       * a été déterminé :
-       *
-       * score
-       * disqualification
-       * drapeaux
-       */
-
-      decisionType:
-        result.decisionType || "score",
-
-      /*
-       * Seulement renseigné si
-       * decisionType === "drapeaux"
-       */
-
-      decisionDrapeaux:
-        result.decisionDrapeaux || null,
 
       statut: "Terminé",
     };
@@ -312,12 +243,6 @@ function ArbitrationManager({
       if (!sameId(pool.id, selectedPool.id)) {
         return pool;
       }
-
-      /*
-       * =====================================================
-       * PHASE FINALE
-       * =====================================================
-       */
 
       if (selectedMatchType === "final") {
         const updatedFinalMatches = (
@@ -345,12 +270,6 @@ function ArbitrationManager({
             : "Phase finale",
         };
       }
-
-      /*
-       * =====================================================
-       * RENCONTRES DE POULE
-       * =====================================================
-       */
 
       return {
         ...pool,
@@ -607,9 +526,7 @@ function ArbitrationManager({
       calculateKataRanking();
 
     /*
-     * =====================================================
      * CLASSEMENT DIRECT
-     * =====================================================
      */
 
     if (selectedClosingMode === "direct") {
@@ -658,9 +575,7 @@ function ArbitrationManager({
     }
 
     /*
-     * =====================================================
      * FINALE + PETITE FINALE
-     * =====================================================
      */
 
     if (selectedClosingMode === "finals") {
@@ -824,7 +739,9 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function selectKataFinalPassage(passage) {
+  function selectKataFinalPassage(
+    passage
+  ) {
     setSelectedFinalPassageId(
       passage.id
     );
@@ -1012,9 +929,7 @@ function ArbitrationManager({
               : "Inconnu"}
           </h3>
 
-          <p>
-            contre
-          </p>
+          <p>contre</p>
 
           <h3>
             SHIRO —{" "}
@@ -1034,23 +949,8 @@ function ArbitrationManager({
               <p>
                 {winner
                   ? `Vainqueur : ${winner.nom} ${winner.prenom}`
-                  : "Résultat incomplet"}
+                  : "Égalité"}
               </p>
-
-              {match.decisionType ===
-                "drapeaux" && (
-                <p>
-                  🏁 Décision aux drapeaux
-                </p>
-              )}
-
-              {match.decisionType ===
-                "disqualification" && (
-                <p>
-                  ⛔ Victoire par
-                  disqualification
-                </p>
-              )}
             </div>
           )}
         </div>
@@ -1224,9 +1124,7 @@ function ArbitrationManager({
               PHASE FINALE KATA
             </p>
 
-            <h3>
-              {title}
-            </h3>
+            <h3>{title}</h3>
           </div>
         </div>
 
@@ -1324,9 +1222,7 @@ function ArbitrationManager({
             ARBITRAGE
           </p>
 
-          <h2>
-            Arbitrage
-          </h2>
+          <h2>Arbitrage</h2>
 
           <p>
             Saisie des résultats selon
@@ -1362,7 +1258,9 @@ function ArbitrationManager({
 
                   resetSelections();
 
-                  setSelectedClosingMode("");
+                  setSelectedClosingMode(
+                    ""
+                  );
                 }}
               >
                 <option value="">
@@ -1417,7 +1315,8 @@ function ArbitrationManager({
 
                     <p>
                       Chaque compétiteur
-                      effectue deux passages.
+                      effectue deux
+                      passages.
                     </p>
                   </div>
                 </div>
@@ -1452,25 +1351,11 @@ function ArbitrationManager({
                 <div className="pool-ranking">
                   <div className="ranking-table">
                     <div className="ranking-header">
-                      <span>
-                        Place
-                      </span>
-
-                      <span>
-                        Compétiteur
-                      </span>
-
-                      <span>
-                        P1
-                      </span>
-
-                      <span>
-                        P2
-                      </span>
-
-                      <span>
-                        Total
-                      </span>
+                      <span>Place</span>
+                      <span>Compétiteur</span>
+                      <span>P1</span>
+                      <span>P2</span>
+                      <span>Total</span>
                     </div>
 
                     {kataRanking.map(
@@ -1536,11 +1421,14 @@ function ArbitrationManager({
                 </div>
               </section>
 
-              {/* CLÔTURE KATA */}
+              {/* =============================
+                  CLÔTURE KATA
+              ============================= */}
 
               {qualificationsFinished &&
                 !selectedPool.closingMode &&
-                finalPassages.length === 0 && (
+                finalPassages.length ===
+                  0 && (
                   <div className="competition-form">
                     <p className="surtitle">
                       CLÔTURE
@@ -1596,11 +1484,14 @@ function ArbitrationManager({
                   </div>
                 )}
 
-              {/* FINALES KATA */}
+              {/* =============================
+                  FINALES KATA
+              ============================= */}
 
               {selectedPool.closingMode ===
                 "finals" &&
-                finalPassages.length > 0 && (
+                finalPassages.length >
+                  0 && (
                   <>
                     {renderKataFinalGroup(
                       "finale",
@@ -1614,7 +1505,9 @@ function ArbitrationManager({
                   </>
                 )}
 
-              {/* PODIUM KATA */}
+              {/* =============================
+                  PODIUM KATA
+              ============================= */}
 
               {selectedPool.podium && (
                 <section className="category-section">
@@ -1723,7 +1616,8 @@ function ArbitrationManager({
                       </p>
 
                       <h3>
-                        Finale et petite finale
+                        Finale et petite
+                        finale
                       </h3>
                     </div>
                   </div>
