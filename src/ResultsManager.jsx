@@ -44,27 +44,6 @@ function ResultsManager({ competition }) {
     );
   }
 
-  function getCompetitorName(id) {
-    const competitor = getCompetitor(id);
-
-    if (!competitor) {
-      return "—";
-    }
-
-    return `${competitor.nom || ""} ${
-      competitor.prenom || ""
-    }`.trim();
-  }
-
-  function getCompetitorClub(id) {
-    const competitor = getCompetitor(id);
-
-    return (
-      competitor?.club ||
-      "Club non renseigné"
-    );
-  }
-
   /*
    * =========================================================
    * RÉSULTATS TERMINÉS
@@ -119,12 +98,18 @@ function ResultsManager({ competition }) {
         <div className="ranking-table">
           <div className="ranking-header">
             <span>Place</span>
-            <span>Compétiteur</span>
+
+            <span>
+              Compétiteur
+            </span>
+
             <span>Club</span>
           </div>
 
           <div className="ranking-row">
-            <strong>🥇 1</strong>
+            <strong>
+              🥇 1
+            </strong>
 
             <strong>
               {first
@@ -139,7 +124,9 @@ function ResultsManager({ competition }) {
           </div>
 
           <div className="ranking-row">
-            <strong>🥈 2</strong>
+            <strong>
+              🥈 2
+            </strong>
 
             <strong>
               {second
@@ -154,7 +141,9 @@ function ResultsManager({ competition }) {
           </div>
 
           <div className="ranking-row">
-            <strong>🥉 3</strong>
+            <strong>
+              🥉 3
+            </strong>
 
             <strong>
               {third
@@ -170,7 +159,9 @@ function ResultsManager({ competition }) {
 
           {fourth && (
             <div className="ranking-row">
-              <strong>4</strong>
+              <strong>
+                4
+              </strong>
 
               <strong>
                 {fourth.nom}{" "}
@@ -190,7 +181,7 @@ function ResultsManager({ competition }) {
 
   /*
    * =========================================================
-   * CARTE D'UNE CATÉGORIE TERMINÉE
+   * CATÉGORIE TERMINÉE
    * =========================================================
    */
 
@@ -326,7 +317,7 @@ function ResultsManager({ competition }) {
 
   /*
    * =========================================================
-   * AFFICHAGE
+   * AFFICHAGE PRINCIPAL
    * =========================================================
    */
 
@@ -364,6 +355,12 @@ function ResultsManager({ competition }) {
         </div>
       ) : (
         <>
+          {/*
+           * ===============================================
+           * ÉTAT DES RÉSULTATS
+           * ===============================================
+           */}
+
           <section className="category-section">
             <div className="category-section-header">
               <div>
@@ -377,8 +374,8 @@ function ResultsManager({ competition }) {
               </div>
             </div>
 
-            <div className="match-score">
-              <div>
+            <div className="results-stats">
+              <div className="result-stat-card">
                 <strong>
                   CATÉGORIES
                 </strong>
@@ -392,7 +389,7 @@ function ResultsManager({ competition }) {
                 </p>
               </div>
 
-              <div>
+              <div className="result-stat-card">
                 <strong>
                   TERMINÉES
                 </strong>
@@ -406,7 +403,7 @@ function ResultsManager({ competition }) {
                 </p>
               </div>
 
-              <div>
+              <div className="result-stat-card">
                 <strong>
                   EN COURS
                 </strong>
@@ -420,7 +417,7 @@ function ResultsManager({ competition }) {
                 </p>
               </div>
 
-              <div>
+              <div className="result-stat-card">
                 <strong>
                   MÉDAILLÉS
                 </strong>
@@ -435,6 +432,12 @@ function ResultsManager({ competition }) {
               </div>
             </div>
           </section>
+
+          {/*
+           * ===============================================
+           * PODIUMS
+           * ===============================================
+           */}
 
           {finishedPools.length > 0 && (
             <>
@@ -461,6 +464,12 @@ function ResultsManager({ competition }) {
             </>
           )}
 
+          {/*
+           * ===============================================
+           * CATÉGORIES EN COURS
+           * ===============================================
+           */}
+
           {unfinishedPools.length > 0 && (
             <section className="category-section">
               <div className="category-section-header">
@@ -470,14 +479,13 @@ function ResultsManager({ competition }) {
                   </p>
 
                   <h3>
-                    Catégories non
-                    terminées
+                    Catégories non terminées
                   </h3>
 
                   <p>
-                    Ces catégories
-                    n'ont pas encore de
-                    podium définitif.
+                    Ces catégories n'ont
+                    pas encore de podium
+                    définitif.
                   </p>
                 </div>
               </div>
@@ -489,6 +497,12 @@ function ResultsManager({ competition }) {
               </div>
             </section>
           )}
+
+          {/*
+           * ===============================================
+           * AUCUN PODIUM
+           * ===============================================
+           */}
 
           {finishedPools.length === 0 && (
             <div className="empty-state">
