@@ -44,9 +44,35 @@ function ResultsManager({ competition }) {
     );
   }
 
+  function getCompetitionName() {
+    return (
+      competition?.nom ||
+      competition?.name ||
+      competition?.titre ||
+      "Compétition Nanbudo"
+    );
+  }
+
+  function getCompetitionLocation() {
+    return (
+      competition?.lieu ||
+      competition?.ville ||
+      competition?.location ||
+      ""
+    );
+  }
+
+  function getCompetitionDate() {
+    return (
+      competition?.date ||
+      competition?.competitionDate ||
+      ""
+    );
+  }
+
   /*
    * =========================================================
-   * RÉSULTATS TERMINÉS
+   * RÉSULTATS TERMINÉS / EN COURS
    * =========================================================
    */
 
@@ -56,17 +82,55 @@ function ResultsManager({ competition }) {
       pool.podium
   );
 
-  /*
-   * =========================================================
-   * RÉSULTATS EN COURS
-   * =========================================================
-   */
-
   const unfinishedPools = pools.filter(
     (pool) =>
       pool.statut !== "Terminée" ||
       !pool.podium
   );
+
+  /*
+   * =========================================================
+   * STATISTIQUES
+   * =========================================================
+   */
+
+  const totalCategories =
+    pools.length;
+
+  const totalFinished =
+    finishedPools.length;
+
+  const totalUnfinished =
+    unfinishedPools.length;
+
+  const totalPodiumCompetitors =
+    finishedPools.reduce(
+      (total, pool) => {
+        if (!pool.podium) {
+          return total;
+        }
+
+        return (
+          total +
+          [
+            pool.podium.firstId,
+            pool.podium.secondId,
+            pool.podium.thirdId,
+          ].filter(Boolean).length
+        );
+      },
+      0
+    );
+
+  /*
+   * =========================================================
+   * IMPRESSION / PDF
+   * =========================================================
+   */
+
+  function printResults() {
+    window.print();
+  }
 
   /*
    * =========================================================
@@ -94,7 +158,7 @@ function ResultsManager({ competition }) {
       getCompetitor(podium.fourthId);
 
     return (
-      <div className="pool-ranking">
+      <div className="pool-ranking results-podium">
         <div className="ranking-table">
           <div className="ranking-header">
             <span>Place</span>
@@ -196,7 +260,7 @@ function ResultsManager({ competition }) {
 
     return (
       <section
-        className="category-section"
+        className="category-section results-category"
         key={pool.id}
       >
         <div className="category-section-header">
@@ -211,12 +275,12 @@ function ResultsManager({ competition }) {
                 "Catégorie"}
             </h3>
 
-            <p>
+            <p className="screen-only">
               Catégorie terminée
             </p>
           </div>
 
-          <span className="status">
+          <span className="status screen-only">
             Terminée
           </span>
         </div>
@@ -283,47 +347,19 @@ function ResultsManager({ competition }) {
 
   /*
    * =========================================================
-   * STATISTIQUES
-   * =========================================================
-   */
-
-  const totalCategories =
-    pools.length;
-
-  const totalFinished =
-    finishedPools.length;
-
-  const totalUnfinished =
-    unfinishedPools.length;
-
-  const totalPodiumCompetitors =
-    finishedPools.reduce(
-      (total, pool) => {
-        if (!pool.podium) {
-          return total;
-        }
-
-        return (
-          total +
-          [
-            pool.podium.firstId,
-            pool.podium.secondId,
-            pool.podium.thirdId,
-          ].filter(Boolean).length
-        );
-      },
-      0
-    );
-
-  /*
-   * =========================================================
    * AFFICHAGE PRINCIPAL
    * =========================================================
    */
 
   return (
     <div className="results-manager">
-      <div className="manager-header">
+      {/*
+       * =====================================================
+       * ENTÊTE ÉCRAN
+       * =====================================================
+       */}
+
+      <div className="manager-header screen-only">
         <div>
           <p className="surtitle">
             RÉSULTATS
@@ -338,7 +374,69 @@ function ResultsManager({ competition }) {
             catégories terminées.
           </p>
         </div>
+
+        {finishedPools.length > 0 && (
+          <div className="results-print-actions">
+            <button
+              type="button"
+              className="primary results-print-button"
+              onClick={printResults}
+            >
+              Imprimer / PDF
+            </button>
+          </div>
+        )}
       </div>
+
+      {/*
+       * =====================================================
+       * ENTÊTE DOCUMENT IMPRIMÉ
+       * =====================================================
+       */}
+
+      <header className="print-results-header">
+        <div className="print-results-brand">
+          <strong>
+            AFDP NANBUDO FRANCE
+          </strong>
+
+          <span>
+            Commission Compétition
+          </span>
+        </div>
+
+        <div className="print-results-title">
+          <p>
+            RÉSULTATS OFFICIELS
+          </p>
+
+          <h1>
+            {getCompetitionName()}
+          </h1>
+
+          {(getCompetitionLocation() ||
+            getCompetitionDate()) && (
+            <div className="print-results-meta">
+              {getCompetitionLocation() && (
+                <span>
+                  {getCompetitionLocation()}
+                </span>
+              )}
+
+              {getCompetitionLocation() &&
+                getCompetitionDate() && (
+                  <span>•</span>
+                )}
+
+              {getCompetitionDate() && (
+                <span>
+                  {getCompetitionDate()}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
 
       {pools.length === 0 ? (
         <div className="empty-state">
@@ -357,11 +455,11 @@ function ResultsManager({ competition }) {
         <>
           {/*
            * ===============================================
-           * ÉTAT DES RÉSULTATS
+           * STATISTIQUES
            * ===============================================
            */}
 
-          <section className="category-section">
+          <section className="category-section screen-only">
             <div className="category-section-header">
               <div>
                 <p className="surtitle">
@@ -441,7 +539,7 @@ function ResultsManager({ competition }) {
 
           {finishedPools.length > 0 && (
             <>
-              <div className="manager-header">
+              <div className="manager-header results-podium-header">
                 <div>
                   <p className="surtitle">
                     PODIUMS
@@ -451,16 +549,18 @@ function ResultsManager({ competition }) {
                     Catégories terminées
                   </h2>
 
-                  <p>
+                  <p className="screen-only">
                     Résultats validés par
                     l'arbitrage.
                   </p>
                 </div>
               </div>
 
-              {finishedPools.map(
-                renderFinishedPool
-              )}
+              <div className="official-results-list">
+                {finishedPools.map(
+                  renderFinishedPool
+                )}
+              </div>
             </>
           )}
 
@@ -471,7 +571,7 @@ function ResultsManager({ competition }) {
            */}
 
           {unfinishedPools.length > 0 && (
-            <section className="category-section">
+            <section className="category-section screen-only">
               <div className="category-section-header">
                 <div>
                   <p className="surtitle">
@@ -505,7 +605,7 @@ function ResultsManager({ competition }) {
            */}
 
           {finishedPools.length === 0 && (
-            <div className="empty-state">
+            <div className="empty-state screen-only">
               <h3>
                 Aucun podium définitif
               </h3>
@@ -518,6 +618,26 @@ function ResultsManager({ competition }) {
                 podium ici.
               </p>
             </div>
+          )}
+
+          {/*
+           * ===============================================
+           * PIED DU DOCUMENT IMPRIMÉ
+           * ===============================================
+           */}
+
+          {finishedPools.length > 0 && (
+            <footer className="print-results-footer">
+              <p>
+                AFDP Nanbudo France —
+                Commission Compétition
+              </p>
+
+              <p>
+                Résultats officiels de la
+                compétition
+              </p>
+            </footer>
           )}
         </>
       )}
