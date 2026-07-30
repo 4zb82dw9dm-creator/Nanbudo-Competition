@@ -1305,3 +1305,68 @@ footer span {
     margin: 15mm;
   }
 }
+/* =========================================================
+   RÉSULTATS — STATISTIQUES
+   ========================================================= */
+
+.results-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  margin-top: 20px;
+  margin-bottom: 32px;
+}
+
+.result-stat-card {
+  background: #ffffff;
+  border: 1px solid #dce2eb;
+  border-radius: 16px;
+  padding: 22px;
+  min-height: 145px;
+  box-sizing: border-box;
+  box-shadow: 0 4px 14px rgba(18, 32, 59, 0.04);
+}
+
+.result-stat-card strong {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  color: #5f6c80;
+}
+
+.result-stat-card h2 {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  color: #14213d;
+}
+
+.result-stat-card p {
+  margin: 0;
+  color: #667085;
+  line-height: 1.4;
+}
+
+/* TABLETTE */
+
+@media (max-width: 900px) {
+  .results-stats {
+    grid-template-columns: repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  }
+}
+
+/* TÉLÉPHONE */
+
+@media (max-width: 520px) {
+  .results-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .result-stat-card {
+    min-height: auto;
+  }
+}
