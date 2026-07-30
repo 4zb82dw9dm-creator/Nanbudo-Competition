@@ -92,14 +92,18 @@ function ArbitrationManager({
   const kataMode = isKataEvent(selectedEvent);
 
   const poolMatches = selectedPool?.matches || [];
-
   const finalMatches =
     selectedPool?.finalMatches || [];
-
   const passages = selectedPool?.passages || [];
-
   const finalPassages =
     selectedPool?.finalPassages || [];
+
+  /*
+   * Les passages de départage sont stockés
+   * séparément des passages de finale.
+   */
+  const kataTieBreaks =
+    selectedPool?.kataTieBreaks || {};
 
   const selectedMatch =
     selectedMatchType === "final"
@@ -115,8 +119,20 @@ function ArbitrationManager({
       sameId(passage.id, selectedPassageId)
   );
 
+  /*
+   * Recherche dans :
+   * - passages normaux de finale
+   * - passages de Kata imposé
+   */
+  const allFinalKataPassages = [
+    ...finalPassages,
+    ...(kataTieBreaks.finale?.passages || []),
+    ...(kataTieBreaks["petite-finale"]
+      ?.passages || []),
+  ];
+
   const selectedFinalPassage =
-    finalPassages.find((passage) =>
+    allFinalKataPassages.find((passage) =>
       sameId(
         passage.id,
         selectedFinalPassageId
@@ -126,7 +142,6 @@ function ArbitrationManager({
   function resetSelections() {
     setSelectedMatchId("");
     setSelectedMatchType("");
-
     setSelectedPassageId("");
     setSelectedFinalPassageId("");
   }
@@ -208,6 +223,13 @@ function ArbitrationManager({
         ? selectedMatch.shiroId
         : null;
 
+    if (!winnerId) {
+      alert(
+        "Impossible d'enregistrer ce combat sans vainqueur."
+      );
+      return;
+    }
+
     const savedMatch = {
       ...selectedMatch,
 
@@ -236,6 +258,12 @@ function ArbitrationManager({
 
       winnerId,
 
+      decisionType:
+        result.decisionType || "score",
+
+      decisionDrapeaux:
+        result.decisionDrapeaux || null,
+
       statut: "Terminé",
     };
 
@@ -260,11 +288,8 @@ function ArbitrationManager({
 
         return {
           ...pool,
-
           finalMatches: updatedFinalMatches,
-
           podium,
-
           statut: podium
             ? "Terminée"
             : "Phase finale",
@@ -294,7 +319,7 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * KATA — PASSAGES
+   * KATA — QUALIFICATIONS
    * =========================================================
    */
 
@@ -318,9 +343,7 @@ function ArbitrationManager({
     }
 
     setSelectedPassageId(passage.id);
-
     setSelectedFinalPassageId("");
-
     setSelectedMatchId("");
     setSelectedMatchType("");
   }
@@ -350,11 +373,8 @@ function ArbitrationManager({
         notesRetenues:
           result.notesRetenues || [],
 
-        noteMinRetiree:
-          result.noteMin,
-
-        noteMaxRetiree:
-          result.noteMax,
+        noteMinRetiree: result.noteMin,
+        noteMaxRetiree: result.noteMax,
 
         score: Number(result.score) || 0,
 
@@ -381,7 +401,7 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * KATA — CLASSEMENT
+   * KATA — CLASSEMENT QUALIFICATIONS
    * =========================================================
    */
 
@@ -501,6 +521,40 @@ function ArbitrationManager({
    * =========================================================
    */
 
+  function createEmptyKataPassage({
+    id,
+    type,
+    label,
+    competitorId,
+    phase = "finale",
+  }) {
+    return {
+      id,
+      type,
+      label,
+      competitorId,
+
+      phase,
+
+      notes: [
+        null,
+        null,
+        null,
+        null,
+        null,
+      ],
+
+      notesRetenues: [],
+
+      noteMinRetiree: null,
+      noteMaxRetiree: null,
+
+      score: null,
+
+      statut: "À noter",
+    };
+  }
+
   function validateKataClosing() {
     if (!selectedPool) {
       return;
@@ -510,20 +564,15 @@ function ArbitrationManager({
       alert(
         "Les deux passages de tous les compétiteurs doivent être terminés."
       );
-
       return;
     }
 
     if (!selectedClosingMode) {
-      alert(
-        "Choisis un mode de clôture."
-      );
-
+      alert("Choisis un mode de clôture.");
       return;
     }
 
-    const ranking =
-      calculateKataRanking();
+    const ranking = calculateKataRanking();
 
     /*
      * CLASSEMENT DIRECT
@@ -557,6 +606,8 @@ function ArbitrationManager({
                 finalPassages: [],
                 finalMatches: [],
 
+                kataTieBreaks: {},
+
                 podium,
 
                 statut: "Terminée",
@@ -583,124 +634,43 @@ function ArbitrationManager({
         alert(
           "Il faut au moins 4 compétiteurs pour organiser une finale et une petite finale."
         );
-
         return;
       }
 
       const now = Date.now();
 
-      const finalPassages = [
-        {
+      const newFinalPassages = [
+        createEmptyKataPassage({
           id: `${now}-kata-final-1`,
-
           type: "finale",
-
           label: "Finale",
-
           competitorId:
             ranking[0].competitorId,
+        }),
 
-          notes: [
-            null,
-            null,
-            null,
-            null,
-            null,
-          ],
-
-          notesRetenues: [],
-
-          noteMinRetiree: null,
-          noteMaxRetiree: null,
-
-          score: null,
-
-          statut: "À noter",
-        },
-
-        {
+        createEmptyKataPassage({
           id: `${now}-kata-final-2`,
-
           type: "finale",
-
           label: "Finale",
-
           competitorId:
             ranking[1].competitorId,
+        }),
 
-          notes: [
-            null,
-            null,
-            null,
-            null,
-            null,
-          ],
-
-          notesRetenues: [],
-
-          noteMinRetiree: null,
-          noteMaxRetiree: null,
-
-          score: null,
-
-          statut: "À noter",
-        },
-
-        {
+        createEmptyKataPassage({
           id: `${now}-kata-bronze-1`,
-
           type: "petite-finale",
-
           label: "Petite finale",
-
           competitorId:
             ranking[2].competitorId,
+        }),
 
-          notes: [
-            null,
-            null,
-            null,
-            null,
-            null,
-          ],
-
-          notesRetenues: [],
-
-          noteMinRetiree: null,
-          noteMaxRetiree: null,
-
-          score: null,
-
-          statut: "À noter",
-        },
-
-        {
+        createEmptyKataPassage({
           id: `${now}-kata-bronze-2`,
-
           type: "petite-finale",
-
           label: "Petite finale",
-
           competitorId:
             ranking[3].competitorId,
-
-          notes: [
-            null,
-            null,
-            null,
-            null,
-            null,
-          ],
-
-          notesRetenues: [],
-
-          noteMinRetiree: null,
-          noteMaxRetiree: null,
-
-          score: null,
-
-          statut: "À noter",
-        },
+        }),
       ];
 
       const updatedPools = pools.map(
@@ -713,9 +683,24 @@ function ArbitrationManager({
 
                 rankingLocked: ranking,
 
-                finalPassages,
+                finalPassages:
+                  newFinalPassages,
 
                 finalMatches: [],
+
+                /*
+                 * Les résultats définitifs
+                 * seront placés ici.
+                 */
+                kataFinalResults: {
+                  finale: null,
+                  "petite-finale": null,
+                },
+
+                /*
+                 * Départages éventuels.
+                 */
+                kataTieBreaks: {},
 
                 podium: null,
 
@@ -735,86 +720,341 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * KATA — FINALES
+   * KATA — PHASE FINALE
    * =========================================================
    */
 
-  function selectKataFinalPassage(
-    passage
-  ) {
+  function selectKataFinalPassage(passage) {
     setSelectedFinalPassageId(
       passage.id
     );
 
     setSelectedPassageId("");
-
     setSelectedMatchId("");
     setSelectedMatchType("");
   }
 
-  function calculateKataFinalPodium(
-    finalPassagesList
+  /*
+   * Retourne les deux passages principaux
+   * d'une confrontation.
+   */
+
+  function getKataFinalGroup(
+    pool,
+    finalType
   ) {
-    const finale =
-      finalPassagesList.filter(
-        (passage) =>
-          passage.type === "finale"
-      );
+    return (pool.finalPassages || []).filter(
+      (passage) =>
+        passage.type === finalType
+    );
+  }
 
-    const petiteFinale =
-      finalPassagesList.filter(
-        (passage) =>
-          passage.type ===
-          "petite-finale"
-      );
+  /*
+   * =========================================================
+   * RÉSOLUTION D'UNE CONFRONTATION KATA
+   * =========================================================
+   *
+   * Une confrontation peut être :
+   *
+   * - en attente
+   * - gagnée au score
+   * - en égalité
+   * - en Kata imposé
+   * - en attente des drapeaux
+   * - gagnée au Kata imposé
+   * - gagnée aux drapeaux
+   */
 
-    if (
-      finale.length !== 2 ||
-      petiteFinale.length !== 2
-    ) {
-      return null;
+  function getKataFinalStatus(
+    pool,
+    finalType
+  ) {
+    const savedResult =
+      pool.kataFinalResults?.[finalType];
+
+    /*
+     * Un résultat définitif existe déjà.
+     */
+
+    if (savedResult?.winnerId) {
+      return {
+        status: "resolved",
+        ...savedResult,
+      };
     }
 
-    const allFinished =
-      finalPassagesList.every(
+    const group = getKataFinalGroup(
+      pool,
+      finalType
+    );
+
+    if (group.length !== 2) {
+      return {
+        status: "waiting",
+      };
+    }
+
+    const allFinished = group.every(
+      (passage) =>
+        passage.statut === "Terminé"
+    );
+
+    if (!allFinished) {
+      return {
+        status: "waiting",
+      };
+    }
+
+    const scoreA =
+      Number(group[0].score) || 0;
+
+    const scoreB =
+      Number(group[1].score) || 0;
+
+    /*
+     * Résultat direct.
+     */
+
+    if (scoreA > scoreB) {
+      return {
+        status: "score",
+        winnerId:
+          group[0].competitorId,
+        loserId:
+          group[1].competitorId,
+        scoreA,
+        scoreB,
+      };
+    }
+
+    if (scoreB > scoreA) {
+      return {
+        status: "score",
+        winnerId:
+          group[1].competitorId,
+        loserId:
+          group[0].competitorId,
+        scoreA,
+        scoreB,
+      };
+    }
+
+    /*
+     * Égalité.
+     */
+
+    const tieBreak =
+      pool.kataTieBreaks?.[finalType];
+
+    if (!tieBreak) {
+      return {
+        status: "tie",
+        competitors: group,
+        scoreA,
+        scoreB,
+      };
+    }
+
+    /*
+     * Décision aux drapeaux déjà enregistrée.
+     */
+
+    if (tieBreak.winnerId) {
+      return {
+        status: "resolved",
+        winnerId: tieBreak.winnerId,
+        loserId: tieBreak.loserId,
+        decisionType:
+          tieBreak.decisionType,
+      };
+    }
+
+    const tiePassages =
+      tieBreak.passages || [];
+
+    if (tiePassages.length !== 2) {
+      return {
+        status: "tie",
+        competitors: group,
+      };
+    }
+
+    const tieFinished =
+      tiePassages.every(
         (passage) =>
           passage.statut === "Terminé"
       );
 
-    if (!allFinished) {
-      return null;
+    if (!tieFinished) {
+      return {
+        status: "tiebreak",
+        passages: tiePassages,
+      };
     }
 
-    const finaleSorted = [
-      ...finale,
-    ].sort(
-      (a, b) =>
-        Number(b.score) -
-        Number(a.score)
-    );
+    const tieScoreA =
+      Number(tiePassages[0].score) || 0;
 
-    const bronzeSorted = [
-      ...petiteFinale,
-    ].sort(
-      (a, b) =>
-        Number(b.score) -
-        Number(a.score)
-    );
+    const tieScoreB =
+      Number(tiePassages[1].score) || 0;
+
+    if (tieScoreA > tieScoreB) {
+      return {
+        status: "tiebreak-score",
+
+        winnerId:
+          tiePassages[0].competitorId,
+
+        loserId:
+          tiePassages[1].competitorId,
+
+        scoreA: tieScoreA,
+        scoreB: tieScoreB,
+      };
+    }
+
+    if (tieScoreB > tieScoreA) {
+      return {
+        status: "tiebreak-score",
+
+        winnerId:
+          tiePassages[1].competitorId,
+
+        loserId:
+          tiePassages[0].competitorId,
+
+        scoreA: tieScoreA,
+        scoreB: tieScoreB,
+      };
+    }
+
+    /*
+     * Toujours égalité après le Kata imposé.
+     */
 
     return {
-      firstId:
-        finaleSorted[0].competitorId,
+      status: "flags",
 
-      secondId:
-        finaleSorted[1].competitorId,
+      passages: tiePassages,
 
-      thirdId:
-        bronzeSorted[0].competitorId,
-
-      fourthId:
-        bronzeSorted[1].competitorId,
+      scoreA: tieScoreA,
+      scoreB: tieScoreB,
     };
   }
+
+  /*
+   * =========================================================
+   * ENREGISTREMENT AUTOMATIQUE DES RÉSULTATS KATA
+   * =========================================================
+   */
+
+  function resolveKataFinalResults(pool) {
+    const types = [
+      "finale",
+      "petite-finale",
+    ];
+
+    const currentResults = {
+      ...(pool.kataFinalResults || {}),
+    };
+
+    types.forEach((finalType) => {
+      if (
+        currentResults[finalType]
+          ?.winnerId
+      ) {
+        return;
+      }
+
+      const status =
+        getKataFinalStatus(
+          {
+            ...pool,
+            kataFinalResults:
+              currentResults,
+          },
+          finalType
+        );
+
+      if (status.status === "score") {
+        currentResults[finalType] = {
+          winnerId: status.winnerId,
+          loserId: status.loserId,
+          decisionType: "score",
+        };
+      }
+
+      if (
+        status.status ===
+        "tiebreak-score"
+      ) {
+        currentResults[finalType] = {
+          winnerId: status.winnerId,
+          loserId: status.loserId,
+          decisionType:
+            "kata-impose",
+        };
+      }
+
+      if (
+        status.status === "resolved" &&
+        status.winnerId
+      ) {
+        currentResults[finalType] = {
+          winnerId: status.winnerId,
+          loserId: status.loserId,
+          decisionType:
+            status.decisionType ||
+            "drapeaux",
+        };
+      }
+    });
+
+    const finale =
+      currentResults.finale;
+
+    const bronze =
+      currentResults[
+        "petite-finale"
+      ];
+
+    const podium =
+      finale?.winnerId &&
+      finale?.loserId &&
+      bronze?.winnerId &&
+      bronze?.loserId
+        ? {
+            firstId:
+              finale.winnerId,
+
+            secondId:
+              finale.loserId,
+
+            thirdId:
+              bronze.winnerId,
+
+            fourthId:
+              bronze.loserId,
+          }
+        : null;
+
+    return {
+      kataFinalResults:
+        currentResults,
+
+      podium,
+
+      statut: podium
+        ? "Terminée"
+        : "Phase finale",
+    };
+  }
+
+  /*
+   * =========================================================
+   * SAUVEGARDE D'UN PASSAGE DE FINALE
+   * =========================================================
+   */
 
   function saveKataFinalPassage(result) {
     if (
@@ -824,58 +1064,145 @@ function ArbitrationManager({
       return;
     }
 
-    const updatedFinalPassages = (
-      selectedPool.finalPassages || []
-    ).map((passage) => {
-      if (
-        !sameId(
-          passage.id,
-          selectedFinalPassage.id
-        )
-      ) {
-        return passage;
+    const isTieBreak =
+      selectedFinalPassage.phase ===
+      "departage";
+
+    let updatedPool = {
+      ...selectedPool,
+    };
+
+    /*
+     * PASSAGE NORMAL DE FINALE
+     */
+
+    if (!isTieBreak) {
+      const updatedFinalPassages = (
+        selectedPool.finalPassages || []
+      ).map((passage) => {
+        if (
+          !sameId(
+            passage.id,
+            selectedFinalPassage.id
+          )
+        ) {
+          return passage;
+        }
+
+        return {
+          ...passage,
+
+          notes: result.notes || [],
+
+          notesRetenues:
+            result.notesRetenues || [],
+
+          noteMinRetiree:
+            result.noteMin,
+
+          noteMaxRetiree:
+            result.noteMax,
+
+          score:
+            Number(result.score) || 0,
+
+          statut: "Terminé",
+        };
+      });
+
+      updatedPool = {
+        ...updatedPool,
+        finalPassages:
+          updatedFinalPassages,
+      };
+    }
+
+    /*
+     * KATA IMPOSÉ DE DÉPARTAGE
+     */
+
+    if (isTieBreak) {
+      const finalType =
+        selectedFinalPassage.finalType;
+
+      const currentTieBreak =
+        selectedPool.kataTieBreaks?.[
+          finalType
+        ];
+
+      if (!currentTieBreak) {
+        return;
       }
 
-      return {
-        ...passage,
+      const updatedTiePassages = (
+        currentTieBreak.passages || []
+      ).map((passage) => {
+        if (
+          !sameId(
+            passage.id,
+            selectedFinalPassage.id
+          )
+        ) {
+          return passage;
+        }
 
-        notes: result.notes || [],
+        return {
+          ...passage,
 
-        notesRetenues:
-          result.notesRetenues || [],
+          notes: result.notes || [],
 
-        noteMinRetiree:
-          result.noteMin,
+          notesRetenues:
+            result.notesRetenues || [],
 
-        noteMaxRetiree:
-          result.noteMax,
+          noteMinRetiree:
+            result.noteMin,
 
-        score: Number(result.score) || 0,
+          noteMaxRetiree:
+            result.noteMax,
 
-        statut: "Terminé",
+          score:
+            Number(result.score) || 0,
+
+          statut: "Terminé",
+        };
+      });
+
+      updatedPool = {
+        ...updatedPool,
+
+        kataTieBreaks: {
+          ...(selectedPool.kataTieBreaks ||
+            {}),
+
+          [finalType]: {
+            ...currentTieBreak,
+
+            passages:
+              updatedTiePassages,
+          },
+        },
       };
-    });
+    }
 
-    const podium =
-      calculateKataFinalPodium(
-        updatedFinalPassages
+    /*
+     * Vérifie si le résultat peut maintenant
+     * être déterminé automatiquement.
+     */
+
+    const resolution =
+      resolveKataFinalResults(
+        updatedPool
       );
+
+    updatedPool = {
+      ...updatedPool,
+      ...resolution,
+    };
 
     const updatedPools = pools.map(
       (pool) =>
         sameId(pool.id, selectedPool.id)
-          ? {
-              ...pool,
-
-              finalPassages:
-                updatedFinalPassages,
-
-              podium,
-
-              statut: podium
-                ? "Terminée"
-                : "Phase finale",
-            }
+          ? updatedPool
           : pool
     );
 
@@ -885,6 +1212,195 @@ function ArbitrationManager({
     });
 
     setSelectedFinalPassageId("");
+  }
+
+  /*
+   * =========================================================
+   * LANCER LE KATA IMPOSÉ
+   * =========================================================
+   */
+
+  function startKataTieBreak(finalType) {
+    if (!selectedPool) {
+      return;
+    }
+
+    const group =
+      getKataFinalGroup(
+        selectedPool,
+        finalType
+      );
+
+    if (group.length !== 2) {
+      return;
+    }
+
+    const scoreA =
+      Number(group[0].score);
+
+    const scoreB =
+      Number(group[1].score);
+
+    if (scoreA !== scoreB) {
+      return;
+    }
+
+    const now = Date.now();
+
+    const tiePassages = group.map(
+      (passage, index) =>
+        createEmptyKataPassage({
+          id: `${now}-${finalType}-departage-${
+            index + 1
+          }`,
+
+          type: "departage",
+
+          label: "Kata imposé",
+
+          competitorId:
+            passage.competitorId,
+
+          phase: "departage",
+        })
+    );
+
+    /*
+     * On conserve le type de confrontation :
+     * finale ou petite-finale.
+     */
+
+    tiePassages.forEach((passage) => {
+      passage.finalType = finalType;
+    });
+
+    const updatedPools = pools.map(
+      (pool) =>
+        sameId(pool.id, selectedPool.id)
+          ? {
+              ...pool,
+
+              kataTieBreaks: {
+                ...(pool.kataTieBreaks ||
+                  {}),
+
+                [finalType]: {
+                  passages:
+                    tiePassages,
+
+                  winnerId: null,
+                  loserId: null,
+
+                  decisionType: null,
+                },
+              },
+
+              podium: null,
+
+              statut: "Phase finale",
+            }
+          : pool
+    );
+
+    onUpdateCompetition({
+      ...competition,
+      pools: updatedPools,
+    });
+  }
+
+  /*
+   * =========================================================
+   * DÉCISION AUX DRAPEAUX KATA
+   * =========================================================
+   */
+
+  function decideKataByFlags(
+    finalType,
+    winnerId
+  ) {
+    if (!selectedPool) {
+      return;
+    }
+
+    const tieBreak =
+      selectedPool.kataTieBreaks?.[
+        finalType
+      ];
+
+    if (!tieBreak) {
+      return;
+    }
+
+    const competitorIds = (
+      tieBreak.passages || []
+    ).map(
+      (passage) =>
+        passage.competitorId
+    );
+
+    const loserId =
+      competitorIds.find(
+        (id) =>
+          !sameId(id, winnerId)
+      ) || null;
+
+    if (!loserId) {
+      return;
+    }
+
+    let updatedPool = {
+      ...selectedPool,
+
+      kataTieBreaks: {
+        ...(selectedPool.kataTieBreaks ||
+          {}),
+
+        [finalType]: {
+          ...tieBreak,
+
+          winnerId,
+          loserId,
+
+          decisionType:
+            "drapeaux",
+        },
+      },
+
+      kataFinalResults: {
+        ...(selectedPool.kataFinalResults ||
+          {}),
+
+        [finalType]: {
+          winnerId,
+          loserId,
+
+          decisionType:
+            "drapeaux",
+        },
+      },
+    };
+
+    const resolution =
+      resolveKataFinalResults(
+        updatedPool
+      );
+
+    updatedPool = {
+      ...updatedPool,
+      ...resolution,
+    };
+
+    const updatedPools = pools.map(
+      (pool) =>
+        sameId(pool.id, selectedPool.id)
+          ? updatedPool
+          : pool
+    );
+
+    onUpdateCompetition({
+      ...competition,
+      pools: updatedPools,
+    });
   }
 
   /*
@@ -949,8 +1465,23 @@ function ArbitrationManager({
               <p>
                 {winner
                   ? `Vainqueur : ${winner.nom} ${winner.prenom}`
-                  : "Égalité"}
+                  : "Résultat incomplet"}
               </p>
+
+              {match.decisionType ===
+                "drapeaux" && (
+                <p>
+                  🏁 Décision aux drapeaux
+                </p>
+              )}
+
+              {match.decisionType ===
+                "disqualification" && (
+                <p>
+                  ⛔ Victoire par
+                  disqualification
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -1098,7 +1629,7 @@ function ArbitrationManager({
 
   /*
    * =========================================================
-   * AFFICHAGE FINALES KATA
+   * AFFICHAGE FINALE KATA
    * =========================================================
    */
 
@@ -1115,6 +1646,17 @@ function ArbitrationManager({
     if (groupPassages.length === 0) {
       return null;
     }
+
+    const status =
+      getKataFinalStatus(
+        selectedPool,
+        finalType
+      );
+
+    const tieBreak =
+      selectedPool.kataTieBreaks?.[
+        finalType
+      ];
 
     return (
       <section className="category-section">
@@ -1194,6 +1736,251 @@ function ArbitrationManager({
             );
           })}
         </div>
+
+        {/* =============================================
+            ÉGALITÉ APRÈS LE PREMIER KATA
+        ============================================= */}
+
+        {status.status === "tie" && (
+          <div className="competition-form">
+            <p className="surtitle">
+              ÉGALITÉ
+            </p>
+
+            <h3>
+              Kata imposé de départage
+            </h3>
+
+            <p>
+              Les deux compétiteurs ont
+              obtenu la même note.
+            </p>
+
+            <p>
+              Ils doivent effectuer un
+              nouveau Kata imposé par
+              l'équipe d'arbitrage.
+            </p>
+
+            <button
+              type="button"
+              className="primary"
+              onClick={() =>
+                startKataTieBreak(
+                  finalType
+                )
+              }
+            >
+              Lancer le Kata imposé
+            </button>
+          </div>
+        )}
+
+        {/* =============================================
+            KATA IMPOSÉ
+        ============================================= */}
+
+        {tieBreak &&
+          (status.status ===
+            "tiebreak" ||
+            status.status ===
+              "flags" ||
+            status.status ===
+              "tiebreak-score" ||
+            status.status ===
+              "resolved") && (
+            <div className="competition-form">
+              <p className="surtitle">
+                DÉPARTAGE
+              </p>
+
+              <h3>
+                Kata imposé
+              </h3>
+
+              <div className="competition-list">
+                {(tieBreak.passages || []).map(
+                  (passage) => {
+                    const competitor =
+                      getCompetitor(
+                        passage.competitorId
+                      );
+
+                    if (!competitor) {
+                      return null;
+                    }
+
+                    return (
+                      <article
+                        className={`competition ${
+                          passage.statut ===
+                          "Terminé"
+                            ? "competition-terminee"
+                            : ""
+                        }`}
+                        key={passage.id}
+                      >
+                        <div>
+                          <p className="surtitle">
+                            KATA IMPOSÉ
+                          </p>
+
+                          <h3>
+                            {
+                              competitor.nom
+                            }{" "}
+                            {
+                              competitor.prenom
+                            }
+                          </h3>
+
+                          {passage.statut ===
+                            "Terminé" && (
+                            <p>
+                              Note :{" "}
+                              <strong>
+                                {Number(
+                                  passage.score
+                                ).toFixed(
+                                  1
+                                )}
+                              </strong>
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          className="manage-button"
+                          onClick={() =>
+                            selectKataFinalPassage(
+                              passage
+                            )
+                          }
+                        >
+                          {passage.statut ===
+                          "Terminé"
+                            ? "Modifier la note"
+                            : "Noter le Kata imposé"}
+                        </button>
+                      </article>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+          )}
+
+        {/* =============================================
+            ÉGALITÉ APRÈS KATA IMPOSÉ → DRAPEAUX
+        ============================================= */}
+
+        {status.status === "flags" && (
+          <div className="competition-form">
+            <p className="surtitle">
+              ÉGALITÉ PERSISTANTE
+            </p>
+
+            <h3>
+              Décision aux drapeaux
+            </h3>
+
+            <p>
+              Les compétiteurs sont encore
+              à égalité après le Kata
+              imposé.
+            </p>
+
+            <p>
+              L'équipe d'arbitrage doit
+              maintenant désigner le
+              vainqueur aux drapeaux.
+            </p>
+
+            <div className="competition-actions">
+              {status.passages.map(
+                (passage) => {
+                  const competitor =
+                    getCompetitor(
+                      passage.competitorId
+                    );
+
+                  if (!competitor) {
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      type="button"
+                      className="manage-button"
+                      key={
+                        passage.competitorId
+                      }
+                      onClick={() =>
+                        decideKataByFlags(
+                          finalType,
+                          passage.competitorId
+                        )
+                      }
+                    >
+                      🏁{" "}
+                      {competitor.nom}{" "}
+                      {competitor.prenom}
+                    </button>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* =============================================
+            RÉSULTAT DE LA CONFRONTATION
+        ============================================= */}
+
+        {(status.status === "score" ||
+          status.status ===
+            "tiebreak-score" ||
+          status.status ===
+            "resolved") &&
+          status.winnerId && (
+            <div className="beta-note">
+              <strong>
+                🏆 Vainqueur :{" "}
+                {getCompetitor(
+                  status.winnerId
+                )?.nom || ""}
+                {" "}
+                {getCompetitor(
+                  status.winnerId
+                )?.prenom || ""}
+              </strong>
+
+              {status.status ===
+                "score" && (
+                <p>
+                  Victoire à la note de
+                  finale.
+                </p>
+              )}
+
+              {status.status ===
+                "tiebreak-score" && (
+                <p>
+                  Victoire après Kata
+                  imposé.
+                </p>
+              )}
+
+              {status.decisionType ===
+                "drapeaux" && (
+                <p>
+                  🏁 Victoire par décision
+                  aux drapeaux.
+                </p>
+              )}
+            </div>
+          )}
       </section>
     );
   }
@@ -1315,8 +2102,7 @@ function ArbitrationManager({
 
                     <p>
                       Chaque compétiteur
-                      effectue deux
-                      passages.
+                      effectue deux passages.
                     </p>
                   </div>
                 </div>
@@ -1352,7 +2138,9 @@ function ArbitrationManager({
                   <div className="ranking-table">
                     <div className="ranking-header">
                       <span>Place</span>
-                      <span>Compétiteur</span>
+                      <span>
+                        Compétiteur
+                      </span>
                       <span>P1</span>
                       <span>P2</span>
                       <span>Total</span>
@@ -1392,7 +2180,9 @@ function ArbitrationManager({
                               null
                                 ? Number(
                                     item.passage1
-                                  ).toFixed(1)
+                                  ).toFixed(
+                                    1
+                                  )
                                 : "—"}
                             </span>
 
@@ -1401,7 +2191,9 @@ function ArbitrationManager({
                               null
                                 ? Number(
                                     item.passage2
-                                  ).toFixed(1)
+                                  ).toFixed(
+                                    1
+                                  )
                                 : "—"}
                             </span>
 
@@ -1421,9 +2213,7 @@ function ArbitrationManager({
                 </div>
               </section>
 
-              {/* =============================
-                  CLÔTURE KATA
-              ============================= */}
+              {/* CLÔTURE */}
 
               {qualificationsFinished &&
                 !selectedPool.closingMode &&
@@ -1484,9 +2274,7 @@ function ArbitrationManager({
                   </div>
                 )}
 
-              {/* =============================
-                  FINALES KATA
-              ============================= */}
+              {/* FINALES */}
 
               {selectedPool.closingMode ===
                 "finals" &&
@@ -1505,9 +2293,7 @@ function ArbitrationManager({
                   </>
                 )}
 
-              {/* =============================
-                  PODIUM KATA
-              ============================= */}
+              {/* PODIUM */}
 
               {selectedPool.podium && (
                 <section className="category-section">
@@ -1715,7 +2501,7 @@ function ArbitrationManager({
           )}
 
           {/* =========================================
-              FEUILLE KATA QUALIFICATION
+              KATA QUALIFICATION
           ========================================= */}
 
           {selectedPassage && kataMode && (
@@ -1743,7 +2529,7 @@ function ArbitrationManager({
           )}
 
           {/* =========================================
-              FEUILLE KATA FINALE
+              KATA FINALE / DÉPARTAGE
           ========================================= */}
 
           {selectedFinalPassage &&
@@ -1756,6 +2542,12 @@ function ArbitrationManager({
                 competitor={getCompetitor(
                   selectedFinalPassage.competitorId
                 )}
+                passage={
+                  selectedFinalPassage.phase ===
+                  "departage"
+                    ? "Kata imposé"
+                    : null
+                }
                 initialResult={
                   selectedFinalPassage.statut ===
                   "Terminé"
