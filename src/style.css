@@ -1818,3 +1818,394 @@ footer span {
     page-break-inside: avoid !important;
   }
 }
+/* =========================================================
+   IMPRESSION V2 — RÉSULTATS OFFICIELS AFDP
+   Ce bloc doit rester TOUT À LA FIN de style.css
+========================================================= */
+
+@media print {
+
+  @page {
+    size: A4 portrait;
+    margin: 11mm 13mm 11mm;
+  }
+
+  /* ---------------------------------------------------------
+     DOCUMENT
+  --------------------------------------------------------- */
+
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+
+    background: #ffffff !important;
+    color: #14213d !important;
+
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    font-size: 11pt !important;
+  }
+
+  .content {
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .results-manager {
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ---------------------------------------------------------
+     ENTÊTE OFFICIEL
+  --------------------------------------------------------- */
+
+  .print-results-header {
+    display: block !important;
+
+    width: 100% !important;
+
+    margin: 0 0 8mm !important;
+    padding: 0 0 5mm !important;
+
+    border-bottom: 2px solid #c9a227 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-results-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+
+    margin: 0 0 5mm !important;
+
+    font-size: 9pt !important;
+    line-height: 1.3 !important;
+  }
+
+  .print-results-brand strong {
+    color: #14213d !important;
+    font-weight: 900 !important;
+  }
+
+  .print-results-brand span {
+    color: #657080 !important;
+  }
+
+  .print-results-title > p {
+    margin: 0 0 2mm !important;
+
+    color: #c9a227 !important;
+
+    font-size: 9pt !important;
+    font-weight: 900 !important;
+
+    letter-spacing: 1.6px !important;
+
+    text-transform: uppercase !important;
+  }
+
+  .print-results-title h1 {
+    margin: 0 0 2.5mm !important;
+
+    color: #14213d !important;
+
+    font-size: 24pt !important;
+    line-height: 1.05 !important;
+
+    font-weight: 900 !important;
+  }
+
+  .print-results-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+
+    gap: 5px !important;
+
+    color: #657080 !important;
+
+    font-size: 9.5pt !important;
+  }
+
+  /* ---------------------------------------------------------
+     TITRE PODIUMS
+  --------------------------------------------------------- */
+
+  .results-podium-header {
+    display: block !important;
+
+    margin: 0 0 6mm !important;
+    padding: 0 !important;
+
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .results-podium-header .surtitle {
+    margin: 0 0 1.5mm !important;
+
+    color: #c9a227 !important;
+
+    font-size: 8.5pt !important;
+    font-weight: 900 !important;
+
+    letter-spacing: 1.7px !important;
+  }
+
+  .results-podium-header h2 {
+    margin: 0 !important;
+
+    color: #14213d !important;
+
+    font-size: 18pt !important;
+    line-height: 1.1 !important;
+
+    font-weight: 900 !important;
+  }
+
+  /* ---------------------------------------------------------
+     CATÉGORIES
+  --------------------------------------------------------- */
+
+  .official-results-list {
+    display: block !important;
+
+    width: 100% !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .results-category {
+    display: block !important;
+
+    width: 100% !important;
+
+    margin: 0 0 8mm !important;
+    padding: 0 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .results-category:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  .results-category .category-section-header {
+    display: block !important;
+
+    margin: 0 0 3mm !important;
+    padding: 0 !important;
+
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .results-category .surtitle {
+    margin: 0 0 1.2mm !important;
+
+    color: #c9a227 !important;
+
+    font-size: 8.5pt !important;
+    font-weight: 900 !important;
+
+    letter-spacing: 1.5px !important;
+
+    text-transform: uppercase !important;
+  }
+
+  .results-category .category-section-header h3 {
+    margin: 0 !important;
+
+    color: #14213d !important;
+
+    font-size: 14pt !important;
+    line-height: 1.15 !important;
+
+    font-weight: 900 !important;
+  }
+
+  /* ---------------------------------------------------------
+     TABLEAUX
+  --------------------------------------------------------- */
+
+  .results-podium {
+    display: block !important;
+
+    width: 100% !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .results-podium .ranking-table {
+    display: block !important;
+
+    width: 100% !important;
+    min-width: 0 !important;
+
+    margin: 0 !important;
+
+    overflow: visible !important;
+
+    border: 1px solid #cfd6df !important;
+    border-radius: 5px !important;
+
+    background: white !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .results-podium .ranking-header,
+  .results-podium .ranking-row {
+    display: grid !important;
+
+    grid-template-columns:
+      22mm
+      minmax(80mm, 2fr)
+      minmax(50mm, 1fr) !important;
+
+    width: 100% !important;
+    min-width: 0 !important;
+
+    gap: 0 !important;
+
+    align-items: center !important;
+
+    padding: 3mm 4mm !important;
+  }
+
+  /* ---------------------------------------------------------
+     EN-TÊTE TABLEAU
+  --------------------------------------------------------- */
+
+  .results-podium .ranking-header {
+    background: #275296 !important;
+    color: #ffffff !important;
+
+    font-size: 9pt !important;
+    font-weight: 900 !important;
+
+    border: 0 !important;
+
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .results-podium .ranking-header span {
+    color: #ffffff !important;
+  }
+
+  /* ---------------------------------------------------------
+     LIGNES TABLEAU
+  --------------------------------------------------------- */
+
+  .results-podium .ranking-row {
+    min-height: 9mm !important;
+
+    background: #ffffff !important;
+
+    border-top: 1px solid #e2e6ec !important;
+
+    font-size: 9.5pt !important;
+    line-height: 1.2 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .results-podium .ranking-row > strong,
+  .results-podium .ranking-row > span {
+    min-width: 0 !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    text-align: left !important;
+  }
+
+  .results-podium .ranking-row > strong:first-child {
+    text-align: center !important;
+
+    font-size: 10pt !important;
+  }
+
+  .results-podium .ranking-row > strong:nth-child(2) {
+    color: #14213d !important;
+
+    font-weight: 900 !important;
+  }
+
+  /* ---------------------------------------------------------
+     MÉDAILLES
+  --------------------------------------------------------- */
+
+  .results-podium .ranking-row:nth-child(2)
+    > strong:first-child,
+  .results-podium .ranking-row:nth-child(3)
+    > strong:first-child,
+  .results-podium .ranking-row:nth-child(4)
+    > strong:first-child {
+    font-size: 11pt !important;
+  }
+
+  /* ---------------------------------------------------------
+     PIED DU DOCUMENT
+  --------------------------------------------------------- */
+
+  .print-results-footer {
+    display: flex !important;
+
+    justify-content: space-between !important;
+    align-items: center !important;
+
+    width: 100% !important;
+
+    gap: 10mm !important;
+
+    margin: 9mm 0 0 !important;
+    padding: 4mm 0 0 !important;
+
+    background: transparent !important;
+
+    color: #657080 !important;
+
+    border-top: 1px solid #c9a227 !important;
+
+    font-size: 7.5pt !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-results-footer p {
+    margin: 0 !important;
+  }
+
+  .print-results-footer p:first-child {
+    font-weight: 700 !important;
+  }
+
+  .print-results-footer p:last-child {
+    text-align: right !important;
+  }
+}
