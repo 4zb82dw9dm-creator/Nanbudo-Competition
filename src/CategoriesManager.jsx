@@ -43,12 +43,30 @@ const MIN_GROUP_SIZE = 3;
 const TARGET_GROUP_SIZE = 4;
 
 const ASSISTANT_LIMITS = {
-  kata0: { maxAgeSpread: 6, maxWeightSpread: null },
-  kata1: { maxAgeSpread: 6, maxWeightSpread: null },
-  kata2: { maxAgeSpread: 8, maxWeightSpread: null },
-  randori: { maxAgeSpread: 6, maxWeightSpread: null },
-  juRandori1: { maxAgeSpread: 6, maxWeightSpread: 10 },
-  juRandori2: { maxAgeSpread: 6, maxWeightSpread: 10 },
+  kata0: {
+    maxAgeSpread: 6,
+    maxWeightSpread: null,
+  },
+  kata1: {
+    maxAgeSpread: 6,
+    maxWeightSpread: null,
+  },
+  kata2: {
+    maxAgeSpread: 8,
+    maxWeightSpread: null,
+  },
+  randori: {
+    maxAgeSpread: 6,
+    maxWeightSpread: null,
+  },
+  juRandori1: {
+    maxAgeSpread: 6,
+    maxWeightSpread: 10,
+  },
+  juRandori2: {
+    maxAgeSpread: 6,
+    maxWeightSpread: 10,
+  },
 };
 
 function CategoriesManager({
@@ -76,14 +94,6 @@ function CategoriesManager({
     return String(a) === String(b);
   }
 
-  /*
-    L'âge est lu directement si le compétiteur
-    possède déjà un champ age.
-
-    Sinon il est calculé depuis dateNaissance.
-    Si la compétition possède une date, on calcule
-    l'âge à la date de la compétition.
-  */
   function getAge(competitor) {
     if (
       competitor.age !== "" &&
@@ -183,14 +193,6 @@ function CategoriesManager({
     return null;
   }
 
-  /*
-    Règles d'âge validées.
-
-    < 14 ans = Enfant
-    14 à 17 ans = Junior
-    18 à 39 ans = Senior
-    40 ans et + = Vétéran
-  */
   function getAgeClass(age) {
     if (age === null) {
       return null;
@@ -211,14 +213,6 @@ function CategoriesManager({
     return "Vétéran";
   }
 
-  /*
-    Tranches privilégiées chez les enfants.
-
-    Elles ne sont pas totalement rigides :
-    si l'effectif est insuffisant, l'assistant
-    peut chercher des enfants proches dans une
-    autre tranche compatible.
-  */
   function getChildBand(age) {
     if (age === null || age >= 14) {
       return null;
@@ -239,12 +233,6 @@ function CategoriesManager({
     return "12–13 ans";
   }
 
-  /*
-    Règle combat enfant :
-
-    moins de 10 ans = Randori
-    10 ans et + = Ju Randori
-  */
   function getCombatFamily(age) {
     if (age === null) {
       return null;
@@ -270,11 +258,6 @@ function CategoriesManager({
   ) {
     const age = getAge(competitor);
 
-    /*
-      Si l'âge n'est pas disponible, on ne
-      masque pas le compétiteur afin que
-      l'organisateur puisse corriger sa fiche.
-    */
     if (age === null) {
       return true;
     }
@@ -290,14 +273,6 @@ function CategoriesManager({
     return true;
   }
 
-  /*
-    Compatibilité avec les deux formes de stockage
-    rencontrées dans l'application :
-
-    epreuves: { kata0: true }
-    ou
-    epreuves: ["kata0"]
-  */
   function isRegisteredForEvent(
     competitor,
     type = eventType
@@ -346,6 +321,32 @@ function CategoriesManager({
           )
         )
         .sort((a, b) => {
+          const ageA = getAge(a);
+          const ageB = getAge(b);
+
+          const classA =
+            getAgeClass(ageA) || "";
+
+          const classB =
+            getAgeClass(ageB) || "";
+
+          const classOrder = {
+            Enfant: 1,
+            Junior: 2,
+            Senior: 3,
+            Vétéran: 4,
+          };
+
+          const orderA =
+            classOrder[classA] || 99;
+
+          const orderB =
+            classOrder[classB] || 99;
+
+          if (orderA !== orderB) {
+            return orderA - orderB;
+          }
+
           const sexA = a.sexe || "";
           const sexB = b.sexe || "";
 
@@ -355,9 +356,6 @@ function CategoriesManager({
               "fr"
             );
           }
-
-          const ageA = getAge(a);
-          const ageB = getAge(b);
 
           if (ageA !== ageB) {
             if (ageA === null) return 1;
@@ -432,29 +430,129 @@ function CategoriesManager({
       return;
     }
 
-    setSelectedIds((current) =>
-      current.some((item) =>
+    const competitor =
+      getCompetitor(id);
+
+    if (!competitor) {
+      return;
+    }
+
+    const alreadySelected =
+      selectedIds.some((item) =>
         sameId(item, id)
-      )
-        ? current.filter(
-            (item) =>
-              !sameId(item, id)
+      );
+
+    if (alreadySelected) {
+      setSelectedIds((current) =>
+        current.filter(
+          (item) =>
+            !sameId(item, id)
+        )
+      );
+
+      setSuggestionInfo(null);
+      return;
+    }
+
+    const selectedCompetitors =
+      selectedIds
+        .map((selectedId) =>
+          getCompetitor(selectedId)
+        )
+        .filter(Boolean);
+
+    const competitorAgeClass =
+      getAgeClass(
+        getAge(competitor)
+      );
+
+    const selectedAgeClasses = [
+      ...new Set(
+        selectedCompetitors
+          .map((item) =>
+            getAgeClass(
+              getAge(item)
+            )
           )
-        : [...current, id]
-    );
+          .filter(Boolean)
+      ),
+    ];
+
+    /*
+      Junior / Senior / Vétéran / Enfant
+      ne peuvent jamais être mélangés dans
+      la même catégorie.
+    */
+    if (
+      selectedAgeClasses.length > 0 &&
+      competitorAgeClass &&
+      !selectedAgeClasses.includes(
+        competitorAgeClass
+      )
+    ) {
+      alert(
+        `Sélection impossible : ${competitorAgeClass} ne peut pas être ajouté à une catégorie ${selectedAgeClasses.join(
+          " / "
+        )}.`
+      );
+
+      return;
+    }
+
+    /*
+      Masculin / féminin séparés par défaut,
+      mais porte de sortie manuelle.
+    */
+    const selectedSexes = [
+      ...new Set(
+        selectedCompetitors
+          .map((item) => item.sexe)
+          .filter(Boolean)
+      ),
+    ];
+
+    if (
+      selectedSexes.length > 0 &&
+      competitor.sexe &&
+      !selectedSexes.includes(
+        competitor.sexe
+      )
+    ) {
+      const confirmed =
+        window.confirm(
+          "Masculin et féminin sont séparés par défaut. Souhaites-tu exceptionnellement préparer une catégorie mixte ?"
+        );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setSelectedIds((current) => [
+      ...current,
+      id,
+    ]);
 
     setSuggestionInfo(null);
   }
 
-  function selectAllAvailable() {
-    setSelectedIds(
-      availableCompetitors.map(
-        (competitor) =>
-          competitor.id
-      )
-    );
+  /*
+    La sélection globale de tous les inscrits
+    est volontairement supprimée.
 
-    setSuggestionInfo(null);
+    Elle pourrait mélanger Junior, Senior
+    et Vétéran.
+  */
+  function selectAllAvailable() {
+    if (
+      availableCompetitors.length === 0
+    ) {
+      return;
+    }
+
+    alert(
+      "La sélection globale est désactivée afin d'éviter de mélanger les classes d'âge. Sélectionne les compétiteurs d'une même classe ou utilise « Proposer un groupe »."
+    );
   }
 
   function clearSelection() {
@@ -545,15 +643,6 @@ function CategoriesManager({
     return families.length <= 1;
   }
 
-  /*
-    strictChildBand = true :
-    l'assistant essaie d'abord de rester
-    dans 6–7 / 8–9 / 10–11 / 12–13.
-
-    false :
-    il peut élargir aux enfants voisins,
-    tout en respectant les autres sécurités.
-  */
   function groupIsCompatible(
     group,
     {
@@ -564,17 +653,13 @@ function CategoriesManager({
       return true;
     }
 
-    /*
-      Masculin / féminin séparés
-      automatiquement.
-    */
     if (!groupHasSameSex(group)) {
       return false;
     }
 
     /*
-      L'assistant ne mélange pas
-      Enfant / Junior / Senior / Vétéran.
+      Blocage absolu entre les grandes
+      classes d'âge.
     */
     if (
       !groupHasSameAgeClass(group)
@@ -582,10 +667,6 @@ function CategoriesManager({
       return false;
     }
 
-    /*
-      Randori et Ju Randori ne sont jamais
-      mélangés automatiquement.
-    */
     if (
       eventType === "randori" ||
       eventIsJuRandori()
@@ -599,12 +680,15 @@ function CategoriesManager({
       }
     }
 
-    const ages = group.map(getAge);
+    const ages =
+      group.map(getAge);
 
-    const allChildren = ages.every(
-      (age) =>
-        age !== null && age < 14
-    );
+    const allChildren =
+      ages.every(
+        (age) =>
+          age !== null &&
+          age < 14
+      );
 
     if (
       strictChildBand &&
@@ -655,16 +739,16 @@ function CategoriesManager({
     referenceCompetitor,
     competitor
   ) {
-    const referenceAge = getAge(
-      referenceCompetitor
-    );
+    const referenceAge =
+      getAge(referenceCompetitor);
 
     const candidateAge =
       getAge(competitor);
 
-    const referenceWeight = getWeight(
-      referenceCompetitor
-    );
+    const referenceWeight =
+      getWeight(
+        referenceCompetitor
+      );
 
     const candidateWeight =
       getWeight(competitor);
@@ -675,7 +759,9 @@ function CategoriesManager({
       );
 
     const candidateGrade =
-      getGradeValue(competitor);
+      getGradeValue(
+        competitor
+      );
 
     const ageDifference =
       referenceAge === null ||
@@ -704,10 +790,6 @@ function CategoriesManager({
               candidateGrade
           );
 
-    /*
-      Chez les enfants, priorité forte
-      à la tranche d'âge initiale.
-    */
     const differentChildBand =
       referenceAge !== null &&
       candidateAge !== null &&
@@ -721,12 +803,6 @@ function CategoriesManager({
         ? 2500
         : 0;
 
-    /*
-      Priorités :
-      âge
-      puis poids
-      puis grade.
-    */
     const ageScore =
       ageDifference === null
         ? 5000
@@ -816,7 +892,9 @@ function CategoriesManager({
       if (
         groupIsCompatible(
           proposedGroup,
-          { strictChildBand }
+          {
+            strictChildBand,
+          }
         )
       ) {
         group.push(
@@ -847,15 +925,6 @@ function CategoriesManager({
       startAge !== null &&
       startAge < 14;
 
-    /*
-      Premier passage :
-      on respecte strictement la petite
-      tranche enfant.
-
-      Si moins de 3 enfants sont trouvés,
-      deuxième passage en autorisant les
-      âges enfants voisins.
-    */
     let result =
       buildSuggestedGroup(
         startCompetitor,
@@ -864,6 +933,13 @@ function CategoriesManager({
 
     let relaxedChildBand = false;
 
+    /*
+      Si moins de 3 enfants dans la tranche
+      idéale, on élargit aux âges enfants
+      voisins.
+
+      La classe Enfant reste obligatoire.
+    */
     if (
       isChild &&
       result.group.length <
@@ -996,7 +1072,7 @@ function CategoriesManager({
       invalidIds.length > 0
     ) {
       alert(
-        "Un ou plusieurs compétiteurs sélectionnés ne sont pas admissibles dans cette épreuve. Vérifie notamment la règle Randori < 10 ans / Ju Randori à partir de 10 ans."
+        "Un ou plusieurs compétiteurs sélectionnés ne sont pas admissibles dans cette épreuve. Vérifie notamment la règle Randori moins de 10 ans / Ju Randori à partir de 10 ans."
       );
 
       return;
@@ -1024,45 +1100,23 @@ function CategoriesManager({
         )
         .filter(Boolean);
 
-    const confirmations = [];
-
     /*
-      Porte de sortie masculin / féminin.
-
-      L'assistant ne le fait jamais seul,
-      mais la Commission peut confirmer
-      manuellement.
-    */
-    if (
-      !groupHasSameSex(
-        selectedCompetitors
-      )
-    ) {
-      confirmations.push(
-        "la catégorie est mixte (masculin/féminin)"
-      );
-    }
-
-    /*
-      Même principe pour une fusion entre
-      grandes classes d'âge :
-      jamais automatique, mais possibilité
-      de dérogation Commission.
+      Sécurité finale :
+      aucune création entre classes d'âge
+      différentes.
     */
     if (
       !groupHasSameAgeClass(
         selectedCompetitors
       )
     ) {
-      confirmations.push(
-        "la catégorie mélange des classes d'âge (Enfant / Junior / Senior / Vétéran)"
+      alert(
+        "Création impossible : Enfant, Junior, Senior et Vétéran doivent être placés dans des catégories distinctes."
       );
+
+      return;
     }
 
-    /*
-      En revanche Randori <10 / Ju Randori
-      10+ reste bloquant.
-    */
     if (
       (eventType === "randori" ||
         eventIsJuRandori()) &&
@@ -1077,12 +1131,21 @@ function CategoriesManager({
       return;
     }
 
-    /*
-      3 minimum / 4 idéal.
+    const confirmations = [];
 
-      Une catégorie de 1 ou 2 reste possible
-      uniquement après validation explicite.
+    /*
+      Porte de sortie F/M.
     */
+    if (
+      !groupHasSameSex(
+        selectedCompetitors
+      )
+    ) {
+      confirmations.push(
+        "la catégorie est mixte (masculin/féminin)"
+      );
+    }
+
     if (
       selectedIds.length <
       MIN_GROUP_SIZE
@@ -1176,7 +1239,7 @@ function CategoriesManager({
       ageClass:
         ageClasses.length === 1
           ? ageClasses[0]
-          : "Mixte",
+          : null,
 
       derogation:
         confirmations.length > 0,
@@ -1308,7 +1371,7 @@ function CategoriesManager({
         ageClasses.length === 1
           ? ageClasses[0]
           : ageClasses.length > 1
-          ? "Mixte"
+          ? "Incompatible"
           : "Non renseignée",
 
       minAge:
@@ -1341,7 +1404,7 @@ function CategoriesManager({
       <div className="manager-header">
         <div>
           <p className="surtitle">
-            BÊTA 0.2
+            BÊTA 0.3
           </p>
 
           <h2>Catégories</h2>
@@ -1373,18 +1436,19 @@ function CategoriesManager({
 
         <p>
           Masculin et féminin sont séparés par
-          défaut. Classes d'âge : Enfant moins de
-          14 ans, Junior 14–17 ans, Senior
-          18–39 ans, Vétéran 40 ans et plus. Chez
-          les enfants, l'assistant privilégie les
-          tranches 6–7, 8–9, 10–11 et 12–13 ans,
-          puis élargit si l'effectif est
+          défaut. Les classes d'âge sont :
+          Enfant moins de 14 ans, Junior de 14 à
+          17 ans, Senior de 18 à 39 ans et Vétéran
+          à partir de 40 ans. Les classes d'âge ne
+          sont jamais mélangées automatiquement.
+          Chez les enfants, l'assistant privilégie
+          les tranches 6–7, 8–9, 10–11 et
+          12–13 ans puis élargit si l'effectif est
           insuffisant. Moins de 10 ans : Randori.
-          À partir de 10 ans : Ju Randori. Objectif
-          4 compétiteurs, minimum 3. Poids et grade
-          servent à rapprocher les profils. Toute
-          dérogation reste soumise à validation de
-          la Commission.
+          À partir de 10 ans : Ju Randori.
+          Objectif 4 compétiteurs, minimum 3.
+          Poids et grade servent à rapprocher les
+          profils.
         </p>
       </div>
 
@@ -1445,7 +1509,7 @@ function CategoriesManager({
                   event.target.value
                 )
               }
-              placeholder="Ex. Ju Randori — Junior — M"
+              placeholder="Ex. Ju Randori 2 — Junior — Homme"
             />
           </label>
         </div>
@@ -1457,10 +1521,10 @@ function CategoriesManager({
 
           <p>
             {eventType === "randori"
-              ? "Seuls les compétiteurs de moins de 10 ans sont proposés automatiquement."
+              ? "Seuls les compétiteurs de moins de 10 ans sont admissibles dans cette épreuve."
               : eventIsJuRandori()
-              ? "Seuls les compétiteurs de 10 ans et plus sont proposés automatiquement."
-              : "Les compétiteurs sont regroupés par sexe et classe d'âge, puis rapprochés par âge, poids et grade."}
+              ? "Les compétiteurs de 10 ans et plus sont admissibles, mais Junior, Senior et Vétéran restent dans des catégories distinctes."
+              : "Les compétiteurs sont regroupés par classe d'âge et par sexe, puis rapprochés selon leur âge, leur poids et leur grade."}
           </p>
         </div>
 
@@ -1656,13 +1720,14 @@ function CategoriesManager({
             {suggestionInfo.ideal ? (
               <p>
                 Groupe idéal de 4 compétiteurs
-                proposé.
+                proposé dans la même classe d'âge
+                et du même sexe.
               </p>
             ) : suggestionInfo.ready ? (
               <p>
                 Groupe de{" "}
                 {suggestionInfo.count} compétiteurs
-                proposé : le minimum de 3 est
+                proposé. Le minimum de 3 est
                 atteint.
               </p>
             ) : (
@@ -1676,8 +1741,8 @@ function CategoriesManager({
                 {suggestionInfo.count > 1
                   ? "s"
                   : ""}
-                . Un regroupement complémentaire
-                doit être étudié par la Commission.
+                . Le regroupement doit être
+                contrôlé avant validation.
               </p>
             )}
 
@@ -1685,17 +1750,22 @@ function CategoriesManager({
               <p>
                 Effectif insuffisant dans la tranche
                 enfant initiale : l'assistant a
-                élargi à des âges voisins, sans
-                franchir la limite Randori / Ju
-                Randori.
+                recherché des enfants d'âges voisins
+                sans changer de classe d'âge ni
+                franchir la limite Randori /
+                Ju Randori.
               </p>
             )}
 
             <p>
-              Écart du groupe :{" "}
+              Classe :{" "}
+              {suggestionInfo.ageClass ||
+                "non renseignée"}
+              {" · "}
+              Écart d'âge :{" "}
               {suggestionInfo.ageSpread} an(s)
               {currentEvent.useWeight
-                ? ` · ${suggestionInfo.weightSpread} kg`
+                ? ` · Écart de poids : ${suggestionInfo.weightSpread} kg`
                 : ""}
             </p>
           </div>
