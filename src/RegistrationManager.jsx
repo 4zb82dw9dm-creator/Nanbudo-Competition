@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
 
 const STORAGE_KEY = "nanbudo-online-registrations-v2";
+const REGISTRATIONS_CHANGED_EVENT = "nanbudo-registrations-changed";
 const EVENTS = [["kata0","Kata 0 — Shihotai"],["kata1","Kata 1"],["kata2","Kata 2"],["randori","Randori"],["juRandori1","Ju Randori 1"],["juRandori2","Ju Randori 2"]];
 const initialForm={competitionId:"",nom:"",prenom:"",club:"",licence:"",dateNaissance:"",sexe:"",grade:"",poids:"",email:"",telephone:"",epreuves:[]};
 
@@ -10,7 +11,7 @@ function RegistrationManager(){
  const [registrations,setRegistrations]=useState(()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]")}catch{return[]}});
  const [competitions]=useState(()=>{try{return JSON.parse(localStorage.getItem(COMPETITIONS_STORAGE_KEY)||"[]")}catch{return[]}});
  const [editingId,setEditingId]=useState(null); const [search,setSearch]=useState(""); const [message,setMessage]=useState("");
- useEffect(()=>localStorage.setItem(STORAGE_KEY,JSON.stringify(registrations)),[registrations]);
+ useEffect(()=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(registrations));window.dispatchEvent(new Event(REGISTRATIONS_CHANGED_EVENT))},[registrations]);
  const openCompetitions=useMemo(()=>competitions.filter(c=>c.inscriptionsOuvertes===true),[competitions]);
  const competitionName=id=>competitions.find(c=>String(c.id)===String(id))?.nom||"Compétition inconnue";
  const canSubmit=useMemo(()=>form.competitionId&&form.nom.trim()&&form.prenom.trim()&&form.club.trim()&&form.dateNaissance&&form.sexe&&form.epreuves.length>0,[form]);
