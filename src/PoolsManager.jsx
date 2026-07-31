@@ -9,6 +9,13 @@ const EVENT_LABELS = {
   juRandori2: "Ju Randori 2",
 };
 
+const AGE_CLASS_ORDER = {
+  Enfant: 1,
+  Junior: 2,
+  Senior: 3,
+  Vétéran: 4,
+};
+
 function PoolsManager({
   competition,
   onUpdateCompetition,
@@ -28,6 +35,19 @@ function PoolsManager({
 
   function sameId(a, b) {
     return String(a) === String(b);
+  }
+
+  function makeId(prefix = "id") {
+    if (
+      typeof crypto !== "undefined" &&
+      typeof crypto.randomUUID === "function"
+    ) {
+      return `${prefix}-${crypto.randomUUID()}`;
+    }
+
+    return `${prefix}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}`;
   }
 
   function getCompetitor(id) {
@@ -56,6 +76,126 @@ function PoolsManager({
     );
   }
 
+  function isJuRandori(eventType) {
+    return (
+      eventType === "juRandori1" ||
+      eventType === "juRandori2"
+    );
+  }
+
+  function normalizeSex(sex) {
+    const value = String(sex || "")
+      .trim()
+      .toLowerCase();
+
+    if (
+      value === "homme" ||
+      value === "h" ||
+      value === "masculin" ||
+      value === "m"
+    ) {
+      return "Homme";
+    }
+
+    if (
+      value === "femme" ||
+      value === "f" ||
+      value === "féminin" ||
+      value === "feminin"
+    ) {
+      return "Femme";
+    }
+
+    return sex || "Non renseigné";
+  }
+
+  function getAge(competitor) {
+    if (
+      competitor.age !== "" &&
+      competitor.age !== undefined &&
+      competitor.age !== null
+    ) {
+      const age = Number(competitor.age);
+
+      if (Number.isFinite(age)) {
+        return age;
+      }
+    }
+
+    if (!competitor.dateNaissance) {
+      return null;
+    }
+
+    const birthDate = new Date(
+      competitor.dateNaissance
+    );
+
+    if (Number.isNaN(birthDate.getTime())) {
+      return null;
+    }
+
+    const referenceDate = competition.date
+      ? new Date(competition.date)
+      : new Date();
+
+    if (
+      Number.isNaN(
+        referenceDate.getTime()
+      )
+    ) {
+      return null;
+    }
+
+    let age =
+      referenceDate.getFullYear() -
+      birthDate.getFullYear();
+
+    const monthDifference =
+      referenceDate.getMonth() -
+      birthDate.getMonth();
+
+    if (
+      monthDifference < 0 ||
+      (monthDifference === 0 &&
+        referenceDate.getDate() <
+          birthDate.getDate())
+    ) {
+      age -= 1;
+    }
+
+    return age >= 0 ? age : null;
+  }
+
+  function getAgeClass(age) {
+    if (age === null) {
+      return null;
+    }
+
+    if (age < 14) {
+      return "Enfant";
+    }
+
+    if (age <= 17) {
+      return "Junior";
+    }
+
+    if (age <= 39) {
+      return "Senior";
+    }
+
+    return "Vétéran";
+  }
+
+  function getCombatFamily(age) {
+    if (age === null) {
+      return null;
+    }
+
+    return age < 10
+      ? "randori"
+      : "juRandori";
+  }
+
   function poolExistsForCategory(categoryId) {
     return pools.some((pool) =>
       sameId(pool.categoryId, categoryId)
@@ -64,13 +204,159 @@ function PoolsManager({
 
   /*
    * =========================================================
-   * JU RANDORI / RANDORI — RENCONTRES
+   * VALIDATION D'UNE CATÉGORIE AVANT CRÉATION DE LA POULE
+   * =========================================================
+   */
+
+  function validateCategoryForPool(category) {
+    const competitorIds =
+      category.competitorIds || [];
+
+    if (competitorIds.length < 2) {
+      return {
+        valid: false,
+        message:
+          "Il faut au moins 2 compétiteurs pour créer une poule.",
+      };
+    }
+
+    const categoryCompetitors =
+      competitorIds
+        .map((id) => getCompetitor(id))
+        .filter(Boolean);
+
+    if (
+      categoryCompetitors.length !==
+      competitorIds.length
+    ) {
+      return {
+        valid: false,
+        message:
+          "Un ou plusieurs compétiteurs de cette catégorie sont introuvables. Vérifie la liste des participants.",
+      };
+    }
+
+    const ageClasses = [
+      ...new Set(
+        categoryCompetitors
+          .map((competitor) =>
+            getAgeClass(
+              getAge(competitor)
+            )
+          )
+          .filter(Boolean)
+      ),
+    ];
+
+    if (ageClasses.length > 1) {
+      return {
+        valid: false,
+        message:
+          "Cette catégorie mélange plusieurs classes d'âge. Enfant, Junior, Senior et Vétéran doivent rester séparés.",
+      };
+    }
+
+    const sexes = [
+      ...new Set(
+        categoryCompetitors
+          .map((competitor) =>
+            normalizeSex(
+              competitor.sexe
+            )
+          )
+          .filter(
+            (sex) =>
+              sex === "Homme" ||
+              sex === "Femme"
+          )
+      ),
+    ];
+
+    /*
+     * Une catégorie mixte peut avoir été créée
+     * manuellement avec dérogation Commission.
+     *
+     * On ne la bloque donc pas ici.
+     */
+
+    if (
+      sexes.length > 1 &&
+      !category.derogation
+    ) {
+      return {
+        valid: false,
+        message:
+          "Cette catégorie mélange masculin et féminin sans dérogation enregistrée.",
+      };
+    }
+
+    if (
+      category.epreuve === "randori"
+    ) {
+      const invalid = categoryCompetitors.some(
+        (competitor) => {
+          const age =
+            getAge(competitor);
+
+          return (
+            age === null ||
+            getCombatFamily(age) !==
+              "randori"
+          );
+        }
+      );
+
+      if (invalid) {
+        return {
+          valid: false,
+          message:
+            "Randori est réservé aux compétiteurs de moins de 10 ans. Vérifie l'âge des participants.",
+        };
+      }
+    }
+
+    if (
+      isJuRandori(
+        category.epreuve
+      )
+    ) {
+      const invalid = categoryCompetitors.some(
+        (competitor) => {
+          const age =
+            getAge(competitor);
+
+          return (
+            age === null ||
+            getCombatFamily(age) !==
+              "juRandori"
+          );
+        }
+      );
+
+      if (invalid) {
+        return {
+          valid: false,
+          message:
+            "Ju Randori est réservé aux compétiteurs de 10 ans et plus. Vérifie l'âge des participants.",
+        };
+      }
+    }
+
+    return {
+      valid: true,
+      competitors:
+        categoryCompetitors,
+    };
+  }
+
+  /*
+   * =========================================================
+   * COMBAT — RENCONTRES
    * =========================================================
    */
 
   function generateMatches(competitorIds) {
     const matches = [];
-    const now = Date.now();
 
     for (
       let i = 0;
@@ -83,7 +369,7 @@ function PoolsManager({
         j++
       ) {
         matches.push({
-          id: `${now}-match-${i}-${j}`,
+          id: makeId("match"),
 
           akaId: competitorIds[i],
           shiroId: competitorIds[j],
@@ -106,22 +392,17 @@ function PoolsManager({
 
   /*
    * =========================================================
-   * JU RANDORI — CLASSEMENT
+   * COMBAT — CLASSEMENT
    * =========================================================
-   *
-   * Ordre utilisé :
    *
    * 1. Nombre de victoires
    * 2. Moins de points négatifs
    * 3. Rencontre directe
-   * 4. Si l'égalité persiste :
-   *    départage réglementaire nécessaire
+   * 4. Départage réglementaire enregistré
    *
-   * IMPORTANT :
-   * On n'utilise plus :
-   * - différence de score
-   * - score marqué
-   * pour inventer un classement.
+   * La différence de score et le score marqué
+   * ne servent PAS à inventer un départage.
+   * =========================================================
    */
 
   function getDirectMatch(
@@ -167,10 +448,16 @@ function PoolsManager({
         return (
           ids.length === 2 &&
           ids.some((id) =>
-            sameId(id, competitorAId)
+            sameId(
+              id,
+              competitorAId
+            )
           ) &&
           ids.some((id) =>
-            sameId(id, competitorBId)
+            sameId(
+              id,
+              competitorBId
+            )
           )
         );
       }
@@ -191,10 +478,11 @@ function PoolsManager({
     const competitorIds =
       pool.competitorIds || [];
 
-    const matches = pool.matches || [];
+    const matches =
+      pool.matches || [];
 
-    const ranking = competitorIds.map(
-      (id) => ({
+    const ranking =
+      competitorIds.map((id) => ({
         competitorId: id,
 
         victories: 0,
@@ -207,26 +495,29 @@ function PoolsManager({
         difference: 0,
 
         negativePoints: 0,
-      })
-    );
+      }));
 
     matches.forEach((match) => {
-      if (match.statut !== "Terminé") {
+      if (
+        match.statut !== "Terminé"
+      ) {
         return;
       }
 
-      const aka = ranking.find((item) =>
-        sameId(
-          item.competitorId,
-          match.akaId
-        )
+      const aka = ranking.find(
+        (item) =>
+          sameId(
+            item.competitorId,
+            match.akaId
+          )
       );
 
-      const shiro = ranking.find((item) =>
-        sameId(
-          item.competitorId,
-          match.shiroId
-        )
+      const shiro = ranking.find(
+        (item) =>
+          sameId(
+            item.competitorId,
+            match.shiroId
+          )
       );
 
       if (!aka || !shiro) {
@@ -240,10 +531,13 @@ function PoolsManager({
         Number(match.shiroScore) || 0;
 
       aka.scoreFor += akaScore;
-      aka.scoreAgainst += shiroScore;
+      aka.scoreAgainst +=
+        shiroScore;
 
-      shiro.scoreFor += shiroScore;
-      shiro.scoreAgainst += akaScore;
+      shiro.scoreFor +=
+        shiroScore;
+      shiro.scoreAgainst +=
+        akaScore;
 
       aka.negativePoints +=
         Number(
@@ -284,10 +578,6 @@ function PoolsManager({
     });
 
     ranking.sort((a, b) => {
-      /*
-       * 1. NOMBRE DE VICTOIRES
-       */
-
       if (
         b.victories !==
         a.victories
@@ -298,12 +588,6 @@ function PoolsManager({
         );
       }
 
-      /*
-       * 2. POINTS NÉGATIFS
-       *
-       * Le plus petit nombre passe devant.
-       */
-
       if (
         a.negativePoints !==
         b.negativePoints
@@ -313,10 +597,6 @@ function PoolsManager({
           b.negativePoints
         );
       }
-
-      /*
-       * 3. RENCONTRE DIRECTE
-       */
 
       const confrontation =
         getDirectMatch(
@@ -345,13 +625,6 @@ function PoolsManager({
         return 1;
       }
 
-      /*
-       * 4. DÉPARTAGE DÉJÀ EFFECTUÉ
-       *
-       * Cette donnée sera enregistrée
-       * ensuite par ArbitrationManager.
-       */
-
       const tieBreakWinner =
         getSavedPoolTieBreakWinner(
           pool,
@@ -379,17 +652,6 @@ function PoolsManager({
         return 1;
       }
 
-      /*
-       * Toujours égalité.
-       *
-       * Surtout :
-       * PAS de différence de score,
-       * PAS de score marqué.
-       *
-       * On conserve l'ordre stable
-       * en attendant le départage.
-       */
-
       return 0;
     });
 
@@ -398,7 +660,7 @@ function PoolsManager({
 
   /*
    * =========================================================
-   * DÉTECTION DES ÉGALITÉS À DÉPARTAGER
+   * DÉTECTION DES ÉGALITÉS
    * =========================================================
    */
 
@@ -407,14 +669,12 @@ function PoolsManager({
     competitorA,
     competitorB
   ) {
-    if (!competitorA || !competitorB) {
+    if (
+      !competitorA ||
+      !competitorB
+    ) {
       return false;
     }
-
-    /*
-     * Pas le même nombre de victoires :
-     * pas d'égalité.
-     */
 
     if (
       competitorA.victories !==
@@ -423,22 +683,12 @@ function PoolsManager({
       return false;
     }
 
-    /*
-     * Pas le même nombre de points négatifs :
-     * le classement est déjà déterminé.
-     */
-
     if (
       competitorA.negativePoints !==
       competitorB.negativePoints
     ) {
       return false;
     }
-
-    /*
-     * Vérifie si un départage spécifique
-     * a déjà été effectué.
-     */
 
     const savedWinner =
       getSavedPoolTieBreakWinner(
@@ -451,21 +701,12 @@ function PoolsManager({
       return false;
     }
 
-    /*
-     * Rencontre directe.
-     */
-
     const confrontation =
       getDirectMatch(
         pool.matches || [],
         competitorA.competitorId,
         competitorB.competitorId
       );
-
-    /*
-     * Si la rencontre directe possède
-     * un vainqueur, elle départage.
-     */
 
     if (
       confrontation?.winnerId &&
@@ -481,16 +722,13 @@ function PoolsManager({
       return false;
     }
 
-    /*
-     * Sinon :
-     * départage réglementaire nécessaire.
-     */
-
     return true;
   }
 
   function getCombatTieBreaksNeeded(pool) {
-    if (!combatPoolIsFinished(pool)) {
+    if (
+      !combatPoolIsFinished(pool)
+    ) {
       return [];
     }
 
@@ -547,13 +785,15 @@ function PoolsManager({
   }
 
   function combatPoolIsFinished(pool) {
-    const matches = pool.matches || [];
+    const matches =
+      pool.matches || [];
 
     return (
       matches.length > 0 &&
       matches.every(
         (match) =>
-          match.statut === "Terminé"
+          match.statut ===
+          "Terminé"
       )
     );
   }
@@ -568,12 +808,13 @@ function PoolsManager({
     competitorIds
   ) {
     const passages = [];
-    const now = Date.now();
 
     competitorIds.forEach(
-      (competitorId, index) => {
+      (competitorId) => {
         passages.push({
-          id: `${now}-kata-${index}-1`,
+          id: makeId(
+            "kata-passage-1"
+          ),
 
           competitorId,
 
@@ -596,7 +837,9 @@ function PoolsManager({
         });
 
         passages.push({
-          id: `${now}-kata-${index}-2`,
+          id: makeId(
+            "kata-passage-2"
+          ),
 
           competitorId,
 
@@ -628,7 +871,9 @@ function PoolsManager({
     competitorId,
     numero
   ) {
-    return (pool.passages || []).find(
+    return (
+      pool.passages || []
+    ).find(
       (passage) =>
         sameId(
           passage.competitorId,
@@ -643,63 +888,66 @@ function PoolsManager({
     const competitorIds =
       pool.competitorIds || [];
 
-    const ranking = competitorIds.map(
-      (competitorId) => {
-        const passage1 =
-          getKataPassage(
-            pool,
-            competitorId,
-            1
-          );
+    const ranking =
+      competitorIds.map(
+        (competitorId) => {
+          const passage1 =
+            getKataPassage(
+              pool,
+              competitorId,
+              1
+            );
 
-        const passage2 =
-          getKataPassage(
-            pool,
-            competitorId,
-            2
-          );
+          const passage2 =
+            getKataPassage(
+              pool,
+              competitorId,
+              2
+            );
 
-        const scorePassage1 =
-          passage1?.statut === "Terminé"
-            ? Number(
-                passage1.score
-              ) || 0
-            : 0;
-
-        const scorePassage2 =
-          passage2?.statut === "Terminé"
-            ? Number(
-                passage2.score
-              ) || 0
-            : 0;
-
-        const passagesTermines =
-          Number(
+          const scorePassage1 =
             passage1?.statut ===
-              "Terminé"
-          ) +
-          Number(
+            "Terminé"
+              ? Number(
+                  passage1.score
+                ) || 0
+              : 0;
+
+          const scorePassage2 =
             passage2?.statut ===
-              "Terminé"
-          );
+            "Terminé"
+              ? Number(
+                  passage2.score
+                ) || 0
+              : 0;
 
-        return {
-          competitorId,
+          const passagesTermines =
+            Number(
+              passage1?.statut ===
+                "Terminé"
+            ) +
+            Number(
+              passage2?.statut ===
+                "Terminé"
+            );
 
-          passage1:
-            scorePassage1,
+          return {
+            competitorId,
 
-          passage2:
-            scorePassage2,
+            passage1:
+              scorePassage1,
 
-          total:
-            scorePassage1 +
-            scorePassage2,
+            passage2:
+              scorePassage2,
 
-          passagesTermines,
-        };
-      }
-    );
+            total:
+              scorePassage1 +
+              scorePassage2,
+
+            passagesTermines,
+          };
+        }
+      );
 
     ranking.sort((a, b) => {
       if (
@@ -712,14 +960,8 @@ function PoolsManager({
         );
       }
 
-      if (
-        b.total !==
-        a.total
-      ) {
-        return (
-          b.total -
-          a.total
-        );
+      if (b.total !== a.total) {
+        return b.total - a.total;
       }
 
       const bestA =
@@ -807,18 +1049,6 @@ function PoolsManager({
       return;
     }
 
-    const competitorIds =
-      category.competitorIds || [];
-
-    if (
-      competitorIds.length < 2
-    ) {
-      alert(
-        "Il faut au moins 2 compétiteurs pour créer une poule."
-      );
-      return;
-    }
-
     if (
       poolExistsForCategory(
         category.id
@@ -830,19 +1060,37 @@ function PoolsManager({
       return;
     }
 
+    const validation =
+      validateCategoryForPool(
+        category
+      );
+
+    if (!validation.valid) {
+      alert(validation.message);
+      return;
+    }
+
+    const competitorIds =
+      category.competitorIds || [];
+
     const kata =
       isKata(
         category.epreuve
       );
 
     const newPool = {
-      id: Date.now(),
+      id: makeId("pool"),
 
       categoryId:
         category.id,
 
       epreuve:
         category.epreuve,
+
+      epreuveLabel:
+        getEventLabel(
+          category.epreuve
+        ),
 
       type: kata
         ? "kata"
@@ -853,6 +1101,21 @@ function PoolsManager({
       competitorIds: [
         ...competitorIds,
       ],
+
+      ageClass:
+        category.ageClass ||
+        getAgeClass(
+          getAge(
+            validation.competitors[0]
+          )
+        ),
+
+      sexe:
+        category.sexe ||
+        normalizeSex(
+          validation.competitors[0]
+            ?.sexe
+        ),
 
       matches: kata
         ? []
@@ -865,11 +1128,6 @@ function PoolsManager({
             competitorIds
           )
         : [],
-
-      /*
-       * Futurs départages de classement
-       * en Ju Randori.
-       */
 
       combatTieBreaks: [],
 
@@ -899,10 +1157,45 @@ function PoolsManager({
   }
 
   function deletePool(id) {
-    const confirmed =
-      window.confirm(
-        "Supprimer cette poule et toutes ses données ?"
+    const pool =
+      pools.find((item) =>
+        sameId(item.id, id)
       );
+
+    if (!pool) {
+      return;
+    }
+
+    const hasResults =
+      (pool.matches || []).some(
+        (match) =>
+          match.statut ===
+          "Terminé"
+      ) ||
+      (pool.passages || []).some(
+        (passage) =>
+          passage.statut ===
+          "Terminé"
+      ) ||
+      (pool.finalMatches || []).some(
+        (match) =>
+          match.statut ===
+          "Terminé"
+      ) ||
+      (pool.finalPassages || []).some(
+        (passage) =>
+          passage.statut ===
+          "Terminé"
+      ) ||
+      (pool.combatTieBreaks || [])
+        .length > 0;
+
+    const message = hasResults
+      ? "Cette poule contient déjà des résultats ou des données d'arbitrage. La supprimer effacera toutes ces données. Confirmer la suppression ?"
+      : "Supprimer cette poule et toutes ses données ?";
+
+    const confirmed =
+      window.confirm(message);
 
     if (!confirmed) {
       return;
@@ -912,9 +1205,9 @@ function PoolsManager({
       ...competition,
 
       pools: pools.filter(
-        (pool) =>
+        (poolItem) =>
           !sameId(
-            pool.id,
+            poolItem.id,
             id
           )
       ),
@@ -963,12 +1256,6 @@ function PoolsManager({
     const eventType =
       category?.epreuve ||
       pool.epreuve;
-
-    /*
-     * En combat, impossible de choisir
-     * une clôture tant qu'un départage
-     * réglementaire reste nécessaire.
-     */
 
     if (
       !isKata(eventType) &&
@@ -1038,11 +1325,6 @@ function PoolsManager({
     const kata =
       isKata(eventType);
 
-    /*
-     * Blocage du combat si le classement
-     * n'est pas réglementairement résolu.
-     */
-
     if (
       !kata &&
       !combatRankingIsResolved(
@@ -1050,7 +1332,7 @@ function PoolsManager({
       )
     ) {
       alert(
-        "Impossible de clôturer cette poule : un départage réglementaire est nécessaire. Va dans Arbitrage pour effectuer les 3 attaques supplémentaires puis, si nécessaire, la décision aux drapeaux."
+        "Impossible de clôturer cette poule : un départage réglementaire est nécessaire. Va dans Arbitrage pour effectuer le départage avant de valider le classement."
       );
 
       return;
@@ -1141,18 +1423,13 @@ function PoolsManager({
       pool.closingMode ===
       "finals"
     ) {
-      if (
-        ranking.length < 4
-      ) {
+      if (ranking.length < 4) {
         alert(
           "Il faut au moins 4 compétiteurs pour organiser une finale et une petite finale."
         );
 
         return;
       }
-
-      const now =
-        Date.now();
 
       /*
        * ===================================================
@@ -1163,7 +1440,9 @@ function PoolsManager({
       if (kata) {
         const finalPassages = [
           {
-            id: `${now}-kata-final-1`,
+            id: makeId(
+              "kata-final-1"
+            ),
 
             type: "finale",
 
@@ -1181,11 +1460,8 @@ function PoolsManager({
               null,
             ],
 
-            noteMinRetiree:
-              null,
-
-            noteMaxRetiree:
-              null,
+            noteMinRetiree: null,
+            noteMaxRetiree: null,
 
             score: null,
 
@@ -1193,7 +1469,9 @@ function PoolsManager({
           },
 
           {
-            id: `${now}-kata-final-2`,
+            id: makeId(
+              "kata-final-2"
+            ),
 
             type: "finale",
 
@@ -1211,11 +1489,8 @@ function PoolsManager({
               null,
             ],
 
-            noteMinRetiree:
-              null,
-
-            noteMaxRetiree:
-              null,
+            noteMinRetiree: null,
+            noteMaxRetiree: null,
 
             score: null,
 
@@ -1223,7 +1498,9 @@ function PoolsManager({
           },
 
           {
-            id: `${now}-kata-bronze-1`,
+            id: makeId(
+              "kata-bronze-1"
+            ),
 
             type:
               "petite-finale",
@@ -1243,11 +1520,8 @@ function PoolsManager({
               null,
             ],
 
-            noteMinRetiree:
-              null,
-
-            noteMaxRetiree:
-              null,
+            noteMinRetiree: null,
+            noteMaxRetiree: null,
 
             score: null,
 
@@ -1255,7 +1529,9 @@ function PoolsManager({
           },
 
           {
-            id: `${now}-kata-bronze-2`,
+            id: makeId(
+              "kata-bronze-2"
+            ),
 
             type:
               "petite-finale",
@@ -1275,11 +1551,8 @@ function PoolsManager({
               null,
             ],
 
-            noteMinRetiree:
-              null,
-
-            noteMaxRetiree:
-              null,
+            noteMinRetiree: null,
+            noteMaxRetiree: null,
 
             score: null,
 
@@ -1327,7 +1600,9 @@ function PoolsManager({
 
       const finalMatches = [
         {
-          id: `${now}-final`,
+          id: makeId(
+            "combat-final"
+          ),
 
           type: "finale",
 
@@ -1353,7 +1628,9 @@ function PoolsManager({
         },
 
         {
-          id: `${now}-bronze`,
+          id: makeId(
+            "combat-bronze"
+          ),
 
           type:
             "petite-finale",
@@ -1419,12 +1696,35 @@ function PoolsManager({
    */
 
   const availableCategories =
-    categories.filter(
-      (category) =>
-        !poolExistsForCategory(
-          category.id
-        )
-    );
+    categories
+      .filter(
+        (category) =>
+          !poolExistsForCategory(
+            category.id
+          )
+      )
+      .sort((a, b) => {
+        const orderA =
+          AGE_CLASS_ORDER[
+            a.ageClass
+          ] || 99;
+
+        const orderB =
+          AGE_CLASS_ORDER[
+            b.ageClass
+          ] || 99;
+
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+
+        return String(
+          a.nom || ""
+        ).localeCompare(
+          String(b.nom || ""),
+          "fr"
+        );
+      });
 
   /*
    * =========================================================
@@ -1440,9 +1740,7 @@ function PoolsManager({
             ORGANISATION
           </p>
 
-          <h2>
-            Poules
-          </h2>
+          <h2>Poules</h2>
 
           <p>
             Organisation des épreuves
@@ -1463,6 +1761,21 @@ function PoolsManager({
               : ""}
           </span>
         </div>
+      </div>
+
+      <div className="beta-note">
+        <strong>
+          Organisation des poules
+        </strong>
+
+        <p>
+          Une poule reprend exactement les
+          compétiteurs de la catégorie validée.
+          Les classes Enfant, Junior, Senior et
+          Vétéran restent séparées. Randori est
+          réservé aux moins de 10 ans et Ju Randori
+          aux compétiteurs de 10 ans et plus.
+        </p>
       </div>
 
       {categories.length === 0 ? (
@@ -1526,6 +1839,12 @@ function PoolsManager({
                         )}
                         {" — "}
                         {category.nom}
+                        {category.ageClass
+                          ? ` — ${category.ageClass}`
+                          : ""}
+                        {category.sexe
+                          ? ` — ${category.sexe}`
+                          : ""}
                         {" — "}
                         {category
                           .competitorIds
@@ -1605,8 +1924,7 @@ function PoolsManager({
                 );
 
               const tieBreaksNeeded =
-                !kata &&
-                finished
+                !kata && finished
                   ? getCombatTieBreaksNeeded(
                       pool
                     )
@@ -1646,6 +1964,22 @@ function PoolsManager({
                         0) > 1
                         ? "s"
                         : ""}
+
+                      {(category?.ageClass ||
+                        pool.ageClass)
+                        ? ` · ${
+                            category?.ageClass ||
+                            pool.ageClass
+                          }`
+                        : ""}
+
+                      {(category?.sexe ||
+                        pool.sexe)
+                        ? ` · ${
+                            category?.sexe ||
+                            pool.sexe
+                          }`
+                        : ""}
                     </p>
 
                     <div className="competitor-events">
@@ -1660,14 +1994,18 @@ function PoolsManager({
                             return null;
                           }
 
+                          const age =
+                            getAge(
+                              competitor
+                            );
+
                           return (
                             <span key={id}>
-                              {
-                                competitor.nom
-                              }{" "}
-                              {
-                                competitor.prenom
-                              }
+                              {competitor.nom}{" "}
+                              {competitor.prenom}
+                              {age !== null
+                                ? ` · ${age} ans`
+                                : ""}
                             </span>
                           );
                         }
@@ -1687,13 +2025,11 @@ function PoolsManager({
 
                           <p>
                             Chaque compétiteur
-                            effectue deux
-                            passages. Chaque
-                            passage est noté
-                            par 5 juges. La
-                            note la plus haute
-                            et la plus basse
-                            sont retirées.
+                            effectue deux passages.
+                            Chaque passage est noté
+                            par 5 juges. La note la
+                            plus haute et la plus
+                            basse sont retirées.
                           </p>
                         </div>
 
@@ -1735,12 +2071,8 @@ function PoolsManager({
                                   }
                                 >
                                   <strong>
-                                    {
-                                      competitor.nom
-                                    }{" "}
-                                    {
-                                      competitor.prenom
-                                    }
+                                    {competitor.nom}{" "}
+                                    {competitor.prenom}
                                   </strong>
 
                                   <span>
@@ -1793,13 +2125,8 @@ function PoolsManager({
                                 Compétiteur
                               </span>
 
-                              <span>
-                                P1
-                              </span>
-
-                              <span>
-                                P2
-                              </span>
+                              <span>P1</span>
+                              <span>P2</span>
 
                               <span>
                                 Total
@@ -1828,22 +2155,21 @@ function PoolsManager({
                                     }
                                   >
                                     <strong>
-                                      {index +
-                                        1}
+                                      {index + 1}
                                     </strong>
 
                                     <strong>
-                                      {
-                                        competitor.nom
-                                      }{" "}
-                                      {
-                                        competitor.prenom
-                                      }
+                                      {competitor.nom}{" "}
+                                      {competitor.prenom}
                                     </strong>
 
                                     <span>
-                                      {item.passagesTermines >=
-                                      1
+                                      {getKataPassage(
+                                        pool,
+                                        item.competitorId,
+                                        1
+                                      )?.statut ===
+                                      "Terminé"
                                         ? item.passage1.toFixed(
                                             1
                                           )
@@ -1851,8 +2177,12 @@ function PoolsManager({
                                     </span>
 
                                     <span>
-                                      {item.passagesTermines ===
-                                      2
+                                      {getKataPassage(
+                                        pool,
+                                        item.competitorId,
+                                        2
+                                      )?.statut ===
+                                      "Terminé"
                                         ? item.passage2.toFixed(
                                             1
                                           )
@@ -1877,7 +2207,7 @@ function PoolsManager({
                     )}
 
                     {/* ======================
-                        RANDORI
+                        COMBAT
                     ====================== */}
 
                     {!kata && (
@@ -1919,8 +2249,7 @@ function PoolsManager({
                                 >
                                   <strong>
                                     Rencontre{" "}
-                                    {index +
-                                      1}
+                                    {index + 1}
                                   </strong>
 
                                   <span>
@@ -1957,9 +2286,7 @@ function PoolsManager({
                                   )}
 
                                   <span>
-                                    {
-                                      match.statut
-                                    }
+                                    {match.statut}
                                   </span>
                                 </div>
                               );
@@ -1983,11 +2310,8 @@ function PoolsManager({
                               </span>
 
                               <span>V</span>
-
                               <span>D</span>
-
                               <span>N</span>
-
                               <span>PN</span>
                             </div>
 
@@ -2013,41 +2337,28 @@ function PoolsManager({
                                     }
                                   >
                                     <strong>
-                                      {index +
-                                        1}
+                                      {index + 1}
                                     </strong>
 
                                     <strong>
-                                      {
-                                        competitor.nom
-                                      }{" "}
-                                      {
-                                        competitor.prenom
-                                      }
+                                      {competitor.nom}{" "}
+                                      {competitor.prenom}
                                     </strong>
 
                                     <span>
-                                      {
-                                        item.victories
-                                      }
+                                      {item.victories}
                                     </span>
 
                                     <span>
-                                      {
-                                        item.defeats
-                                      }
+                                      {item.defeats}
                                     </span>
 
                                     <span>
-                                      {
-                                        item.draws
-                                      }
+                                      {item.draws}
                                     </span>
 
                                     <span>
-                                      {
-                                        item.negativePoints
-                                      }
+                                      {item.negativePoints}
                                     </span>
                                   </div>
                                 );
@@ -2055,10 +2366,6 @@ function PoolsManager({
                             )}
                           </div>
                         </div>
-
-                        {/* ======================
-                            DÉPARTAGE REQUIS
-                        ====================== */}
 
                         {finished &&
                           !rankingResolved && (
@@ -2073,20 +2380,16 @@ function PoolsManager({
 
                               <p>
                                 Le classement
-                                ne peut pas
-                                encore être
-                                validé.
+                                ne peut pas encore
+                                être validé.
                               </p>
 
                               <p>
-                                Les points
-                                négatifs et la
-                                rencontre
-                                directe ne
-                                permettent pas
-                                de départager
-                                les compétiteurs
-                                concernés.
+                                Les points négatifs
+                                et la rencontre
+                                directe ne permettent
+                                pas de départager les
+                                compétiteurs concernés.
                               </p>
 
                               {tieBreaksNeeded.map(
@@ -2110,8 +2413,8 @@ function PoolsManager({
                                       key={`${tie.competitorAId}-${tie.competitorBId}-${index}`}
                                     >
                                       <strong>
-                                        Départage
-                                        à effectuer
+                                        Départage à
+                                        effectuer
                                       </strong>
 
                                       <p>
@@ -2127,9 +2430,8 @@ function PoolsManager({
                                       <p>
                                         3 attaques
                                         supplémentaires :
-                                        Tsuki, Mae
-                                        Geri et
-                                        Mawashi Geri.
+                                        Tsuki, Mae Geri
+                                        et Mawashi Geri.
                                       </p>
 
                                       <p>
@@ -2150,13 +2452,11 @@ function PoolsManager({
                                 </strong>
 
                                 <p>
-                                  Le départage
-                                  sera effectué
-                                  depuis l'écran
-                                  Arbitrage avant
-                                  de pouvoir
-                                  clôturer cette
-                                  poule.
+                                  Effectue le
+                                  départage depuis
+                                  l'écran Arbitrage
+                                  avant de clôturer
+                                  cette poule.
                                 </p>
                               </div>
                             </div>
@@ -2212,8 +2512,8 @@ function PoolsManager({
                               </option>
 
                               <option value="finals">
-                                Finale +
-                                petite finale
+                                Finale + petite
+                                finale
                               </option>
                             </select>
                           </label>
@@ -2287,6 +2587,23 @@ function PoolsManager({
                             )?.prenom ||
                               ""}
                           </p>
+
+                          {pool.podium
+                            .fourthId && (
+                            <p>
+                              4e{" "}
+                              {getCompetitor(
+                                pool.podium
+                                  .fourthId
+                              )?.nom ||
+                                "—"}{" "}
+                              {getCompetitor(
+                                pool.podium
+                                  .fourthId
+                              )?.prenom ||
+                                ""}
+                            </p>
+                          )}
                         </div>
                       )}
 
@@ -2318,9 +2635,7 @@ function PoolsManager({
                                   }
                                 >
                                   <strong>
-                                    {
-                                      passage.label
-                                    }
+                                    {passage.label}
                                   </strong>
 
                                   <span>
@@ -2330,9 +2645,7 @@ function PoolsManager({
                                   </span>
 
                                   <span>
-                                    {
-                                      passage.statut
-                                    }
+                                    {passage.statut}
                                   </span>
 
                                   {passage.statut ===
@@ -2393,9 +2706,7 @@ function PoolsManager({
                                   }
                                 >
                                   <strong>
-                                    {
-                                      match.label
-                                    }
+                                    {match.label}
                                   </strong>
 
                                   <span>
@@ -2432,9 +2743,7 @@ function PoolsManager({
                                   )}
 
                                   <span>
-                                    {
-                                      match.statut
-                                    }
+                                    {match.statut}
                                   </span>
                                 </div>
                               );
@@ -2444,17 +2753,24 @@ function PoolsManager({
                       )}
                   </div>
 
-                  <button
-                    className="delete-button"
-                    type="button"
-                    onClick={() =>
-                      deletePool(
-                        pool.id
-                      )
-                    }
-                  >
-                    Supprimer la poule
-                  </button>
+                  <div className="competition-actions">
+                    <span className="status">
+                      {pool.statut ||
+                        "Prête"}
+                    </span>
+
+                    <button
+                      className="delete-button"
+                      type="button"
+                      onClick={() =>
+                        deletePool(
+                          pool.id
+                        )
+                      }
+                    >
+                      Supprimer la poule
+                    </button>
+                  </div>
                 </article>
               );
             })}
