@@ -115,17 +115,14 @@ function ArbitrationManager({
     selectedPool?.epreuve ||
     "";
 
-  const kataMode =
-    isKataEvent(selectedEvent);
+  const kataMode = isKataEvent(selectedEvent);
 
-  const poolMatches =
-    selectedPool?.matches || [];
+  const poolMatches = selectedPool?.matches || [];
 
   const finalMatches =
     selectedPool?.finalMatches || [];
 
-  const passages =
-    selectedPool?.passages || [];
+  const passages = selectedPool?.passages || [];
 
   const finalPassages =
     selectedPool?.finalPassages || [];
@@ -136,42 +133,26 @@ function ArbitrationManager({
   const selectedMatch =
     selectedMatchType === "final"
       ? finalMatches.find((match) =>
-          sameId(
-            match.id,
-            selectedMatchId
-          )
+          sameId(match.id, selectedMatchId)
         )
       : poolMatches.find((match) =>
-          sameId(
-            match.id,
-            selectedMatchId
-          )
+          sameId(match.id, selectedMatchId)
         );
 
-  const selectedPassage =
-    passages.find((passage) =>
-      sameId(
-        passage.id,
-        selectedPassageId
-      )
-    );
+  const selectedPassage = passages.find((passage) =>
+    sameId(passage.id, selectedPassageId)
+  );
 
   const allFinalKataPassages = [
     ...finalPassages,
-    ...(kataTieBreaks.finale
-      ?.passages || []),
-    ...(kataTieBreaks[
-      "petite-finale"
-    ]?.passages || []),
+    ...(kataTieBreaks.finale?.passages || []),
+    ...(kataTieBreaks["petite-finale"]?.passages ||
+      []),
   ];
 
   const selectedFinalPassage =
-    allFinalKataPassages.find(
-      (passage) =>
-        sameId(
-          passage.id,
-          selectedFinalPassageId
-        )
+    allFinalKataPassages.find((passage) =>
+      sameId(passage.id, selectedFinalPassageId)
     );
 
   function resetSelections() {
@@ -195,22 +176,10 @@ function ArbitrationManager({
     return matches.find(
       (match) =>
         match.statut === "Terminé" &&
-        ((sameId(
-          match.akaId,
-          competitorAId
-        ) &&
-          sameId(
-            match.shiroId,
-            competitorBId
-          )) ||
-          (sameId(
-            match.akaId,
-            competitorBId
-          ) &&
-            sameId(
-              match.shiroId,
-              competitorAId
-            )))
+        ((sameId(match.akaId, competitorAId) &&
+          sameId(match.shiroId, competitorBId)) ||
+          (sameId(match.akaId, competitorBId) &&
+            sameId(match.shiroId, competitorAId)))
     );
   }
 
@@ -225,26 +194,18 @@ function ArbitrationManager({
     competitorAId,
     competitorBId
   ) {
-    const tieBreaks =
-      pool?.combatTieBreaks || [];
+    const tieBreaks = pool?.combatTieBreaks || [];
 
     return tieBreaks.find((item) => {
-      const ids =
-        item.competitorIds || [];
+      const ids = item.competitorIds || [];
 
       return (
         ids.length === 2 &&
         ids.some((id) =>
-          sameId(
-            id,
-            competitorAId
-          )
+          sameId(id, competitorAId)
         ) &&
         ids.some((id) =>
-          sameId(
-            id,
-            competitorBId
-          )
+          sameId(id, competitorBId)
         )
       );
     });
@@ -255,12 +216,11 @@ function ArbitrationManager({
     competitorAId,
     competitorBId
   ) {
-    const tieBreak =
-      getSavedPoolTieBreak(
-        pool,
-        competitorAId,
-        competitorBId
-      );
+    const tieBreak = getSavedPoolTieBreak(
+      pool,
+      competitorAId,
+      competitorBId
+    );
 
     if (
       !tieBreak ||
@@ -292,61 +252,47 @@ function ArbitrationManager({
       return [];
     }
 
-    const competitorIds =
-      pool.competitorIds || [];
+    const competitorIds = pool.competitorIds || [];
+    const matches = pool.matches || [];
 
-    const matches =
-      pool.matches || [];
+    const ranking = competitorIds.map(
+      (competitorId) => ({
+        competitorId,
 
-    const ranking =
-      competitorIds.map(
-        (competitorId) => ({
-          competitorId,
+        victories: 0,
+        defeats: 0,
+        draws: 0,
 
-          victories: 0,
-          defeats: 0,
-          draws: 0,
+        scoreFor: 0,
+        scoreAgainst: 0,
 
-          scoreFor: 0,
-          scoreAgainst: 0,
+        difference: 0,
 
-          difference: 0,
+        negativePoints: 0,
 
-          negativePoints: 0,
-
-          matchesPlayed: 0,
-        })
-      );
+        matchesPlayed: 0,
+      })
+    );
 
     function findRow(id) {
       return ranking.find((row) =>
-        sameId(
-          row.competitorId,
-          id
-        )
+        sameId(row.competitorId, id)
       );
     }
 
     matches.forEach((match) => {
-      if (
-        match.statut !== "Terminé"
-      ) {
+      if (match.statut !== "Terminé") {
         return;
       }
 
-      const aka =
-        findRow(match.akaId);
-
-      const shiro =
-        findRow(match.shiroId);
+      const aka = findRow(match.akaId);
+      const shiro = findRow(match.shiroId);
 
       if (!aka || !shiro) {
         return;
       }
 
-      const akaScore =
-        Number(match.akaScore) || 0;
-
+      const akaScore = Number(match.akaScore) || 0;
       const shiroScore =
         Number(match.shiroScore) || 0;
 
@@ -354,37 +300,22 @@ function ArbitrationManager({
       shiro.matchesPlayed += 1;
 
       aka.scoreFor += akaScore;
-      aka.scoreAgainst +=
-        shiroScore;
+      aka.scoreAgainst += shiroScore;
 
-      shiro.scoreFor +=
-        shiroScore;
-      shiro.scoreAgainst +=
-        akaScore;
+      shiro.scoreFor += shiroScore;
+      shiro.scoreAgainst += akaScore;
 
       aka.negativePoints +=
-        Number(
-          match.pointsNegatifsAka
-        ) || 0;
+        Number(match.pointsNegatifsAka) || 0;
 
       shiro.negativePoints +=
-        Number(
-          match.pointsNegatifsShiro
-        ) || 0;
+        Number(match.pointsNegatifsShiro) || 0;
 
-      if (
-        sameId(
-          match.winnerId,
-          match.akaId
-        )
-      ) {
+      if (sameId(match.winnerId, match.akaId)) {
         aka.victories += 1;
         shiro.defeats += 1;
       } else if (
-        sameId(
-          match.winnerId,
-          match.shiroId
-        )
+        sameId(match.winnerId, match.shiroId)
       ) {
         shiro.victories += 1;
         aka.defeats += 1;
@@ -396,8 +327,7 @@ function ArbitrationManager({
 
     ranking.forEach((row) => {
       row.difference =
-        row.scoreFor -
-        row.scoreAgainst;
+        row.scoreFor - row.scoreAgainst;
     });
 
     ranking.sort((a, b) => {
@@ -405,40 +335,27 @@ function ArbitrationManager({
        * 1. VICTOIRES
        */
 
-      if (
-        b.victories !==
-        a.victories
-      ) {
-        return (
-          b.victories -
-          a.victories
-        );
+      if (b.victories !== a.victories) {
+        return b.victories - a.victories;
       }
 
       /*
        * 2. POINTS NÉGATIFS
        */
 
-      if (
-        a.negativePoints !==
-        b.negativePoints
-      ) {
-        return (
-          a.negativePoints -
-          b.negativePoints
-        );
+      if (a.negativePoints !== b.negativePoints) {
+        return a.negativePoints - b.negativePoints;
       }
 
       /*
        * 3. RENCONTRE DIRECTE
        */
 
-      const directMatch =
-        getDirectMatch(
-          matches,
-          a.competitorId,
-          b.competitorId
-        );
+      const directMatch = getDirectMatch(
+        matches,
+        a.competitorId,
+        b.competitorId
+      );
 
       if (
         directMatch &&
@@ -473,20 +390,14 @@ function ArbitrationManager({
 
       if (
         tieBreakWinner &&
-        sameId(
-          tieBreakWinner,
-          a.competitorId
-        )
+        sameId(tieBreakWinner, a.competitorId)
       ) {
         return -1;
       }
 
       if (
         tieBreakWinner &&
-        sameId(
-          tieBreakWinner,
-          b.competitorId
-        )
+        sameId(tieBreakWinner, b.competitorId)
       ) {
         return 1;
       }
@@ -497,22 +408,17 @@ function ArbitrationManager({
     return ranking;
   }
 
-  function combatQualificationsFinished(
-    pool
-  ) {
+  function combatQualificationsFinished(pool) {
     if (!pool) {
       return false;
     }
 
-    const matches =
-      pool.matches || [];
+    const matches = pool.matches || [];
 
     return (
       matches.length > 0 &&
       matches.every(
-        (match) =>
-          match.statut ===
-          "Terminé"
+        (match) => match.statut === "Terminé"
       )
     );
   }
@@ -528,16 +434,12 @@ function ArbitrationManager({
     competitorA,
     competitorB
   ) {
-    if (
-      !competitorA ||
-      !competitorB
-    ) {
+    if (!competitorA || !competitorB) {
       return false;
     }
 
     if (
-      competitorA.victories !==
-      competitorB.victories
+      competitorA.victories !== competitorB.victories
     ) {
       return false;
     }
@@ -549,23 +451,21 @@ function ArbitrationManager({
       return false;
     }
 
-    const savedWinner =
-      getSavedPoolTieBreakWinner(
-        pool,
-        competitorA.competitorId,
-        competitorB.competitorId
-      );
+    const savedWinner = getSavedPoolTieBreakWinner(
+      pool,
+      competitorA.competitorId,
+      competitorB.competitorId
+    );
 
     if (savedWinner) {
       return false;
     }
 
-    const directMatch =
-      getDirectMatch(
-        pool.matches || [],
-        competitorA.competitorId,
-        competitorB.competitorId
-      );
+    const directMatch = getDirectMatch(
+      pool.matches || [],
+      competitorA.competitorId,
+      competitorB.competitorId
+    );
 
     if (
       directMatch?.winnerId &&
@@ -584,54 +484,26 @@ function ArbitrationManager({
     return true;
   }
 
-  function getCombatTieBreaksNeeded(
-    pool
-  ) {
-    if (
-      !combatQualificationsFinished(
-        pool
-      )
-    ) {
+  function getCombatTieBreaksNeeded(pool) {
+    if (!combatQualificationsFinished(pool)) {
       return [];
     }
 
-    const ranking =
-      calculateCombatRanking(pool);
+    const ranking = calculateCombatRanking(pool);
 
     const ties = [];
 
-    for (
-      let i = 0;
-      i < ranking.length;
-      i++
-    ) {
-      for (
-        let j = i + 1;
-        j < ranking.length;
-        j++
-      ) {
+    for (let i = 0; i < ranking.length; i++) {
+      for (let j = i + 1; j < ranking.length; j++) {
         const a = ranking[i];
         const b = ranking[j];
 
-        if (
-          competitorsNeedTieBreak(
-            pool,
-            a,
-            b
-          )
-        ) {
+        if (competitorsNeedTieBreak(pool, a, b)) {
           ties.push({
-            competitorAId:
-              a.competitorId,
-
-            competitorBId:
-              b.competitorId,
-
-            victories:
-              a.victories,
-
-            negativePoints:
-              a.negativePoints,
+            competitorAId: a.competitorId,
+            competitorBId: b.competitorId,
+            victories: a.victories,
+            negativePoints: a.negativePoints,
           });
         }
       }
@@ -654,12 +526,11 @@ function ArbitrationManager({
       return;
     }
 
-    const existing =
-      getSavedPoolTieBreak(
-        selectedPool,
-        competitorAId,
-        competitorBId
-      );
+    const existing = getSavedPoolTieBreak(
+      selectedPool,
+      competitorAId,
+      competitorBId
+    );
 
     if (existing) {
       return;
@@ -670,25 +541,21 @@ function ArbitrationManager({
     const newTieBreak = {
       id: `${now}-combat-tiebreak`,
 
-      competitorIds: [
-        competitorAId,
-        competitorBId,
-      ],
+      competitorIds: [competitorAId, competitorBId],
 
       competitorAId,
       competitorBId,
 
-      attacks:
-        TIE_BREAK_ATTACKS.map(
-          (attack, index) => ({
-            id: `${now}-attack-${index}`,
+      attacks: TIE_BREAK_ATTACKS.map(
+        (attack, index) => ({
+          id: `${now}-attack-${index}`,
 
-            key: attack.key,
-            label: attack.label,
+          key: attack.key,
+          label: attack.label,
 
-            winnerId: null,
-          })
-        ),
+          winnerId: null,
+        })
+      ),
 
       scoreA: 0,
       scoreB: 0,
@@ -701,24 +568,18 @@ function ArbitrationManager({
       statut: "En cours",
     };
 
-    const updatedPools =
-      pools.map((pool) =>
-        sameId(
-          pool.id,
-          selectedPool.id
-        )
-          ? {
-              ...pool,
+    const updatedPools = pools.map((pool) =>
+      sameId(pool.id, selectedPool.id)
+        ? {
+            ...pool,
 
-              combatTieBreaks: [
-                ...(pool.combatTieBreaks ||
-                  []),
-
-                newTieBreak,
-              ],
-            }
-          : pool
-      );
+            combatTieBreaks: [
+              ...(pool.combatTieBreaks || []),
+              newTieBreak,
+            ],
+          }
+        : pool
+    );
 
     onUpdateCompetition({
       ...competition,
@@ -741,79 +602,60 @@ function ArbitrationManager({
       return;
     }
 
-    const updatedPools =
-      pools.map((pool) => {
-        if (
-          !sameId(
-            pool.id,
-            selectedPool.id
-          )
-        ) {
-          return pool;
+    const updatedPools = pools.map((pool) => {
+      if (!sameId(pool.id, selectedPool.id)) {
+        return pool;
+      }
+
+      const updatedTieBreaks = (
+        pool.combatTieBreaks || []
+      ).map((tieBreak) => {
+        if (!sameId(tieBreak.id, tieBreakId)) {
+          return tieBreak;
         }
 
-        const updatedTieBreaks = (
-          pool.combatTieBreaks || []
-        ).map((tieBreak) => {
-          if (
-            !sameId(
-              tieBreak.id,
-              tieBreakId
-            )
-          ) {
-            return tieBreak;
-          }
+        const updatedAttacks = (
+          tieBreak.attacks || []
+        ).map((attack) =>
+          sameId(attack.id, attackId)
+            ? {
+                ...attack,
+                winnerId,
+              }
+            : attack
+        );
 
-          const updatedAttacks = (
-            tieBreak.attacks || []
-          ).map((attack) =>
+        const scoreA = updatedAttacks.filter(
+          (attack) =>
             sameId(
-              attack.id,
-              attackId
+              attack.winnerId,
+              tieBreak.competitorAId
             )
-              ? {
-                  ...attack,
-                  winnerId,
-                }
-              : attack
-          );
+        ).length;
 
-          const scoreA =
-            updatedAttacks.filter(
-              (attack) =>
-                sameId(
-                  attack.winnerId,
-                  tieBreak.competitorAId
-                )
-            ).length;
-
-          const scoreB =
-            updatedAttacks.filter(
-              (attack) =>
-                sameId(
-                  attack.winnerId,
-                  tieBreak.competitorBId
-                )
-            ).length;
-
-          return {
-            ...tieBreak,
-
-            attacks:
-              updatedAttacks,
-
-            scoreA,
-            scoreB,
-          };
-        });
+        const scoreB = updatedAttacks.filter(
+          (attack) =>
+            sameId(
+              attack.winnerId,
+              tieBreak.competitorBId
+            )
+        ).length;
 
         return {
-          ...pool,
+          ...tieBreak,
 
-          combatTieBreaks:
-            updatedTieBreaks,
+          attacks: updatedAttacks,
+
+          scoreA,
+          scoreB,
         };
       });
+
+      return {
+        ...pool,
+        combatTieBreaks: updatedTieBreaks,
+      };
+    });
 
     onUpdateCompetition({
       ...competition,
@@ -835,28 +677,18 @@ function ArbitrationManager({
     }
 
     const tieBreak = (
-      selectedPool.combatTieBreaks ||
-      []
-    ).find((item) =>
-      sameId(
-        item.id,
-        tieBreakId
-      )
-    );
+      selectedPool.combatTieBreaks || []
+    ).find((item) => sameId(item.id, tieBreakId));
 
     if (!tieBreak) {
       return;
     }
 
-    const attacks =
-      tieBreak.attacks || [];
+    const attacks = tieBreak.attacks || [];
 
     if (
       attacks.length !== 3 ||
-      attacks.some(
-        (attack) =>
-          !attack.winnerId
-      )
+      attacks.some((attack) => !attack.winnerId)
     ) {
       alert(
         "Renseigne le résultat des 3 attaques : Tsuki, Mae Geri et Mawashi Geri."
@@ -865,67 +697,45 @@ function ArbitrationManager({
       return;
     }
 
-    const scoreA =
-      attacks.filter((attack) =>
-        sameId(
-          attack.winnerId,
-          tieBreak.competitorAId
-        )
-      ).length;
+    const scoreA = attacks.filter((attack) =>
+      sameId(
+        attack.winnerId,
+        tieBreak.competitorAId
+      )
+    ).length;
 
-    const scoreB =
-      attacks.filter((attack) =>
-        sameId(
-          attack.winnerId,
-          tieBreak.competitorBId
-        )
-      ).length;
-
-    /*
-     * Avec 3 attaques possédant chacune
-     * un vainqueur, une égalité numérique
-     * est normalement impossible.
-     *
-     * On conserve néanmoins le mode
-     * drapeaux pour les règles futures
-     * ou données existantes.
-     */
+    const scoreB = attacks.filter((attack) =>
+      sameId(
+        attack.winnerId,
+        tieBreak.competitorBId
+      )
+    ).length;
 
     if (scoreA === scoreB) {
-      const updatedPools =
-        pools.map((pool) =>
-          sameId(
-            pool.id,
-            selectedPool.id
-          )
-            ? {
-                ...pool,
+      const updatedPools = pools.map((pool) =>
+        sameId(pool.id, selectedPool.id)
+          ? {
+              ...pool,
 
-                combatTieBreaks: (
-                  pool.combatTieBreaks ||
-                  []
-                ).map((item) =>
-                  sameId(
-                    item.id,
-                    tieBreakId
-                  )
-                    ? {
-                        ...item,
+              combatTieBreaks: (
+                pool.combatTieBreaks || []
+              ).map((item) =>
+                sameId(item.id, tieBreakId)
+                  ? {
+                      ...item,
 
-                        scoreA,
-                        scoreB,
+                      scoreA,
+                      scoreB,
 
-                        decisionType:
-                          "drapeaux",
+                      decisionType: "drapeaux",
 
-                        statut:
-                          "Drapeaux",
-                      }
-                    : item
-                ),
-              }
-            : pool
-        );
+                      statut: "Drapeaux",
+                    }
+                  : item
+              ),
+            }
+          : pool
+      );
 
       onUpdateCompetition({
         ...competition,
@@ -940,13 +750,12 @@ function ArbitrationManager({
         ? tieBreak.competitorAId
         : tieBreak.competitorBId;
 
-    const loserId =
-      sameId(
-        winnerId,
-        tieBreak.competitorAId
-      )
-        ? tieBreak.competitorBId
-        : tieBreak.competitorAId;
+    const loserId = sameId(
+      winnerId,
+      tieBreak.competitorAId
+    )
+      ? tieBreak.competitorBId
+      : tieBreak.competitorAId;
 
     finishCombatTieBreak(
       tieBreakId,
@@ -976,50 +785,35 @@ function ArbitrationManager({
       return;
     }
 
-    const updatedPools =
-      pools.map((pool) => {
-        if (
-          !sameId(
-            pool.id,
-            selectedPool.id
-          )
-        ) {
-          return pool;
-        }
+    const updatedPools = pools.map((pool) => {
+      if (!sameId(pool.id, selectedPool.id)) {
+        return pool;
+      }
 
-        return {
-          ...pool,
+      return {
+        ...pool,
 
-          combatTieBreaks: (
-            pool.combatTieBreaks ||
-            []
-          ).map((tieBreak) =>
-            sameId(
-              tieBreak.id,
-              tieBreakId
-            )
-              ? {
-                  ...tieBreak,
+        combatTieBreaks: (
+          pool.combatTieBreaks || []
+        ).map((tieBreak) =>
+          sameId(tieBreak.id, tieBreakId)
+            ? {
+                ...tieBreak,
 
-                  scoreA:
-                    scoreA ??
-                    tieBreak.scoreA,
+                scoreA: scoreA ?? tieBreak.scoreA,
+                scoreB: scoreB ?? tieBreak.scoreB,
 
-                  scoreB:
-                    scoreB ??
-                    tieBreak.scoreB,
+                winnerId,
+                loserId,
 
-                  winnerId,
-                  loserId,
+                decisionType,
 
-                  decisionType,
-
-                  statut: "Terminé",
-                }
-              : tieBreak
-          ),
-        };
-      });
+                statut: "Terminé",
+              }
+            : tieBreak
+        ),
+      };
+    });
 
     onUpdateCompetition({
       ...competition,
@@ -1037,13 +831,12 @@ function ArbitrationManager({
     tieBreak,
     winnerId
   ) {
-    const loserId =
-      sameId(
-        winnerId,
-        tieBreak.competitorAId
-      )
-        ? tieBreak.competitorBId
-        : tieBreak.competitorAId;
+    const loserId = sameId(
+      winnerId,
+      tieBreak.competitorAId
+    )
+      ? tieBreak.competitorBId
+      : tieBreak.competitorAId;
 
     finishCombatTieBreak(
       tieBreak.id,
@@ -1062,56 +855,43 @@ function ArbitrationManager({
   function calculateCombatPodium(
     finalMatchesList
   ) {
-    const finale =
-      finalMatchesList.find(
-        (match) =>
-          match.type === "finale"
-      );
+    const finale = finalMatchesList.find(
+      (match) => match.type === "finale"
+    );
 
-    const petiteFinale =
-      finalMatchesList.find(
-        (match) =>
-          match.type ===
-          "petite-finale"
-      );
+    const petiteFinale = finalMatchesList.find(
+      (match) => match.type === "petite-finale"
+    );
 
     if (
       !finale ||
       !petiteFinale ||
       finale.statut !== "Terminé" ||
-      petiteFinale.statut !==
-        "Terminé" ||
+      petiteFinale.statut !== "Terminé" ||
       !finale.winnerId ||
       !petiteFinale.winnerId
     ) {
       return null;
     }
 
-    const secondId =
-      sameId(
-        finale.winnerId,
-        finale.akaId
-      )
-        ? finale.shiroId
-        : finale.akaId;
+    const secondId = sameId(
+      finale.winnerId,
+      finale.akaId
+    )
+      ? finale.shiroId
+      : finale.akaId;
 
-    const fourthId =
-      sameId(
-        petiteFinale.winnerId,
-        petiteFinale.akaId
-      )
-        ? petiteFinale.shiroId
-        : petiteFinale.akaId;
+    const fourthId = sameId(
+      petiteFinale.winnerId,
+      petiteFinale.akaId
+    )
+      ? petiteFinale.shiroId
+      : petiteFinale.akaId;
 
     return {
-      firstId:
-        finale.winnerId,
-
+      firstId: finale.winnerId,
       secondId,
-
-      thirdId:
-        petiteFinale.winnerId,
-
+      thirdId: petiteFinale.winnerId,
       fourthId,
     };
   }
@@ -1122,17 +902,9 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function selectMatch(
-    match,
-    type
-  ) {
-    setSelectedMatchId(
-      match.id
-    );
-
-    setSelectedMatchType(
-      type
-    );
+  function selectMatch(match, type) {
+    setSelectedMatchId(match.id);
+    setSelectedMatchType(type);
 
     setSelectedPassageId("");
     setSelectedFinalPassageId("");
@@ -1146,21 +918,15 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function saveOfficialMatch(
-    result
-  ) {
-    if (
-      !selectedPool ||
-      !selectedMatch
-    ) {
+  function saveOfficialMatch(result) {
+    if (!selectedPool || !selectedMatch) {
       return;
     }
 
     const winnerId =
       result.vainqueur === "aka"
         ? selectedMatch.akaId
-        : result.vainqueur ===
-          "shiro"
+        : result.vainqueur === "shiro"
         ? selectedMatch.shiroId
         : null;
 
@@ -1175,26 +941,24 @@ function ArbitrationManager({
     const savedMatch = {
       ...selectedMatch,
 
-      assauts:
-        result.assauts,
+      /*
+       * 7 ASSAUTS
+       */
 
-      akaScore:
-        result.scoreAka,
+      assauts: result.assauts || [],
 
-      shiroScore:
-        result.scoreShiro,
+      akaScore: result.scoreAka,
+      shiroScore: result.scoreShiro,
 
-      scoreBrutAka:
-        result.scoreBrutAka,
+      scoreBrutAka: result.scoreBrutAka,
+      scoreBrutShiro: result.scoreBrutShiro,
 
-      scoreBrutShiro:
-        result.scoreBrutShiro,
+      /*
+       * PÉNALITÉS
+       */
 
-      penalitesAka:
-        result.penalitesAka,
-
-      penalitesShiro:
-        result.penalitesShiro,
+      penalitesAka: result.penalitesAka,
+      penalitesShiro: result.penalitesShiro,
 
       pointsNegatifsAka:
         result.pointsNegatifsAka,
@@ -1208,114 +972,99 @@ function ArbitrationManager({
       shiroDisqualifie:
         result.shiroDisqualifie,
 
+      /*
+       * DÉPARTAGE DU COMBAT
+       */
+
+      departageActif: Boolean(
+        result.departageActif
+      ),
+
+      assautsDepartage:
+        result.assautsDepartage || [],
+
+      scoreDepartageAka:
+        result.scoreDepartageAka ?? null,
+
+      scoreDepartageShiro:
+        result.scoreDepartageShiro ?? null,
+
+      /*
+       * RÉSULTAT OFFICIEL
+       */
+
       winnerId,
 
       decisionType:
-        result.decisionType ||
-        "score",
+        result.decisionType || "score",
 
       decisionDrapeaux:
-        result.decisionDrapeaux ||
-        null,
+        result.decisionDrapeaux || null,
 
       statut: "Terminé",
     };
 
-    const updatedPools =
-      pools.map((pool) => {
-        if (
-          !sameId(
-            pool.id,
-            selectedPool.id
-          )
-        ) {
-          return pool;
-        }
+    const updatedPools = pools.map((pool) => {
+      if (!sameId(pool.id, selectedPool.id)) {
+        return pool;
+      }
 
-        /*
-         * PHASE FINALE
-         */
+      /*
+       * PHASE FINALE
+       */
 
-        if (
-          selectedMatchType ===
-          "final"
-        ) {
-          const updatedFinalMatches =
-            (
-              pool.finalMatches ||
-              []
-            ).map((match) =>
-              sameId(
-                match.id,
-                selectedMatch.id
-              )
-                ? savedMatch
-                : match
-            );
+      if (selectedMatchType === "final") {
+        const updatedFinalMatches = (
+          pool.finalMatches || []
+        ).map((match) =>
+          sameId(match.id, selectedMatch.id)
+            ? savedMatch
+            : match
+        );
 
-          const podium =
-            calculateCombatPodium(
-              updatedFinalMatches
-            );
-
-          return {
-            ...pool,
-
-            finalMatches:
-              updatedFinalMatches,
-
-            podium,
-
-            statut: podium
-              ? "Terminée"
-              : "Phase finale",
-          };
-        }
-
-        /*
-         * RENCONTRE DE POULE
-         */
-
-        const updatedPoolMatches =
-          (
-            pool.matches || []
-          ).map((match) =>
-            sameId(
-              match.id,
-              selectedMatch.id
-            )
-              ? savedMatch
-              : match
-          );
-
-        /*
-         * IMPORTANT :
-         *
-         * Arbitrage ne crée plus
-         * automatiquement la phase finale.
-         *
-         * PoolsManager gère maintenant
-         * la clôture :
-         *
-         * - classement direct
-         * - finale + petite finale
-         */
+        const podium = calculateCombatPodium(
+          updatedFinalMatches
+        );
 
         return {
           ...pool,
 
-          matches:
-            updatedPoolMatches,
+          finalMatches: updatedFinalMatches,
 
-          /*
-           * Si on modifie une rencontre,
-           * les anciens départages peuvent
-           * devenir invalides.
-           */
+          podium,
 
-          combatTieBreaks: [],
+          statut: podium
+            ? "Terminée"
+            : "Phase finale",
         };
-      });
+      }
+
+      /*
+       * RENCONTRE DE POULE
+       */
+
+      const updatedPoolMatches = (
+        pool.matches || []
+      ).map((match) =>
+        sameId(match.id, selectedMatch.id)
+          ? savedMatch
+          : match
+      );
+
+      return {
+        ...pool,
+
+        matches: updatedPoolMatches,
+
+        /*
+         * Une modification d'un combat
+         * invalide les éventuels départages
+         * de classement précédents.
+         */
+
+        combatTieBreaks: [],
+      };
+    });
 
     onUpdateCompetition({
       ...competition,
@@ -1332,31 +1081,20 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function getKataPassage(
-    competitorId,
-    numero
-  ) {
+  function getKataPassage(competitorId, numero) {
     return passages.find(
       (passage) =>
-        sameId(
-          passage.competitorId,
-          competitorId
-        ) &&
-        Number(passage.numero) ===
-          Number(numero)
+        sameId(passage.competitorId, competitorId) &&
+        Number(passage.numero) === Number(numero)
     );
   }
 
-  function selectKataPassage(
-    passage
-  ) {
+  function selectKataPassage(passage) {
     if (!passage) {
       return;
     }
 
-    setSelectedPassageId(
-      passage.id
-    );
+    setSelectedPassageId(passage.id);
 
     setSelectedFinalPassageId("");
     setSelectedMatchId("");
@@ -1365,68 +1103,45 @@ function ArbitrationManager({
     scrollToNotationSheet();
   }
 
-  function saveKataPassage(
-    result
-  ) {
-    if (
-      !selectedPool ||
-      !selectedPassage
-    ) {
+  function saveKataPassage(result) {
+    if (!selectedPool || !selectedPassage) {
       return;
     }
 
-    const updatedPassages =
-      (
-        selectedPool.passages ||
-        []
-      ).map((passage) => {
-        if (
-          !sameId(
-            passage.id,
-            selectedPassage.id
-          )
-        ) {
-          return passage;
-        }
+    const updatedPassages = (
+      selectedPool.passages || []
+    ).map((passage) => {
+      if (
+        !sameId(passage.id, selectedPassage.id)
+      ) {
+        return passage;
+      }
 
-        return {
-          ...passage,
+      return {
+        ...passage,
 
-          notes:
-            result.notes || [],
+        notes: result.notes || [],
 
-          notesRetenues:
-            result.notesRetenues ||
-            [],
+        notesRetenues:
+          result.notesRetenues || [],
 
-          noteMinRetiree:
-            result.noteMin,
+        noteMinRetiree: result.noteMin,
+        noteMaxRetiree: result.noteMax,
 
-          noteMaxRetiree:
-            result.noteMax,
+        score: Number(result.score) || 0,
 
-          score:
-            Number(result.score) ||
-            0,
+        statut: "Terminé",
+      };
+    });
 
-          statut: "Terminé",
-        };
-      });
-
-    const updatedPools =
-      pools.map((pool) =>
-        sameId(
-          pool.id,
-          selectedPool.id
-        )
-          ? {
-              ...pool,
-
-              passages:
-                updatedPassages,
-            }
-          : pool
-      );
+    const updatedPools = pools.map((pool) =>
+      sameId(pool.id, selectedPool.id)
+        ? {
+            ...pool,
+            passages: updatedPassages,
+          }
+        : pool
+    );
 
     onUpdateCompetition({
       ...competition,
@@ -1447,101 +1162,69 @@ function ArbitrationManager({
       return [];
     }
 
-    return (
-      selectedPool.competitorIds ||
-      []
-    )
+    return (selectedPool.competitorIds || [])
       .map((competitorId) => {
-        const passage1 =
-          getKataPassage(
-            competitorId,
-            1
-          );
+        const passage1 = getKataPassage(
+          competitorId,
+          1
+        );
 
-        const passage2 =
-          getKataPassage(
-            competitorId,
-            2
-          );
+        const passage2 = getKataPassage(
+          competitorId,
+          2
+        );
 
         const passage1Finished =
-          passage1?.statut ===
-          "Terminé";
+          passage1?.statut === "Terminé";
 
         const passage2Finished =
-          passage2?.statut ===
-          "Terminé";
+          passage2?.statut === "Terminé";
 
-        const score1 =
-          passage1Finished
-            ? Number(
-                passage1.score
-              ) || 0
-            : null;
+        const score1 = passage1Finished
+          ? Number(passage1.score) || 0
+          : null;
 
-        const score2 =
-          passage2Finished
-            ? Number(
-                passage2.score
-              ) || 0
-            : null;
+        const score2 = passage2Finished
+          ? Number(passage2.score) || 0
+          : null;
 
         const passagesTermines =
-          Number(
-            passage1Finished
-          ) +
-          Number(
-            passage2Finished
-          );
+          Number(passage1Finished) +
+          Number(passage2Finished);
 
         return {
           competitorId,
 
-          passage1:
-            score1,
-
-          passage2:
-            score2,
+          passage1: score1,
+          passage2: score2,
 
           passagesTermines,
 
-          total:
-            (score1 || 0) +
-            (score2 || 0),
+          total: (score1 || 0) + (score2 || 0),
         };
       })
       .sort((a, b) => {
         if (
-          b.passagesTermines !==
-          a.passagesTermines
+          b.passagesTermines !== a.passagesTermines
         ) {
           return (
-            b.passagesTermines -
-            a.passagesTermines
+            b.passagesTermines - a.passagesTermines
           );
         }
 
-        if (
-          b.total !==
-          a.total
-        ) {
-          return (
-            b.total -
-            a.total
-          );
+        if (b.total !== a.total) {
+          return b.total - a.total;
         }
 
-        const bestA =
-          Math.max(
-            a.passage1 || 0,
-            a.passage2 || 0
-          );
+        const bestA = Math.max(
+          a.passage1 || 0,
+          a.passage2 || 0
+        );
 
-        const bestB =
-          Math.max(
-            b.passage1 || 0,
-            b.passage2 || 0
-          );
+        const bestB = Math.max(
+          b.passage1 || 0,
+          b.passage2 || 0
+        );
 
         return bestB - bestA;
       });
@@ -1553,37 +1236,28 @@ function ArbitrationManager({
     }
 
     const competitorIds =
-      selectedPool.competitorIds ||
-      [];
+      selectedPool.competitorIds || [];
 
-    if (
-      competitorIds.length === 0
-    ) {
+    if (competitorIds.length === 0) {
       return false;
     }
 
-    return competitorIds.every(
-      (competitorId) => {
-        const passage1 =
-          getKataPassage(
-            competitorId,
-            1
-          );
+    return competitorIds.every((competitorId) => {
+      const passage1 = getKataPassage(
+        competitorId,
+        1
+      );
 
-        const passage2 =
-          getKataPassage(
-            competitorId,
-            2
-          );
+      const passage2 = getKataPassage(
+        competitorId,
+        2
+      );
 
-        return (
-          passage1?.statut ===
-            "Terminé" &&
-          passage2?.statut ===
-            "Terminé"
-        );
-      }
-    );
+      return (
+        passage1?.statut === "Terminé" &&
+        passage2?.statut === "Terminé"
+      );
+    });
   }
 
   /*
@@ -1606,13 +1280,7 @@ function ArbitrationManager({
       competitorId,
       phase,
 
-      notes: [
-        null,
-        null,
-        null,
-        null,
-        null,
-      ],
+      notes: [null, null, null, null, null],
 
       notesRetenues: [],
 
@@ -1636,9 +1304,7 @@ function ArbitrationManager({
       return;
     }
 
-    if (
-      !kataQualificationsFinished()
-    ) {
+    if (!kataQualificationsFinished()) {
       alert(
         "Les deux passages de tous les compétiteurs doivent être terminés."
       );
@@ -1647,73 +1313,40 @@ function ArbitrationManager({
     }
 
     if (!selectedClosingMode) {
-      alert(
-        "Choisis un mode de clôture."
-      );
-
+      alert("Choisis un mode de clôture.");
       return;
     }
 
-    const ranking =
-      calculateKataRanking();
+    const ranking = calculateKataRanking();
 
-    if (
-      selectedClosingMode ===
-      "direct"
-    ) {
+    if (selectedClosingMode === "direct") {
       const podium = {
-        firstId:
-          ranking[0]
-            ?.competitorId ||
-          null,
-
-        secondId:
-          ranking[1]
-            ?.competitorId ||
-          null,
-
-        thirdId:
-          ranking[2]
-            ?.competitorId ||
-          null,
-
-        fourthId:
-          ranking[3]
-            ?.competitorId ||
-          null,
+        firstId: ranking[0]?.competitorId || null,
+        secondId: ranking[1]?.competitorId || null,
+        thirdId: ranking[2]?.competitorId || null,
+        fourthId: ranking[3]?.competitorId || null,
       };
 
-      const updatedPools =
-        pools.map((pool) =>
-          sameId(
-            pool.id,
-            selectedPool.id
-          )
-            ? {
-                ...pool,
+      const updatedPools = pools.map((pool) =>
+        sameId(pool.id, selectedPool.id)
+          ? {
+              ...pool,
 
-                closingMode:
-                  "direct",
+              closingMode: "direct",
 
-                rankingLocked:
-                  ranking,
+              rankingLocked: ranking,
 
-                finalPassages:
-                  [],
+              finalPassages: [],
+              finalMatches: [],
 
-                finalMatches:
-                  [],
+              kataTieBreaks: {},
 
-                kataTieBreaks:
-                  {},
+              podium,
 
-                podium,
-
-                statut:
-                  "Terminée",
-              }
-            : pool
-        );
+              statut: "Terminée",
+            }
+          : pool
+      );
 
       onUpdateCompetition({
         ...competition,
@@ -1725,13 +1358,8 @@ function ArbitrationManager({
       return;
     }
 
-    if (
-      selectedClosingMode ===
-      "finals"
-    ) {
-      if (
-        ranking.length < 4
-      ) {
+    if (selectedClosingMode === "finals") {
+      if (ranking.length < 4) {
         alert(
           "Il faut au moins 4 compétiteurs pour organiser une finale et une petite finale."
         );
@@ -1739,102 +1367,64 @@ function ArbitrationManager({
         return;
       }
 
-      const now =
-        Date.now();
+      const now = Date.now();
 
       const newFinalPassages = [
         createEmptyKataPassage({
           id: `${now}-kata-final-1`,
-
           type: "finale",
-
           label: "Finale",
-
-          competitorId:
-            ranking[0]
-              .competitorId,
+          competitorId: ranking[0].competitorId,
         }),
 
         createEmptyKataPassage({
           id: `${now}-kata-final-2`,
-
           type: "finale",
-
           label: "Finale",
-
-          competitorId:
-            ranking[1]
-              .competitorId,
+          competitorId: ranking[1].competitorId,
         }),
 
         createEmptyKataPassage({
           id: `${now}-kata-bronze-1`,
-
-          type:
-            "petite-finale",
-
-          label:
-            "Petite finale",
-
-          competitorId:
-            ranking[2]
-              .competitorId,
+          type: "petite-finale",
+          label: "Petite finale",
+          competitorId: ranking[2].competitorId,
         }),
 
         createEmptyKataPassage({
           id: `${now}-kata-bronze-2`,
-
-          type:
-            "petite-finale",
-
-          label:
-            "Petite finale",
-
-          competitorId:
-            ranking[3]
-              .competitorId,
+          type: "petite-finale",
+          label: "Petite finale",
+          competitorId: ranking[3].competitorId,
         }),
       ];
 
-      const updatedPools =
-        pools.map((pool) =>
-          sameId(
-            pool.id,
-            selectedPool.id
-          )
-            ? {
-                ...pool,
+      const updatedPools = pools.map((pool) =>
+        sameId(pool.id, selectedPool.id)
+          ? {
+              ...pool,
 
-                closingMode:
-                  "finals",
+              closingMode: "finals",
 
-                rankingLocked:
-                  ranking,
+              rankingLocked: ranking,
 
-                finalPassages:
-                  newFinalPassages,
+              finalPassages: newFinalPassages,
 
-                finalMatches:
-                  [],
+              finalMatches: [],
 
-                kataFinalResults: {
-                  finale: null,
+              kataFinalResults: {
+                finale: null,
+                "petite-finale": null,
+              },
 
-                  "petite-finale":
-                    null,
-                },
+              kataTieBreaks: {},
 
-                kataTieBreaks:
-                  {},
+              podium: null,
 
-                podium:
-                  null,
-
-                statut:
-                  "Phase finale",
-              }
-            : pool
-        );
+              statut: "Phase finale",
+            }
+          : pool
+      );
 
       onUpdateCompetition({
         ...competition,
@@ -1851,16 +1441,12 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function selectKataFinalPassage(
-    passage
-  ) {
+  function selectKataFinalPassage(passage) {
     if (!passage) {
       return;
     }
 
-    setSelectedFinalPassageId(
-      passage.id
-    );
+    setSelectedFinalPassageId(passage.id);
 
     setSelectedPassageId("");
     setSelectedMatchId("");
@@ -1869,57 +1455,37 @@ function ArbitrationManager({
     scrollToNotationSheet();
   }
 
-  function getKataFinalGroup(
-    pool,
-    finalType
-  ) {
-    return (
-      pool.finalPassages || []
-    ).filter(
-      (passage) =>
-        passage.type ===
-        finalType
+  function getKataFinalGroup(pool, finalType) {
+    return (pool.finalPassages || []).filter(
+      (passage) => passage.type === finalType
     );
   }
 
-  function getKataFinalStatus(
-    pool,
-    finalType
-  ) {
+  function getKataFinalStatus(pool, finalType) {
     const savedResult =
-      pool.kataFinalResults?.[
-        finalType
-      ];
+      pool.kataFinalResults?.[finalType];
 
-    if (
-      savedResult?.winnerId
-    ) {
+    if (savedResult?.winnerId) {
       return {
         status: "resolved",
         ...savedResult,
       };
     }
 
-    const group =
-      getKataFinalGroup(
-        pool,
-        finalType
-      );
+    const group = getKataFinalGroup(
+      pool,
+      finalType
+    );
 
-    if (
-      group.length !== 2
-    ) {
+    if (group.length !== 2) {
       return {
         status: "waiting",
       };
     }
 
-    const allFinished =
-      group.every(
-        (passage) =>
-          passage.statut ===
-          "Terminé"
-      );
+    const allFinished = group.every(
+      (passage) => passage.statut === "Terminé"
+    );
 
     if (!allFinished) {
       return {
@@ -1927,48 +1493,27 @@ function ArbitrationManager({
       };
     }
 
-    const scoreA =
-      Number(
-        group[0].score
-      ) || 0;
+    const scoreA = Number(group[0].score) || 0;
+    const scoreB = Number(group[1].score) || 0;
 
-    const scoreB =
-      Number(
-        group[1].score
-      ) || 0;
-
-    if (
-      scoreA > scoreB
-    ) {
+    if (scoreA > scoreB) {
       return {
         status: "score",
 
-        winnerId:
-          group[0]
-            .competitorId,
-
-        loserId:
-          group[1]
-            .competitorId,
+        winnerId: group[0].competitorId,
+        loserId: group[1].competitorId,
 
         scoreA,
         scoreB,
       };
     }
 
-    if (
-      scoreB > scoreA
-    ) {
+    if (scoreB > scoreA) {
       return {
         status: "score",
 
-        winnerId:
-          group[1]
-            .competitorId,
-
-        loserId:
-          group[0]
-            .competitorId,
+        winnerId: group[1].competitorId,
+        loserId: group[0].competitorId,
 
         scoreA,
         scoreB,
@@ -1976,239 +1521,143 @@ function ArbitrationManager({
     }
 
     const tieBreak =
-      pool.kataTieBreaks?.[
-        finalType
-      ];
+      pool.kataTieBreaks?.[finalType];
 
     if (!tieBreak) {
       return {
         status: "tie",
 
-        competitors:
-          group,
+        competitors: group,
 
         scoreA,
         scoreB,
       };
     }
 
-    if (
-      tieBreak.winnerId
-    ) {
+    if (tieBreak.winnerId) {
       return {
         status: "resolved",
 
-        winnerId:
-          tieBreak.winnerId,
+        winnerId: tieBreak.winnerId,
+        loserId: tieBreak.loserId,
 
-        loserId:
-          tieBreak.loserId,
-
-        decisionType:
-          tieBreak.decisionType,
+        decisionType: tieBreak.decisionType,
       };
     }
 
-    const tiePassages =
-      tieBreak.passages || [];
+    const tiePassages = tieBreak.passages || [];
 
-    if (
-      tiePassages.length !== 2
-    ) {
+    if (tiePassages.length !== 2) {
       return {
         status: "tie",
-
-        competitors:
-          group,
+        competitors: group,
       };
     }
 
-    const tieFinished =
-      tiePassages.every(
-        (passage) =>
-          passage.statut ===
-          "Terminé"
-      );
+    const tieFinished = tiePassages.every(
+      (passage) => passage.statut === "Terminé"
+    );
 
     if (!tieFinished) {
       return {
         status: "tiebreak",
-
-        passages:
-          tiePassages,
+        passages: tiePassages,
       };
     }
 
     const tieScoreA =
-      Number(
-        tiePassages[0].score
-      ) || 0;
+      Number(tiePassages[0].score) || 0;
 
     const tieScoreB =
-      Number(
-        tiePassages[1].score
-      ) || 0;
+      Number(tiePassages[1].score) || 0;
 
-    if (
-      tieScoreA > tieScoreB
-    ) {
+    if (tieScoreA > tieScoreB) {
       return {
-        status:
-          "tiebreak-score",
+        status: "tiebreak-score",
 
-        winnerId:
-          tiePassages[0]
-            .competitorId,
+        winnerId: tiePassages[0].competitorId,
+        loserId: tiePassages[1].competitorId,
 
-        loserId:
-          tiePassages[1]
-            .competitorId,
-
-        scoreA:
-          tieScoreA,
-
-        scoreB:
-          tieScoreB,
+        scoreA: tieScoreA,
+        scoreB: tieScoreB,
       };
     }
 
-    if (
-      tieScoreB > tieScoreA
-    ) {
+    if (tieScoreB > tieScoreA) {
       return {
-        status:
-          "tiebreak-score",
+        status: "tiebreak-score",
 
-        winnerId:
-          tiePassages[1]
-            .competitorId,
+        winnerId: tiePassages[1].competitorId,
+        loserId: tiePassages[0].competitorId,
 
-        loserId:
-          tiePassages[0]
-            .competitorId,
-
-        scoreA:
-          tieScoreA,
-
-        scoreB:
-          tieScoreB,
+        scoreA: tieScoreA,
+        scoreB: tieScoreB,
       };
     }
 
     return {
       status: "flags",
 
-      passages:
-        tiePassages,
+      passages: tiePassages,
 
-      scoreA:
-        tieScoreA,
-
-      scoreB:
-        tieScoreB,
+      scoreA: tieScoreA,
+      scoreB: tieScoreB,
     };
   }
 
-  function resolveKataFinalResults(
-    pool
-  ) {
-    const types = [
-      "finale",
-      "petite-finale",
-    ];
+  function resolveKataFinalResults(pool) {
+    const types = ["finale", "petite-finale"];
 
     const currentResults = {
-      ...(pool.kataFinalResults ||
-        {}),
+      ...(pool.kataFinalResults || {}),
     };
 
-    types.forEach(
-      (finalType) => {
-        if (
-          currentResults[
-            finalType
-          ]?.winnerId
-        ) {
-          return;
-        }
-
-        const status =
-          getKataFinalStatus(
-            {
-              ...pool,
-
-              kataFinalResults:
-                currentResults,
-            },
-
-            finalType
-          );
-
-        if (
-          status.status ===
-          "score"
-        ) {
-          currentResults[
-            finalType
-          ] = {
-            winnerId:
-              status.winnerId,
-
-            loserId:
-              status.loserId,
-
-            decisionType:
-              "score",
-          };
-        }
-
-        if (
-          status.status ===
-          "tiebreak-score"
-        ) {
-          currentResults[
-            finalType
-          ] = {
-            winnerId:
-              status.winnerId,
-
-            loserId:
-              status.loserId,
-
-            decisionType:
-              "kata-impose",
-          };
-        }
-
-        if (
-          status.status ===
-            "resolved" &&
-          status.winnerId
-        ) {
-          currentResults[
-            finalType
-          ] = {
-            winnerId:
-              status.winnerId,
-
-            loserId:
-              status.loserId,
-
-            decisionType:
-              status.decisionType ||
-              "drapeaux",
-          };
-        }
+    types.forEach((finalType) => {
+      if (currentResults[finalType]?.winnerId) {
+        return;
       }
-    );
 
-    const finale =
-      currentResults.finale;
+      const status = getKataFinalStatus(
+        {
+          ...pool,
+          kataFinalResults: currentResults,
+        },
+        finalType
+      );
+
+      if (status.status === "score") {
+        currentResults[finalType] = {
+          winnerId: status.winnerId,
+          loserId: status.loserId,
+          decisionType: "score",
+        };
+      }
+
+      if (status.status === "tiebreak-score") {
+        currentResults[finalType] = {
+          winnerId: status.winnerId,
+          loserId: status.loserId,
+          decisionType: "kata-impose",
+        };
+      }
+
+      if (
+        status.status === "resolved" &&
+        status.winnerId
+      ) {
+        currentResults[finalType] = {
+          winnerId: status.winnerId,
+          loserId: status.loserId,
+          decisionType:
+            status.decisionType || "drapeaux",
+        };
+      }
+    });
+
+    const finale = currentResults.finale;
 
     const bronze =
-      currentResults[
-        "petite-finale"
-      ];
+      currentResults["petite-finale"];
 
     const podium =
       finale?.winnerId &&
@@ -2216,23 +1665,15 @@ function ArbitrationManager({
       bronze?.winnerId &&
       bronze?.loserId
         ? {
-            firstId:
-              finale.winnerId,
-
-            secondId:
-              finale.loserId,
-
-            thirdId:
-              bronze.winnerId,
-
-            fourthId:
-              bronze.loserId,
+            firstId: finale.winnerId,
+            secondId: finale.loserId,
+            thirdId: bronze.winnerId,
+            fourthId: bronze.loserId,
           }
         : null;
 
     return {
-      kataFinalResults:
-        currentResults,
+      kataFinalResults: currentResults,
 
       podium,
 
@@ -2242,70 +1683,52 @@ function ArbitrationManager({
     };
   }
 
-  function saveKataFinalPassage(
-    result
-  ) {
-    if (
-      !selectedPool ||
-      !selectedFinalPassage
-    ) {
+  function saveKataFinalPassage(result) {
+    if (!selectedPool || !selectedFinalPassage) {
       return;
     }
 
     const isTieBreak =
-      selectedFinalPassage.phase ===
-      "departage";
+      selectedFinalPassage.phase === "departage";
 
     let updatedPool = {
       ...selectedPool,
     };
 
     if (!isTieBreak) {
-      const updatedFinalPassages =
-        (
-          selectedPool.finalPassages ||
-          []
-        ).map((passage) => {
-          if (
-            !sameId(
-              passage.id,
-              selectedFinalPassage.id
-            )
-          ) {
-            return passage;
-          }
+      const updatedFinalPassages = (
+        selectedPool.finalPassages || []
+      ).map((passage) => {
+        if (
+          !sameId(
+            passage.id,
+            selectedFinalPassage.id
+          )
+        ) {
+          return passage;
+        }
 
-          return {
-            ...passage,
+        return {
+          ...passage,
 
-            notes:
-              result.notes || [],
+          notes: result.notes || [],
 
-            notesRetenues:
-              result.notesRetenues ||
-              [],
+          notesRetenues:
+            result.notesRetenues || [],
 
-            noteMinRetiree:
-              result.noteMin,
+          noteMinRetiree: result.noteMin,
+          noteMaxRetiree: result.noteMax,
 
-            noteMaxRetiree:
-              result.noteMax,
+          score: Number(result.score) || 0,
 
-            score:
-              Number(
-                result.score
-              ) || 0,
-
-            statut:
-              "Terminé",
-          };
-        });
+          statut: "Terminé",
+        };
+      });
 
       updatedPool = {
         ...updatedPool,
 
-        finalPassages:
-          updatedFinalPassages,
+        finalPassages: updatedFinalPassages,
       };
     }
 
@@ -2314,92 +1737,68 @@ function ArbitrationManager({
         selectedFinalPassage.finalType;
 
       const currentTieBreak =
-        selectedPool.kataTieBreaks?.[
-          finalType
-        ];
+        selectedPool.kataTieBreaks?.[finalType];
 
-      if (
-        !currentTieBreak
-      ) {
+      if (!currentTieBreak) {
         return;
       }
 
-      const updatedTiePassages =
-        (
-          currentTieBreak.passages ||
-          []
-        ).map((passage) => {
-          if (
-            !sameId(
-              passage.id,
-              selectedFinalPassage.id
-            )
-          ) {
-            return passage;
-          }
+      const updatedTiePassages = (
+        currentTieBreak.passages || []
+      ).map((passage) => {
+        if (
+          !sameId(
+            passage.id,
+            selectedFinalPassage.id
+          )
+        ) {
+          return passage;
+        }
 
-          return {
-            ...passage,
+        return {
+          ...passage,
 
-            notes:
-              result.notes || [],
+          notes: result.notes || [],
 
-            notesRetenues:
-              result.notesRetenues ||
-              [],
+          notesRetenues:
+            result.notesRetenues || [],
 
-            noteMinRetiree:
-              result.noteMin,
+          noteMinRetiree: result.noteMin,
+          noteMaxRetiree: result.noteMax,
 
-            noteMaxRetiree:
-              result.noteMax,
+          score: Number(result.score) || 0,
 
-            score:
-              Number(
-                result.score
-              ) || 0,
-
-            statut:
-              "Terminé",
-          };
-        });
+          statut: "Terminé",
+        };
+      });
 
       updatedPool = {
         ...updatedPool,
 
         kataTieBreaks: {
-          ...(selectedPool.kataTieBreaks ||
-            {}),
+          ...(selectedPool.kataTieBreaks || {}),
 
           [finalType]: {
             ...currentTieBreak,
-
-            passages:
-              updatedTiePassages,
+            passages: updatedTiePassages,
           },
         },
       };
     }
 
     const resolution =
-      resolveKataFinalResults(
-        updatedPool
-      );
+      resolveKataFinalResults(updatedPool);
 
     updatedPool = {
       ...updatedPool,
       ...resolution,
     };
 
-    const updatedPools =
-      pools.map((pool) =>
-        sameId(
-          pool.id,
-          selectedPool.id
-        )
-          ? updatedPool
-          : pool
-      );
+    const updatedPools = pools.map((pool) =>
+      sameId(pool.id, selectedPool.id)
+        ? updatedPool
+        : pool
+    );
 
     onUpdateCompetition({
       ...competition,
@@ -2409,105 +1808,74 @@ function ArbitrationManager({
     setSelectedFinalPassageId("");
   }
 
-  function startKataTieBreak(
-    finalType
-  ) {
+  function startKataTieBreak(finalType) {
     if (!selectedPool) {
       return;
     }
 
-    const group =
-      getKataFinalGroup(
-        selectedPool,
-        finalType
-      );
-
-    if (
-      group.length !== 2
-    ) {
-      return;
-    }
-
-    const scoreA =
-      Number(group[0].score);
-
-    const scoreB =
-      Number(group[1].score);
-
-    if (
-      scoreA !== scoreB
-    ) {
-      return;
-    }
-
-    const now =
-      Date.now();
-
-    const tiePassages =
-      group.map(
-        (passage, index) =>
-          createEmptyKataPassage({
-            id: `${now}-${finalType}-departage-${
-              index + 1
-            }`,
-
-            type:
-              "departage",
-
-            label:
-              "Kata imposé",
-
-            competitorId:
-              passage.competitorId,
-
-            phase:
-              "departage",
-          })
-      );
-
-    tiePassages.forEach(
-      (passage) => {
-        passage.finalType =
-          finalType;
-      }
+    const group = getKataFinalGroup(
+      selectedPool,
+      finalType
     );
 
-    const updatedPools =
-      pools.map((pool) =>
-        sameId(
-          pool.id,
-          selectedPool.id
-        )
-          ? {
-              ...pool,
+    if (group.length !== 2) {
+      return;
+    }
 
-              kataTieBreaks: {
-                ...(pool.kataTieBreaks ||
-                  {}),
+    const scoreA = Number(group[0].score);
+    const scoreB = Number(group[1].score);
 
-                [finalType]: {
-                  passages:
-                    tiePassages,
+    if (scoreA !== scoreB) {
+      return;
+    }
 
-                  winnerId:
-                    null,
+    const now = Date.now();
 
-                  loserId:
-                    null,
+    const tiePassages = group.map(
+      (passage, index) =>
+        createEmptyKataPassage({
+          id: `${now}-${finalType}-departage-${
+            index + 1
+          }`,
 
-                  decisionType:
-                    null,
-                },
+          type: "departage",
+
+          label: "Kata imposé",
+
+          competitorId: passage.competitorId,
+
+          phase: "departage",
+        })
+    );
+
+    tiePassages.forEach((passage) => {
+      passage.finalType = finalType;
+    });
+
+    const updatedPools = pools.map((pool) =>
+      sameId(pool.id, selectedPool.id)
+        ? {
+            ...pool,
+
+            kataTieBreaks: {
+              ...(pool.kataTieBreaks || {}),
+
+              [finalType]: {
+                passages: tiePassages,
+
+                winnerId: null,
+                loserId: null,
+
+                decisionType: null,
               },
+            },
 
-              podium:
-                null,
+            podium: null,
 
-              statut:
-                "Phase finale",
-            }
-          : pool
-      );
+            statut: "Phase finale",
+          }
+        : pool
+    );
 
     onUpdateCompetition({
       ...competition,
@@ -2524,30 +1892,19 @@ function ArbitrationManager({
     }
 
     const tieBreak =
-      selectedPool.kataTieBreaks?.[
-        finalType
-      ];
+      selectedPool.kataTieBreaks?.[finalType];
 
     if (!tieBreak) {
       return;
     }
 
-    const competitorIds =
-      (
-        tieBreak.passages ||
-        []
-      ).map(
-        (passage) =>
-          passage.competitorId
-      );
+    const competitorIds = (
+      tieBreak.passages || []
+    ).map((passage) => passage.competitorId);
 
     const loserId =
       competitorIds.find(
-        (id) =>
-          !sameId(
-            id,
-            winnerId
-          )
+        (id) => !sameId(id, winnerId)
       ) || null;
 
     if (!loserId) {
@@ -2558,8 +1915,7 @@ function ArbitrationManager({
       ...selectedPool,
 
       kataTieBreaks: {
-        ...(selectedPool.kataTieBreaks ||
-          {}),
+        ...(selectedPool.kataTieBreaks || {}),
 
         [finalType]: {
           ...tieBreak,
@@ -2567,44 +1923,35 @@ function ArbitrationManager({
           winnerId,
           loserId,
 
-          decisionType:
-            "drapeaux",
+          decisionType: "drapeaux",
         },
       },
 
       kataFinalResults: {
-        ...(selectedPool.kataFinalResults ||
-          {}),
+        ...(selectedPool.kataFinalResults || {}),
 
         [finalType]: {
           winnerId,
           loserId,
 
-          decisionType:
-            "drapeaux",
+          decisionType: "drapeaux",
         },
       },
     };
 
     const resolution =
-      resolveKataFinalResults(
-        updatedPool
-      );
+      resolveKataFinalResults(updatedPool);
 
     updatedPool = {
       ...updatedPool,
       ...resolution,
     };
 
-    const updatedPools =
-      pools.map((pool) =>
-        sameId(
-          pool.id,
-          selectedPool.id
-        )
-          ? updatedPool
-          : pool
-      );
+    const updatedPools = pools.map((pool) =>
+      sameId(pool.id, selectedPool.id)
+        ? updatedPool
+        : pool
+    );
 
     onUpdateCompetition({
       ...competition,
@@ -2618,27 +1965,13 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function renderMatch(
-    match,
-    label,
-    matchType
-  ) {
-    const aka =
-      getCompetitor(
-        match.akaId
-      );
+  function renderMatch(match, label, matchType) {
+    const aka = getCompetitor(match.akaId);
+    const shiro = getCompetitor(match.shiroId);
 
-    const shiro =
-      getCompetitor(
-        match.shiroId
-      );
-
-    const winner =
-      match.winnerId
-        ? getCompetitor(
-            match.winnerId
-          )
-        : null;
+    const winner = match.winnerId
+      ? getCompetitor(match.winnerId)
+      : null;
 
     return (
       <article
@@ -2650,9 +1983,7 @@ function ArbitrationManager({
         key={match.id}
       >
         <div>
-          <p className="surtitle">
-            {label}
-          </p>
+          <p className="surtitle">{label}</p>
 
           <h3>
             🔴 AKA —{" "}
@@ -2670,8 +2001,7 @@ function ArbitrationManager({
               : "Inconnu"}
           </h3>
 
-          {match.statut ===
-            "Terminé" && (
+          {match.statut === "Terminé" && (
             <div className="beta-note">
               <strong>
                 {match.akaScore}
@@ -2687,29 +2017,28 @@ function ArbitrationManager({
 
               <p>
                 PN AKA :{" "}
-                {Number(
-                  match.pointsNegatifsAka
-                ) || 0}
+                {Number(match.pointsNegatifsAka) || 0}
                 {" · "}
                 PN SHIRO :{" "}
-                {Number(
-                  match.pointsNegatifsShiro
-                ) || 0}
+                {Number(match.pointsNegatifsShiro) || 0}
               </p>
 
-              {match.decisionType ===
-                "drapeaux" && (
+              {match.decisionType === "departage" && (
                 <p>
-                  🏁 Décision aux
-                  drapeaux
+                  ⚖️ Victoire après départage
+                </p>
+              )}
+
+              {match.decisionType === "drapeaux" && (
+                <p>
+                  🏁 Décision aux drapeaux
                 </p>
               )}
 
               {match.decisionType ===
                 "disqualification" && (
                 <p>
-                  ⛔ Victoire par
-                  disqualification
+                  ⛔ Victoire par disqualification
                 </p>
               )}
             </div>
@@ -2720,14 +2049,10 @@ function ArbitrationManager({
           className="manage-button"
           type="button"
           onClick={() =>
-            selectMatch(
-              match,
-              matchType
-            )
+            selectMatch(match, matchType)
           }
         >
-          {match.statut ===
-          "Terminé"
+          {match.statut === "Terminé"
             ? "Modifier"
             : "Arbitrer"}
         </button>
@@ -2741,31 +2066,23 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function renderCombatTieBreak(
-    tieBreak
-  ) {
-    const competitorA =
-      getCompetitor(
-        tieBreak.competitorAId
-      );
+  function renderCombatTieBreak(tieBreak) {
+    const competitorA = getCompetitor(
+      tieBreak.competitorAId
+    );
 
-    const competitorB =
-      getCompetitor(
-        tieBreak.competitorBId
-      );
+    const competitorB = getCompetitor(
+      tieBreak.competitorBId
+    );
 
-    const winner =
-      tieBreak.winnerId
-        ? getCompetitor(
-            tieBreak.winnerId
-          )
-        : null;
+    const winner = tieBreak.winnerId
+      ? getCompetitor(tieBreak.winnerId)
+      : null;
 
     return (
       <article
         className={`competition ${
-          tieBreak.statut ===
-          "Terminé"
+          tieBreak.statut === "Terminé"
             ? "competition-terminee"
             : ""
         }`}
@@ -2790,8 +2107,7 @@ function ArbitrationManager({
               : "Compétiteur"}
           </h3>
 
-          {tieBreak.statut ===
-            "Terminé" ? (
+          {tieBreak.statut === "Terminé" ? (
             <div className="beta-note">
               <strong>
                 ✅ Départage terminé
@@ -2806,8 +2122,7 @@ function ArbitrationManager({
 
               <p>
                 Décision :{" "}
-                {tieBreak.decisionType ===
-                "drapeaux"
+                {tieBreak.decisionType === "drapeaux"
                   ? "Drapeaux"
                   : "3 attaques supplémentaires"}
               </p>
@@ -2816,100 +2131,88 @@ function ArbitrationManager({
             <>
               <div className="beta-note">
                 <strong>
-                  3 attaques
-                  supplémentaires
+                  3 attaques supplémentaires
                 </strong>
 
                 <p>
-                  Tsuki · Mae Geri ·
-                  Mawashi Geri
+                  Tsuki · Mae Geri · Mawashi Geri
                 </p>
               </div>
 
-              {(
-                tieBreak.attacks ||
-                []
-              ).map((attack) => (
-                <div
-                  className="competition-form"
-                  key={attack.id}
-                >
-                  <h3>
-                    {attack.label}
-                  </h3>
+              {(tieBreak.attacks || []).map(
+                (attack) => (
+                  <div
+                    className="competition-form"
+                    key={attack.id}
+                  >
+                    <h3>{attack.label}</h3>
 
-                  <div className="competition-actions">
-                    <button
-                      type="button"
-                      className={
-                        sameId(
-                          attack.winnerId,
-                          tieBreak.competitorAId
-                        )
-                          ? "primary"
-                          : "manage-button"
-                      }
-                      onClick={() =>
-                        setCombatTieBreakAttackWinner(
-                          tieBreak.id,
-                          attack.id,
-                          tieBreak.competitorAId
-                        )
-                      }
-                    >
-                      {competitorA
-                        ? `${competitorA.nom} ${competitorA.prenom}`
-                        : "A"}
-                    </button>
+                    <div className="competition-actions">
+                      <button
+                        type="button"
+                        className={
+                          sameId(
+                            attack.winnerId,
+                            tieBreak.competitorAId
+                          )
+                            ? "primary"
+                            : "manage-button"
+                        }
+                        onClick={() =>
+                          setCombatTieBreakAttackWinner(
+                            tieBreak.id,
+                            attack.id,
+                            tieBreak.competitorAId
+                          )
+                        }
+                      >
+                        {competitorA
+                          ? `${competitorA.nom} ${competitorA.prenom}`
+                          : "A"}
+                      </button>
 
-                    <button
-                      type="button"
-                      className={
-                        sameId(
-                          attack.winnerId,
-                          tieBreak.competitorBId
-                        )
-                          ? "primary"
-                          : "manage-button"
-                      }
-                      onClick={() =>
-                        setCombatTieBreakAttackWinner(
-                          tieBreak.id,
-                          attack.id,
-                          tieBreak.competitorBId
-                        )
-                      }
-                    >
-                      {competitorB
-                        ? `${competitorB.nom} ${competitorB.prenom}`
-                        : "B"}
-                    </button>
+                      <button
+                        type="button"
+                        className={
+                          sameId(
+                            attack.winnerId,
+                            tieBreak.competitorBId
+                          )
+                            ? "primary"
+                            : "manage-button"
+                        }
+                        onClick={() =>
+                          setCombatTieBreakAttackWinner(
+                            tieBreak.id,
+                            attack.id,
+                            tieBreak.competitorBId
+                          )
+                        }
+                      >
+                        {competitorB
+                          ? `${competitorB.nom} ${competitorB.prenom}`
+                          : "B"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
 
               <div className="beta-note">
-                <strong>
-                  Score départage
-                </strong>
+                <strong>Score départage</strong>
 
                 <p>
-                  {competitorA?.nom ||
-                    "A"}
+                  {competitorA?.nom || "A"}
                   {" : "}
-                  {tieBreak.scoreA ||
-                    0}
+                  {tieBreak.scoreA || 0}
                   {" — "}
-                  {competitorB?.nom ||
-                    "B"}
+                  {competitorB?.nom || "B"}
                   {" : "}
-                  {tieBreak.scoreB ||
-                    0}
+                  {tieBreak.scoreB || 0}
                 </p>
               </div>
 
-              {tieBreak.statut !==
-                "Drapeaux" && (
+              {tieBreak.statut !== "Drapeaux" && (
                 <button
                   type="button"
                   className="primary"
@@ -2919,21 +2222,18 @@ function ArbitrationManager({
                     )
                   }
                 >
-                  Valider les 3
-                  attaques
+                  Valider les 3 attaques
                 </button>
               )}
 
-              {tieBreak.statut ===
-                "Drapeaux" && (
+              {tieBreak.statut === "Drapeaux" && (
                 <div className="competition-form">
                   <p className="surtitle">
                     ÉGALITÉ
                   </p>
 
                   <h3>
-                    Décision aux
-                    drapeaux
+                    Décision aux drapeaux
                   </h3>
 
                   <div className="competition-actions">
@@ -2984,48 +2284,35 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function renderKataCompetitor(
-    competitorId
-  ) {
-    const competitor =
-      getCompetitor(
-        competitorId
-      );
+  function renderKataCompetitor(competitorId) {
+    const competitor = getCompetitor(competitorId);
 
     if (!competitor) {
       return null;
     }
 
-    const passage1 =
-      getKataPassage(
-        competitorId,
-        1
-      );
+    const passage1 = getKataPassage(
+      competitorId,
+      1
+    );
 
-    const passage2 =
-      getKataPassage(
-        competitorId,
-        2
-      );
+    const passage2 = getKataPassage(
+      competitorId,
+      2
+    );
 
     const passage1Finished =
-      passage1?.statut ===
-      "Terminé";
+      passage1?.statut === "Terminé";
 
     const passage2Finished =
-      passage2?.statut ===
-      "Terminé";
+      passage2?.statut === "Terminé";
 
     const total =
       (passage1Finished
-        ? Number(
-            passage1.score
-          ) || 0
+        ? Number(passage1.score) || 0
         : 0) +
       (passage2Finished
-        ? Number(
-            passage2.score
-          ) || 0
+        ? Number(passage2.score) || 0
         : 0);
 
     return (
@@ -3034,13 +2321,10 @@ function ArbitrationManager({
         key={competitorId}
       >
         <div>
-          <p className="surtitle">
-            KATA
-          </p>
+          <p className="surtitle">KATA</p>
 
           <h3>
-            {competitor.nom}{" "}
-            {competitor.prenom}
+            {competitor.nom} {competitor.prenom}
           </h3>
 
           <p>
@@ -3052,26 +2336,21 @@ function ArbitrationManager({
             <span>
               Passage 1 :{" "}
               {passage1Finished
-                ? Number(
-                    passage1.score
-                  ).toFixed(1)
+                ? Number(passage1.score).toFixed(1)
                 : "À noter"}
             </span>
 
             <span>
               Passage 2 :{" "}
               {passage2Finished
-                ? Number(
-                    passage2.score
-                  ).toFixed(1)
+                ? Number(passage2.score).toFixed(1)
                 : "À noter"}
             </span>
 
             {passage1Finished &&
               passage2Finished && (
                 <span>
-                  Total :{" "}
-                  {total.toFixed(1)}
+                  Total : {total.toFixed(1)}
                 </span>
               )}
           </div>
@@ -3083,9 +2362,7 @@ function ArbitrationManager({
               className="manage-button"
               type="button"
               onClick={() =>
-                selectKataPassage(
-                  passage1
-                )
+                selectKataPassage(passage1)
               }
             >
               {passage1Finished
@@ -3099,9 +2376,7 @@ function ArbitrationManager({
               className="manage-button"
               type="button"
               onClick={() =>
-                selectKataPassage(
-                  passage2
-                )
+                selectKataPassage(passage2)
               }
             >
               {passage2Finished
@@ -3124,29 +2399,21 @@ function ArbitrationManager({
     finalType,
     title
   ) {
-    const groupPassages =
-      finalPassages.filter(
-        (passage) =>
-          passage.type ===
-          finalType
-      );
+    const groupPassages = finalPassages.filter(
+      (passage) => passage.type === finalType
+    );
 
-    if (
-      groupPassages.length === 0
-    ) {
+    if (groupPassages.length === 0) {
       return null;
     }
 
-    const status =
-      getKataFinalStatus(
-        selectedPool,
-        finalType
-      );
+    const status = getKataFinalStatus(
+      selectedPool,
+      finalType
+    );
 
     const tieBreak =
-      selectedPool.kataTieBreaks?.[
-        finalType
-      ];
+      selectedPool.kataTieBreaks?.[finalType];
 
     return (
       <section className="category-section">
@@ -3156,86 +2423,73 @@ function ArbitrationManager({
               PHASE FINALE KATA
             </p>
 
-            <h3>
-              {title}
-            </h3>
+            <h3>{title}</h3>
           </div>
         </div>
 
         <div className="competition-list">
-          {groupPassages.map(
-            (passage) => {
-              const competitor =
-                getCompetitor(
-                  passage.competitorId
-                );
+          {groupPassages.map((passage) => {
+            const competitor = getCompetitor(
+              passage.competitorId
+            );
 
-              if (!competitor) {
-                return null;
-              }
-
-              return (
-                <article
-                  className={`competition ${
-                    passage.statut ===
-                    "Terminé"
-                      ? "competition-terminee"
-                      : ""
-                  }`}
-                  key={passage.id}
-                >
-                  <div>
-                    <p className="surtitle">
-                      {passage.label}
-                    </p>
-
-                    <h3>
-                      {competitor.nom}{" "}
-                      {competitor.prenom}
-                    </h3>
-
-                    <p>
-                      {competitor.club ||
-                        "Club non renseigné"}
-                    </p>
-
-                    {passage.statut ===
-                      "Terminé" && (
-                      <div className="beta-note">
-                        <strong>
-                          Note :{" "}
-                          {Number(
-                            passage.score
-                          ).toFixed(
-                            1
-                          )}
-                        </strong>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    className="manage-button"
-                    type="button"
-                    onClick={() =>
-                      selectKataFinalPassage(
-                        passage
-                      )
-                    }
-                  >
-                    {passage.statut ===
-                    "Terminé"
-                      ? "Modifier la note"
-                      : "Noter le Kata"}
-                  </button>
-                </article>
-              );
+            if (!competitor) {
+              return null;
             }
-          )}
+
+            return (
+              <article
+                className={`competition ${
+                  passage.statut === "Terminé"
+                    ? "competition-terminee"
+                    : ""
+                }`}
+                key={passage.id}
+              >
+                <div>
+                  <p className="surtitle">
+                    {passage.label}
+                  </p>
+
+                  <h3>
+                    {competitor.nom}{" "}
+                    {competitor.prenom}
+                  </h3>
+
+                  <p>
+                    {competitor.club ||
+                      "Club non renseigné"}
+                  </p>
+
+                  {passage.statut === "Terminé" && (
+                    <div className="beta-note">
+                      <strong>
+                        Note :{" "}
+                        {Number(
+                          passage.score
+                        ).toFixed(1)}
+                      </strong>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  className="manage-button"
+                  type="button"
+                  onClick={() =>
+                    selectKataFinalPassage(passage)
+                  }
+                >
+                  {passage.statut === "Terminé"
+                    ? "Modifier la note"
+                    : "Noter le Kata"}
+                </button>
+              </article>
+            );
+          })}
         </div>
 
-        {status.status ===
-          "tie" && (
+        {status.status === "tie" && (
           <div className="competition-form">
             <p className="surtitle">
               ÉGALITÉ
@@ -3246,17 +2500,15 @@ function ArbitrationManager({
             </h3>
 
             <p>
-              Les deux compétiteurs
-              ont obtenu la même note.
+              Les deux compétiteurs ont obtenu la
+              même note.
             </p>
 
             <button
               type="button"
               className="primary"
               onClick={() =>
-                startKataTieBreak(
-                  finalType
-                )
+                startKataTieBreak(finalType)
               }
             >
               Lancer le Kata imposé
@@ -3265,33 +2517,23 @@ function ArbitrationManager({
         )}
 
         {tieBreak &&
-          (status.status ===
-            "tiebreak" ||
-            status.status ===
-              "flags" ||
-            status.status ===
-              "tiebreak-score" ||
-            status.status ===
-              "resolved") && (
+          (status.status === "tiebreak" ||
+            status.status === "flags" ||
+            status.status === "tiebreak-score" ||
+            status.status === "resolved") && (
             <div className="competition-form">
               <p className="surtitle">
                 DÉPARTAGE
               </p>
 
-              <h3>
-                Kata imposé
-              </h3>
+              <h3>Kata imposé</h3>
 
               <div className="competition-list">
-                {(
-                  tieBreak.passages ||
-                  []
-                ).map(
+                {(tieBreak.passages || []).map(
                   (passage) => {
-                    const competitor =
-                      getCompetitor(
-                        passage.competitorId
-                      );
+                    const competitor = getCompetitor(
+                      passage.competitorId
+                    );
 
                     if (!competitor) {
                       return null;
@@ -3300,8 +2542,7 @@ function ArbitrationManager({
                     return (
                       <article
                         className={`competition ${
-                          passage.statut ===
-                          "Terminé"
+                          passage.statut === "Terminé"
                             ? "competition-terminee"
                             : ""
                         }`}
@@ -3324,9 +2565,7 @@ function ArbitrationManager({
                               <strong>
                                 {Number(
                                   passage.score
-                                ).toFixed(
-                                  1
-                                )}
+                                ).toFixed(1)}
                               </strong>
                             </p>
                           )}
@@ -3354,8 +2593,7 @@ function ArbitrationManager({
             </div>
           )}
 
-        {status.status ===
-          "flags" && (
+        {status.status === "flags" && (
           <div className="competition-form">
             <p className="surtitle">
               ÉGALITÉ PERSISTANTE
@@ -3366,59 +2604,48 @@ function ArbitrationManager({
             </h3>
 
             <div className="competition-actions">
-              {status.passages.map(
-                (passage) => {
-                  const competitor =
-                    getCompetitor(
-                      passage.competitorId
-                    );
+              {status.passages.map((passage) => {
+                const competitor = getCompetitor(
+                  passage.competitorId
+                );
 
-                  if (!competitor) {
-                    return null;
-                  }
-
-                  return (
-                    <button
-                      type="button"
-                      className="manage-button"
-                      key={
-                        passage.competitorId
-                      }
-                      onClick={() =>
-                        decideKataByFlags(
-                          finalType,
-                          passage.competitorId
-                        )
-                      }
-                    >
-                      🏁{" "}
-                      {competitor.nom}{" "}
-                      {competitor.prenom}
-                    </button>
-                  );
+                if (!competitor) {
+                  return null;
                 }
-              )}
+
+                return (
+                  <button
+                    type="button"
+                    className="manage-button"
+                    key={passage.competitorId}
+                    onClick={() =>
+                      decideKataByFlags(
+                        finalType,
+                        passage.competitorId
+                      )
+                    }
+                  >
+                    🏁 {competitor.nom}{" "}
+                    {competitor.prenom}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {(status.status ===
-          "score" ||
-          status.status ===
-            "tiebreak-score" ||
-          status.status ===
-            "resolved") &&
+        {(status.status === "score" ||
+          status.status === "tiebreak-score" ||
+          status.status === "resolved") &&
           status.winnerId && (
             <div className="beta-note">
               <strong>
                 🏆 Vainqueur :{" "}
-                {getCompetitor(
-                  status.winnerId
-                )?.nom || ""}
+                {getCompetitor(status.winnerId)?.nom ||
+                  ""}
                 {" "}
-                {getCompetitor(
-                  status.winnerId
-                )?.prenom || ""}
+                {getCompetitor(status.winnerId)
+                  ?.prenom || ""}
               </strong>
             </div>
           )}
@@ -3433,40 +2660,30 @@ function ArbitrationManager({
    */
 
   const kataRanking =
-    kataMode &&
-    selectedPool
+    kataMode && selectedPool
       ? calculateKataRanking()
       : [];
 
   const qualificationsFinished =
-    kataMode &&
-    selectedPool
+    kataMode && selectedPool
       ? kataQualificationsFinished()
       : false;
 
   const combatRanking =
-    selectedPool &&
-    !kataMode
-      ? calculateCombatRanking(
-          selectedPool
-        )
+    selectedPool && !kataMode
+      ? calculateCombatRanking(selectedPool)
       : [];
 
   const combatQualificationsAreFinished =
-    selectedPool &&
-    !kataMode
-      ? combatQualificationsFinished(
-          selectedPool
-        )
+    selectedPool && !kataMode
+      ? combatQualificationsFinished(selectedPool)
       : false;
 
   const combatTieBreaksNeeded =
     selectedPool &&
     !kataMode &&
     combatQualificationsAreFinished
-      ? getCombatTieBreaksNeeded(
-          selectedPool
-        )
+      ? getCombatTieBreaksNeeded(selectedPool)
       : [];
 
   /*
@@ -3483,13 +2700,10 @@ function ArbitrationManager({
             ARBITRAGE
           </p>
 
-          <h2>
-            Arbitrage
-          </h2>
+          <h2>Arbitrage</h2>
 
           <p>
-            Saisie des résultats
-            selon l'épreuve
+            Saisie des résultats selon l'épreuve
             sélectionnée.
           </p>
         </div>
@@ -3502,9 +2716,8 @@ function ArbitrationManager({
           </h3>
 
           <p>
-            Génère d'abord les poules
-            avant de commencer
-            l'arbitrage.
+            Génère d'abord les poules avant de
+            commencer l'arbitrage.
           </p>
         </div>
       ) : (
@@ -3514,9 +2727,7 @@ function ArbitrationManager({
               Poule / catégorie
 
               <select
-                value={
-                  selectedPoolId
-                }
+                value={selectedPoolId}
                 onChange={(event) => {
                   setSelectedPoolId(
                     event.target.value
@@ -3524,9 +2735,7 @@ function ArbitrationManager({
 
                   resetSelections();
 
-                  setSelectedClosingMode(
-                    ""
-                  );
+                  setSelectedClosingMode("");
                 }}
               >
                 <option value="">
@@ -3534,10 +2743,9 @@ function ArbitrationManager({
                 </option>
 
                 {pools.map((pool) => {
-                  const category =
-                    getCategory(
-                      pool.categoryId
-                    );
+                  const category = getCategory(
+                    pool.categoryId
+                  );
 
                   const eventType =
                     category?.epreuve ||
@@ -3548,9 +2756,7 @@ function ArbitrationManager({
                       key={pool.id}
                       value={pool.id}
                     >
-                      {getEventLabel(
-                        eventType
-                      )}
+                      {getEventLabel(eventType)}
                       {" — "}
                       {pool.nom}
                     </option>
@@ -3564,545 +2770,458 @@ function ArbitrationManager({
               KATA
           =============================== */}
 
-          {selectedPool &&
-            kataMode && (
-              <>
-                <section className="category-section">
-                  <div className="category-section-header">
-                    <div>
-                      <p className="surtitle">
-                        {getEventLabel(
-                          selectedEvent
-                        )}
-                      </p>
+          {selectedPool && kataMode && (
+            <>
+              <section className="category-section">
+                <div className="category-section-header">
+                  <div>
+                    <p className="surtitle">
+                      {getEventLabel(selectedEvent)}
+                    </p>
 
-                      <h3>
-                        {selectedPool.nom}
-                      </h3>
+                    <h3>{selectedPool.nom}</h3>
 
-                      <p>
-                        Chaque compétiteur
-                        effectue deux
-                        passages.
-                      </p>
-                    </div>
+                    <p>
+                      Chaque compétiteur effectue deux
+                      passages.
+                    </p>
                   </div>
+                </div>
 
-                  <div className="competition-list">
-                    {(
-                      selectedPool.competitorIds ||
-                      []
-                    ).map(
-                      renderKataCompetitor
+                <div className="competition-list">
+                  {(
+                    selectedPool.competitorIds || []
+                  ).map(renderKataCompetitor)}
+                </div>
+              </section>
+
+              <section className="category-section">
+                <div className="category-section-header">
+                  <div>
+                    <p className="surtitle">
+                      CLASSEMENT
+                    </p>
+
+                    <h3>
+                      Classement Kata
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="pool-ranking">
+                  <div className="ranking-table">
+                    <div className="ranking-header">
+                      <span>Place</span>
+                      <span>Compétiteur</span>
+                      <span>P1</span>
+                      <span>P2</span>
+                      <span>Total</span>
+                    </div>
+
+                    {kataRanking.map(
+                      (item, index) => {
+                        const competitor =
+                          getCompetitor(
+                            item.competitorId
+                          );
+
+                        if (!competitor) {
+                          return null;
+                        }
+
+                        return (
+                          <div
+                            className="ranking-row"
+                            key={item.competitorId}
+                          >
+                            <strong>
+                              {index + 1}
+                            </strong>
+
+                            <strong>
+                              {competitor.nom}{" "}
+                              {competitor.prenom}
+                            </strong>
+
+                            <span>
+                              {item.passage1 !== null
+                                ? Number(
+                                    item.passage1
+                                  ).toFixed(1)
+                                : "—"}
+                            </span>
+
+                            <span>
+                              {item.passage2 !== null
+                                ? Number(
+                                    item.passage2
+                                  ).toFixed(1)
+                                : "—"}
+                            </span>
+
+                            <strong>
+                              {item.passagesTermines === 2
+                                ? item.total.toFixed(1)
+                                : "—"}
+                            </strong>
+                          </div>
+                        );
+                      }
                     )}
                   </div>
-                </section>
+                </div>
+              </section>
 
-                <section className="category-section">
-                  <div className="category-section-header">
-                    <div>
-                      <p className="surtitle">
-                        CLASSEMENT
-                      </p>
+              {qualificationsFinished &&
+                !selectedPool.closingMode &&
+                finalPassages.length === 0 && (
+                  <div className="competition-form">
+                    <p className="surtitle">
+                      CLÔTURE
+                    </p>
 
-                      <h3>
-                        Classement Kata
-                      </h3>
-                    </div>
-                  </div>
+                    <h3>
+                      Clôture de la catégorie
+                    </h3>
 
-                  <div className="pool-ranking">
-                    <div className="ranking-table">
-                      <div className="ranking-header">
-                        <span>
-                          Place
-                        </span>
+                    <label>
+                      Mode de clôture
 
-                        <span>
-                          Compétiteur
-                        </span>
-
-                        <span>P1</span>
-                        <span>P2</span>
-                        <span>Total</span>
-                      </div>
-
-                      {kataRanking.map(
-                        (
-                          item,
-                          index
-                        ) => {
-                          const competitor =
-                            getCompetitor(
-                              item.competitorId
-                            );
-
-                          if (!competitor) {
-                            return null;
-                          }
-
-                          return (
-                            <div
-                              className="ranking-row"
-                              key={
-                                item.competitorId
-                              }
-                            >
-                              <strong>
-                                {index +
-                                  1}
-                              </strong>
-
-                              <strong>
-                                {competitor.nom}{" "}
-                                {competitor.prenom}
-                              </strong>
-
-                              <span>
-                                {item.passage1 !==
-                                null
-                                  ? Number(
-                                      item.passage1
-                                    ).toFixed(
-                                      1
-                                    )
-                                  : "—"}
-                              </span>
-
-                              <span>
-                                {item.passage2 !==
-                                null
-                                  ? Number(
-                                      item.passage2
-                                    ).toFixed(
-                                      1
-                                    )
-                                  : "—"}
-                              </span>
-
-                              <strong>
-                                {item.passagesTermines ===
-                                2
-                                  ? item.total.toFixed(
-                                      1
-                                    )
-                                  : "—"}
-                              </strong>
-                            </div>
-                          );
-                        }
-                      )}
-                    </div>
-                  </div>
-                </section>
-
-                {qualificationsFinished &&
-                  !selectedPool.closingMode &&
-                  finalPassages.length ===
-                    0 && (
-                    <div className="competition-form">
-                      <p className="surtitle">
-                        CLÔTURE
-                      </p>
-
-                      <h3>
-                        Clôture de la
-                        catégorie
-                      </h3>
-
-                      <label>
-                        Mode de clôture
-
-                        <select
-                          value={
-                            selectedClosingMode
-                          }
-                          onChange={(
-                            event
-                          ) =>
-                            setSelectedClosingMode(
-                              event.target
-                                .value
-                            )
-                          }
-                        >
-                          <option value="">
-                            Choisir
-                          </option>
-
-                          <option value="direct">
-                            Classement
-                            direct
-                          </option>
-
-                          <option value="finals">
-                            Finale + petite
-                            finale
-                          </option>
-                        </select>
-                      </label>
-
-                      <button
-                        className="primary"
-                        type="button"
-                        onClick={
-                          validateKataClosing
+                      <select
+                        value={selectedClosingMode}
+                        onChange={(event) =>
+                          setSelectedClosingMode(
+                            event.target.value
+                          )
                         }
                       >
-                        Valider la clôture
-                      </button>
-                    </div>
-                  )}
+                        <option value="">
+                          Choisir
+                        </option>
 
-                {selectedPool.closingMode ===
-                  "finals" &&
-                  finalPassages.length >
-                    0 && (
-                    <>
-                      {renderKataFinalGroup(
-                        "finale",
-                        "Finale"
-                      )}
+                        <option value="direct">
+                          Classement direct
+                        </option>
 
-                      {renderKataFinalGroup(
-                        "petite-finale",
-                        "Petite finale"
-                      )}
-                    </>
-                  )}
-              </>
-            )}
+                        <option value="finals">
+                          Finale + petite finale
+                        </option>
+                      </select>
+                    </label>
+
+                    <button
+                      className="primary"
+                      type="button"
+                      onClick={validateKataClosing}
+                    >
+                      Valider la clôture
+                    </button>
+                  </div>
+                )}
+
+              {selectedPool.closingMode ===
+                "finals" &&
+                finalPassages.length > 0 && (
+                  <>
+                    {renderKataFinalGroup(
+                      "finale",
+                      "Finale"
+                    )}
+
+                    {renderKataFinalGroup(
+                      "petite-finale",
+                      "Petite finale"
+                    )}
+                  </>
+                )}
+            </>
+          )}
 
           {/* ===============================
               COMBAT
           =============================== */}
 
-          {selectedPool &&
-            !kataMode && (
-              <>
-                <section className="category-section">
-                  <div className="category-section-header">
-                    <div>
-                      <p className="surtitle">
-                        RENCONTRES DE POULE
-                      </p>
+          {selectedPool && !kataMode && (
+            <>
+              <section className="category-section">
+                <div className="category-section-header">
+                  <div>
+                    <p className="surtitle">
+                      RENCONTRES DE POULE
+                    </p>
 
-                      <h3>
-                        {selectedPool.nom}
-                      </h3>
-                    </div>
-
-                    <span className="status">
-                      {
-                        poolMatches.filter(
-                          (match) =>
-                            match.statut ===
-                            "Terminé"
-                        ).length
-                      }
-                      /
-                      {poolMatches.length}{" "}
-                      terminées
-                    </span>
+                    <h3>{selectedPool.nom}</h3>
                   </div>
 
-                  <div className="competition-list">
-                    {poolMatches.map(
-                      (
+                  <span className="status">
+                    {
+                      poolMatches.filter(
+                        (match) =>
+                          match.statut === "Terminé"
+                      ).length
+                    }
+                    /
+                    {poolMatches.length} terminées
+                  </span>
+                </div>
+
+                <div className="competition-list">
+                  {poolMatches.map(
+                    (match, index) =>
+                      renderMatch(
                         match,
-                        index
-                      ) =>
-                        renderMatch(
-                          match,
+                        `RENCONTRE ${index + 1}`,
+                        "pool"
+                      )
+                  )}
+                </div>
+              </section>
 
-                          `RENCONTRE ${
-                            index + 1
-                          }`,
+              <section className="category-section">
+                <div className="category-section-header">
+                  <div>
+                    <p className="surtitle">
+                      CLASSEMENT
+                    </p>
 
-                          "pool"
-                        )
+                    <h3>
+                      {combatQualificationsAreFinished
+                        ? "Classement des qualifications"
+                        : "Classement provisoire"}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="pool-ranking">
+                  <div className="ranking-table">
+                    <div className="ranking-header">
+                      <span>Place</span>
+                      <span>Compétiteur</span>
+                      <span>V</span>
+                      <span>D</span>
+                      <span>N</span>
+                      <span>PN</span>
+                    </div>
+
+                    {combatRanking.map(
+                      (item, index) => {
+                        const competitor =
+                          getCompetitor(
+                            item.competitorId
+                          );
+
+                        if (!competitor) {
+                          return null;
+                        }
+
+                        return (
+                          <div
+                            className="ranking-row"
+                            key={item.competitorId}
+                          >
+                            <strong>
+                              {index + 1}
+                            </strong>
+
+                            <strong>
+                              {competitor.nom}{" "}
+                              {competitor.prenom}
+                            </strong>
+
+                            <span>
+                              {item.victories}
+                            </span>
+
+                            <span>
+                              {item.defeats}
+                            </span>
+
+                            <span>
+                              {item.draws}
+                            </span>
+
+                            <span>
+                              {item.negativePoints}
+                            </span>
+                          </div>
+                        );
+                      }
                     )}
                   </div>
-                </section>
+                </div>
+              </section>
 
-                <section className="category-section">
-                  <div className="category-section-header">
-                    <div>
-                      <p className="surtitle">
-                        CLASSEMENT
-                      </p>
+              {/* ==========================
+                  DÉPARTAGES À CRÉER
+              ========================== */}
 
-                      <h3>
-                        {combatQualificationsAreFinished
-                          ? "Classement des qualifications"
-                          : "Classement provisoire"}
-                      </h3>
-                    </div>
-                  </div>
+              {combatQualificationsAreFinished &&
+                combatTieBreaksNeeded.length > 0 && (
+                  <section className="category-section">
+                    <div className="category-section-header">
+                      <div>
+                        <p className="surtitle">
+                          ÉGALITÉS
+                        </p>
 
-                  <div className="pool-ranking">
-                    <div className="ranking-table">
-                      <div className="ranking-header">
-                        <span>
-                          Place
-                        </span>
+                        <h3>
+                          Départages réglementaires
+                        </h3>
 
-                        <span>
-                          Compétiteur
-                        </span>
-
-                        <span>V</span>
-                        <span>D</span>
-                        <span>N</span>
-                        <span>PN</span>
+                        <p>
+                          Le classement doit être
+                          départagé avant la clôture.
+                        </p>
                       </div>
+                    </div>
 
-                      {combatRanking.map(
-                        (
-                          item,
-                          index
-                        ) => {
-                          const competitor =
+                    <div className="competition-list">
+                      {combatTieBreaksNeeded.map(
+                        (tie, index) => {
+                          const competitorA =
                             getCompetitor(
-                              item.competitorId
+                              tie.competitorAId
                             );
 
-                          if (!competitor) {
+                          const competitorB =
+                            getCompetitor(
+                              tie.competitorBId
+                            );
+
+                          const existing =
+                            getSavedPoolTieBreak(
+                              selectedPool,
+                              tie.competitorAId,
+                              tie.competitorBId
+                            );
+
+                          if (existing) {
                             return null;
                           }
 
                           return (
-                            <div
-                              className="ranking-row"
-                              key={
-                                item.competitorId
-                              }
+                            <article
+                              className="competition"
+                              key={`${tie.competitorAId}-${tie.competitorBId}-${index}`}
                             >
-                              <strong>
-                                {index +
-                                  1}
-                              </strong>
+                              <div>
+                                <p className="surtitle">
+                                  DÉPARTAGE REQUIS
+                                </p>
 
-                              <strong>
-                                {competitor.nom}{" "}
-                                {competitor.prenom}
-                              </strong>
+                                <h3>
+                                  {competitorA
+                                    ? `${competitorA.nom} ${competitorA.prenom}`
+                                    : "Compétiteur"}
+                                </h3>
 
-                              <span>
-                                {item.victories}
-                              </span>
+                                <p>contre</p>
 
-                              <span>
-                                {item.defeats}
-                              </span>
+                                <h3>
+                                  {competitorB
+                                    ? `${competitorB.nom} ${competitorB.prenom}`
+                                    : "Compétiteur"}
+                                </h3>
 
-                              <span>
-                                {item.draws}
-                              </span>
+                                <div className="beta-note">
+                                  <strong>
+                                    3 attaques
+                                    supplémentaires
+                                  </strong>
 
-                              <span>
-                                {item.negativePoints}
-                              </span>
-                            </div>
+                                  <p>
+                                    Tsuki · Mae Geri ·
+                                    Mawashi Geri
+                                  </p>
+
+                                  <p>
+                                    Si l'égalité
+                                    persiste : décision
+                                    aux drapeaux.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                className="primary"
+                                onClick={() =>
+                                  startCombatTieBreak(
+                                    tie.competitorAId,
+                                    tie.competitorBId
+                                  )
+                                }
+                              >
+                                Commencer le départage
+                              </button>
+                            </article>
                           );
                         }
                       )}
                     </div>
+                  </section>
+                )}
+
+              {/* ==========================
+                  DÉPARTAGES EXISTANTS
+              ========================== */}
+
+              {(selectedPool.combatTieBreaks || [])
+                .length > 0 && (
+                <section className="category-section">
+                  <div className="category-section-header">
+                    <div>
+                      <p className="surtitle">
+                        DÉPARTAGES
+                      </p>
+
+                      <h3>
+                        Arbitrage des égalités
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="competition-list">
+                    {(
+                      selectedPool.combatTieBreaks ||
+                      []
+                    ).map(renderCombatTieBreak)}
                   </div>
                 </section>
+              )}
 
-                {/* ==========================
-                    DÉPARTAGES À CRÉER
-                ========================== */}
+              {/* ==========================
+                  PHASE FINALE
+              ========================== */}
 
-                {combatQualificationsAreFinished &&
-                  combatTieBreaksNeeded.length >
-                    0 && (
-                    <section className="category-section">
-                      <div className="category-section-header">
-                        <div>
-                          <p className="surtitle">
-                            ÉGALITÉS
-                          </p>
+              {finalMatches.length > 0 && (
+                <section className="category-section">
+                  <div className="category-section-header">
+                    <div>
+                      <p className="surtitle">
+                        PHASE FINALE
+                      </p>
 
-                          <h3>
-                            Départages
-                            réglementaires
-                          </h3>
-
-                          <p>
-                            Le classement
-                            doit être
-                            départagé avant
-                            la clôture.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="competition-list">
-                        {combatTieBreaksNeeded.map(
-                          (
-                            tie,
-                            index
-                          ) => {
-                            const competitorA =
-                              getCompetitor(
-                                tie.competitorAId
-                              );
-
-                            const competitorB =
-                              getCompetitor(
-                                tie.competitorBId
-                              );
-
-                            const existing =
-                              getSavedPoolTieBreak(
-                                selectedPool,
-                                tie.competitorAId,
-                                tie.competitorBId
-                              );
-
-                            if (existing) {
-                              return null;
-                            }
-
-                            return (
-                              <article
-                                className="competition"
-                                key={`${tie.competitorAId}-${tie.competitorBId}-${index}`}
-                              >
-                                <div>
-                                  <p className="surtitle">
-                                    DÉPARTAGE REQUIS
-                                  </p>
-
-                                  <h3>
-                                    {competitorA
-                                      ? `${competitorA.nom} ${competitorA.prenom}`
-                                      : "Compétiteur"}
-                                  </h3>
-
-                                  <p>
-                                    contre
-                                  </p>
-
-                                  <h3>
-                                    {competitorB
-                                      ? `${competitorB.nom} ${competitorB.prenom}`
-                                      : "Compétiteur"}
-                                  </h3>
-
-                                  <div className="beta-note">
-                                    <strong>
-                                      3 attaques
-                                      supplémentaires
-                                    </strong>
-
-                                    <p>
-                                      Tsuki · Mae
-                                      Geri · Mawashi
-                                      Geri
-                                    </p>
-
-                                    <p>
-                                      Si l'égalité
-                                      persiste :
-                                      décision aux
-                                      drapeaux.
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <button
-                                  type="button"
-                                  className="primary"
-                                  onClick={() =>
-                                    startCombatTieBreak(
-                                      tie.competitorAId,
-                                      tie.competitorBId
-                                    )
-                                  }
-                                >
-                                  Commencer le
-                                  départage
-                                </button>
-                              </article>
-                            );
-                          }
-                        )}
-                      </div>
-                    </section>
-                  )}
-
-                {/* ==========================
-                    DÉPARTAGES EXISTANTS
-                ========================== */}
-
-                {(selectedPool.combatTieBreaks ||
-                  []).length >
-                  0 && (
-                  <section className="category-section">
-                    <div className="category-section-header">
-                      <div>
-                        <p className="surtitle">
-                          DÉPARTAGES
-                        </p>
-
-                        <h3>
-                          Arbitrage des
-                          égalités
-                        </h3>
-                      </div>
+                      <h3>
+                        Finale et petite finale
+                      </h3>
                     </div>
+                  </div>
 
-                    <div className="competition-list">
-                      {(
-                        selectedPool.combatTieBreaks ||
-                        []
-                      ).map(
-                        renderCombatTieBreak
-                      )}
-                    </div>
-                  </section>
-                )}
-
-                {/* ==========================
-                    PHASE FINALE
-                ========================== */}
-
-                {finalMatches.length >
-                  0 && (
-                  <section className="category-section">
-                    <div className="category-section-header">
-                      <div>
-                        <p className="surtitle">
-                          PHASE FINALE
-                        </p>
-
-                        <h3>
-                          Finale et petite
-                          finale
-                        </h3>
-                      </div>
-                    </div>
-
-                    <div className="competition-list">
-                      {finalMatches.map(
-                        (match) =>
-                          renderMatch(
-                            match,
-
-                            match.label ||
-                              "PHASE FINALE",
-
-                            "final"
-                          )
-                      )}
-                    </div>
-                  </section>
-                )}
-              </>
-            )}
+                  <div className="competition-list">
+                    {finalMatches.map((match) =>
+                      renderMatch(
+                        match,
+                        match.label ||
+                          "PHASE FINALE",
+                        "final"
+                      )
+                    )}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
 
           {/* ===============================
               PODIUM
@@ -4115,57 +3234,46 @@ function ArbitrationManager({
                   RÉSULTAT
                 </p>
 
-                <h3>
-                  Podium final
-                </h3>
+                <h3>Podium final</h3>
 
                 <p>
                   🥇{" "}
                   {getCompetitor(
-                    selectedPool.podium
-                      .firstId
+                    selectedPool.podium.firstId
                   )?.nom || "—"}{" "}
                   {getCompetitor(
-                    selectedPool.podium
-                      .firstId
+                    selectedPool.podium.firstId
                   )?.prenom || ""}
                 </p>
 
                 <p>
                   🥈{" "}
                   {getCompetitor(
-                    selectedPool.podium
-                      .secondId
+                    selectedPool.podium.secondId
                   )?.nom || "—"}{" "}
                   {getCompetitor(
-                    selectedPool.podium
-                      .secondId
+                    selectedPool.podium.secondId
                   )?.prenom || ""}
                 </p>
 
                 <p>
                   🥉{" "}
                   {getCompetitor(
-                    selectedPool.podium
-                      .thirdId
+                    selectedPool.podium.thirdId
                   )?.nom || "—"}{" "}
                   {getCompetitor(
-                    selectedPool.podium
-                      .thirdId
+                    selectedPool.podium.thirdId
                   )?.prenom || ""}
                 </p>
 
-                {selectedPool.podium
-                  .fourthId && (
+                {selectedPool.podium.fourthId && (
                   <p>
                     4e{" "}
                     {getCompetitor(
-                      selectedPool.podium
-                        .fourthId
+                      selectedPool.podium.fourthId
                     )?.nom || "—"}{" "}
                     {getCompetitor(
-                      selectedPool.podium
-                        .fourthId
+                      selectedPool.podium.fourthId
                     )?.prenom || ""}
                   </p>
                 )}
@@ -4181,75 +3289,58 @@ function ArbitrationManager({
             selectedPassage ||
             selectedFinalPassage) && (
             <div
-              ref={
-                notationSheetRef
-              }
+              ref={notationSheetRef}
               className="notation-sheet-anchor"
             >
-              {selectedMatch &&
-                !kataMode && (
-                  <MatchManager
-                    key={`${selectedMatchType}-${selectedMatch.id}`}
-                    type="ju-randori"
-                    eventType={getEventLabel(
-                      selectedEvent
-                    )}
-                    match={{
-                      ...selectedMatch,
+              {selectedMatch && !kataMode && (
+                <MatchManager
+                  key={`${selectedMatchType}-${selectedMatch.id}`}
+                  type="ju-randori"
+                  eventType={getEventLabel(
+                    selectedEvent
+                  )}
+                  match={{
+                    ...selectedMatch,
 
-                      aka:
-                        getCompetitor(
-                          selectedMatch.akaId
-                        ),
+                    aka: getCompetitor(
+                      selectedMatch.akaId
+                    ),
 
-                      shiro:
-                        getCompetitor(
-                          selectedMatch.shiroId
-                        ),
-                    }}
-                    onSave={
-                      saveOfficialMatch
-                    }
-                  />
-                )}
+                    shiro: getCompetitor(
+                      selectedMatch.shiroId
+                    ),
+                  }}
+                  onSave={saveOfficialMatch}
+                />
+              )}
 
-              {selectedPassage &&
-                kataMode && (
-                  <MatchManager
-                    key={
-                      selectedPassage.id
-                    }
-                    type="kata"
-                    competitor={getCompetitor(
-                      selectedPassage.competitorId
-                    )}
-                    passage={
-                      selectedPassage.numero
-                    }
-                    initialResult={
-                      selectedPassage.statut ===
-                      "Terminé"
-                        ? {
-                            notes:
-                              selectedPassage.notes,
+              {selectedPassage && kataMode && (
+                <MatchManager
+                  key={selectedPassage.id}
+                  type="kata"
+                  competitor={getCompetitor(
+                    selectedPassage.competitorId
+                  )}
+                  passage={selectedPassage.numero}
+                  initialResult={
+                    selectedPassage.statut === "Terminé"
+                      ? {
+                          notes:
+                            selectedPassage.notes,
 
-                            score:
-                              selectedPassage.score,
-                          }
-                        : null
-                    }
-                    onSave={
-                      saveKataPassage
-                    }
-                  />
-                )}
+                          score:
+                            selectedPassage.score,
+                        }
+                      : null
+                  }
+                  onSave={saveKataPassage}
+                />
+              )}
 
               {selectedFinalPassage &&
                 kataMode && (
                   <MatchManager
-                    key={
-                      selectedFinalPassage.id
-                    }
+                    key={selectedFinalPassage.id}
                     type="kata"
                     kataStage={
                       selectedFinalPassage.phase ===
@@ -4278,9 +3369,7 @@ function ArbitrationManager({
                           }
                         : null
                     }
-                    onSave={
-                      saveKataFinalPassage
-                    }
+                    onSave={saveKataFinalPassage}
                   />
                 )}
             </div>
