@@ -1,12 +1,21 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { parseRegistrationExport } from "./registrationImport";
 
 const REGISTRATIONS_KEY = "nanbudo-online-registrations-v2";
+const REGISTRATIONS_CHANGED_EVENT = "nanbudo-registrations-changed";
 
 function readRegistrations(){try{return JSON.parse(localStorage.getItem(REGISTRATIONS_KEY)||"[]")}catch{return[]}}
 
 export default function RegistrationInbox({competition,onUpdateCompetition}){
- const registrations=useMemo(()=>readRegistrations().filter(r=>String(r.competitionId)===String(competition.id)),[competition.id]);
+ const [allRegistrations,setAllRegistrations]=useState(readRegistrations);
+ useEffect(()=>{
+  const refresh=()=>setAllRegistrations(readRegistrations());
+  window.addEventListener("storage",refresh);
+  window.addEventListener(REGISTRATIONS_CHANGED_EVENT,refresh);
+  refresh();
+  return()=>{window.removeEventListener("storage",refresh);window.removeEventListener(REGISTRATIONS_CHANGED_EVENT,refresh)};
+ },[competition.id]);
+ const registrations=useMemo(()=>allRegistrations.filter(r=>String(r.competitionId)===String(competition.id)),[allRegistrations,competition.id]);
  const alreadyImported=new Set((competition.competitors||[]).map(c=>String(c.registrationId||"")));
  const pending=registrations.filter(r=>!alreadyImported.has(String(r.id)));
  function importPending(){
