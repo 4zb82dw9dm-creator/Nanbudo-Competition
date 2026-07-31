@@ -7,7 +7,10 @@ const EVENT_LABELS = {
   juRandori2: "Ju Randori 2",
 };
 
-function ResultsManager({ competition }) {
+function ResultsManager({
+  competition,
+  onUpdateCompetition,
+}) {
   const pools = competition?.pools || [];
   const competitors =
     competition?.competitors || [];
@@ -90,6 +93,19 @@ function ResultsManager({ competition }) {
 
   /*
    * =========================================================
+   * ÉTAT DE LA COMPÉTITION
+   * =========================================================
+   */
+
+  const competitionTerminee =
+    competition?.statut === "Terminée";
+
+  const toutesCategoriesTerminees =
+    pools.length > 0 &&
+    unfinishedPools.length === 0;
+
+  /*
+   * =========================================================
    * STATISTIQUES
    * =========================================================
    */
@@ -116,7 +132,12 @@ function ResultsManager({ competition }) {
             pool.podium.firstId,
             pool.podium.secondId,
             pool.podium.thirdId,
-          ].filter(Boolean).length
+          ].filter(
+            (id) =>
+              id !== null &&
+              id !== undefined &&
+              id !== ""
+          ).length
         );
       },
       0
@@ -130,6 +151,72 @@ function ResultsManager({ competition }) {
 
   function printResults() {
     window.print();
+  }
+
+  /*
+   * =========================================================
+   * CLÔTURE DE LA COMPÉTITION
+   * =========================================================
+   */
+
+  function closeCompetition() {
+    if (!onUpdateCompetition) {
+      return;
+    }
+
+    if (pools.length === 0) {
+      alert(
+        "Impossible de clôturer la compétition : aucune catégorie n'a encore été générée."
+      );
+      return;
+    }
+
+    if (!toutesCategoriesTerminees) {
+      alert(
+        `Impossible de clôturer la compétition : ${totalUnfinished} catégorie(s) ne sont pas encore terminées.`
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Toutes les catégories sont terminées.\n\nClôturer officiellement cette compétition ?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    onUpdateCompetition({
+      ...competition,
+      statut: "Terminée",
+      dateCloture: new Date().toISOString(),
+    });
+  }
+
+  /*
+   * =========================================================
+   * RÉOUVERTURE DE LA COMPÉTITION
+   * =========================================================
+   */
+
+  function reopenCompetition() {
+    if (!onUpdateCompetition) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Rouvrir cette compétition pour permettre des corrections ?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    onUpdateCompetition({
+      ...competition,
+      statut: "Préparation",
+      dateCloture: null,
+    });
   }
 
   /*
@@ -390,6 +477,26 @@ function ResultsManager({ competition }) {
 
       {/*
        * =====================================================
+       * STATUT DE LA COMPÉTITION
+       * =====================================================
+       */}
+
+      {competitionTerminee && (
+        <div className="beta-note screen-only">
+          <strong>
+            🏆 Compétition terminée
+          </strong>
+
+          <p>
+            Tous les résultats ont été
+            validés et la compétition est
+            officiellement clôturée.
+          </p>
+        </div>
+      )}
+
+      {/*
+       * =====================================================
        * ENTÊTE DOCUMENT IMPRIMÉ
        * =====================================================
        */}
@@ -435,6 +542,12 @@ function ResultsManager({ competition }) {
               )}
             </div>
           )}
+
+          {competitionTerminee && (
+            <p>
+              Compétition terminée
+            </p>
+          )}
         </div>
       </header>
 
@@ -470,6 +583,14 @@ function ResultsManager({ competition }) {
                   État des résultats
                 </h3>
               </div>
+
+              <span className="status">
+                {competitionTerminee
+                  ? "Terminée"
+                  : toutesCategoriesTerminees
+                  ? "Prête à clôturer"
+                  : "En cours"}
+              </span>
             </div>
 
             <div className="results-stats">
@@ -619,6 +740,135 @@ function ResultsManager({ competition }) {
               </p>
             </div>
           )}
+
+          {/*
+           * ===============================================
+           * CLÔTURE
+           * ===============================================
+           */}
+
+          <section className="category-section screen-only">
+            <div className="category-section-header">
+              <div>
+                <p className="surtitle">
+                  CLÔTURE
+                </p>
+
+                <h3>
+                  Statut de la compétition
+                </h3>
+
+                {!competitionTerminee &&
+                  !toutesCategoriesTerminees && (
+                    <p>
+                      Toutes les catégories
+                      doivent être terminées
+                      avant de pouvoir
+                      clôturer la compétition.
+                    </p>
+                  )}
+
+                {!competitionTerminee &&
+                  toutesCategoriesTerminees && (
+                    <p>
+                      Tous les podiums sont
+                      disponibles. La
+                      compétition peut être
+                      clôturée.
+                    </p>
+                  )}
+
+                {competitionTerminee && (
+                  <p>
+                    La compétition est
+                    officiellement terminée.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {!competitionTerminee &&
+              !toutesCategoriesTerminees && (
+                <div className="beta-note">
+                  <strong>
+                    ⏳ Compétition en cours
+                  </strong>
+
+                  <p>
+                    {totalUnfinished}{" "}
+                    catégorie
+                    {totalUnfinished > 1
+                      ? "s"
+                      : ""}{" "}
+                    reste
+                    {totalUnfinished > 1
+                      ? "nt"
+                      : ""}{" "}
+                    à terminer.
+                  </p>
+                </div>
+              )}
+
+            {!competitionTerminee &&
+              toutesCategoriesTerminees && (
+                <div className="beta-note">
+                  <strong>
+                    ✅ Tous les résultats sont disponibles
+                  </strong>
+
+                  <p>
+                    Vérifie les podiums puis
+                    clôture officiellement la
+                    compétition.
+                  </p>
+
+                  {onUpdateCompetition && (
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={closeCompetition}
+                    >
+                      Clôturer la compétition
+                    </button>
+                  )}
+                </div>
+              )}
+
+            {competitionTerminee && (
+              <div className="beta-note">
+                <strong>
+                  🏆 Compétition clôturée
+                </strong>
+
+                <p>
+                  Les résultats présentés
+                  ci-dessus constituent les
+                  résultats enregistrés de
+                  cette compétition.
+                </p>
+
+                <div className="competition-actions">
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={printResults}
+                  >
+                    Imprimer les résultats
+                  </button>
+
+                  {onUpdateCompetition && (
+                    <button
+                      type="button"
+                      className="manage-button"
+                      onClick={reopenCompetition}
+                    >
+                      Rouvrir pour correction
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
 
           {/*
            * ===============================================
