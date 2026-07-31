@@ -1106,17 +1106,614 @@ footer span {
   margin-top: 32px;
 }
 
-/*
- * Le tableau podium comporte seulement
- * trois colonnes : place, compétiteur, club.
- */
-
 .results-podium .ranking-header,
 .results-podium .ranking-row {
   grid-template-columns:
     80px
     minmax(220px, 2fr)
     minmax(160px, 1fr);
+}
+
+/* =========================================================
+   FEUILLE D'ARBITRAGE — JU RANDORI
+========================================================= */
+
+.match-manager {
+  width: 100%;
+  margin-top: 30px;
+}
+
+.randori-manager {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: 0 8px 28px rgba(20, 33, 61, 0.08);
+  border-top: 4px solid var(--color-horizon-gold);
+}
+
+.randori-header {
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.randori-progress {
+  min-width: 125px;
+  background: var(--color-afdp-blue);
+  color: white;
+  border-radius: 12px;
+  padding: 14px 18px;
+  text-align: center;
+}
+
+.randori-progress strong {
+  display: block;
+  font-size: 25px;
+  color: var(--color-horizon-gold);
+}
+
+.randori-progress span {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+/* ========================================
+   JU RANDORI — SCORE AKA / CENTRE / SHIRO
+======================================== */
+
+.randori-scoreboard {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(190px, 0.65fr)
+    minmax(0, 1fr);
+
+  gap: 16px;
+  margin: 25px 0;
+  align-items: stretch;
+}
+
+.fighter-panel {
+  min-width: 0;
+  padding: 24px;
+  border-radius: 15px;
+  text-align: center;
+}
+
+.fighter-aka {
+  background: #fff5f5;
+  border: 2px solid #d32f2f;
+}
+
+.fighter-shiro {
+  background: #ffffff;
+  border: 2px solid var(--color-afdp-blue);
+}
+
+.fighter-label {
+  margin: 0 0 12px;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+.fighter-aka .fighter-label {
+  color: #b71c1c;
+}
+
+.fighter-shiro .fighter-label {
+  color: var(--color-afdp-blue);
+}
+
+.fighter-name {
+  margin: 0 0 15px;
+  font-size: clamp(19px, 2vw, 25px);
+  overflow-wrap: anywhere;
+}
+
+.fighter-score {
+  font-size: clamp(50px, 7vw, 76px);
+  line-height: 1;
+  font-weight: 900;
+  margin: 15px 0;
+}
+
+.fighter-aka .fighter-score {
+  color: #c62828;
+}
+
+.fighter-shiro .fighter-score {
+  color: var(--color-afdp-blue);
+}
+
+.fighter-panel p {
+  margin: 7px 0;
+  color: var(--color-muted);
+}
+
+.fighter-disqualified {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-weight: 900;
+}
+
+/* ========================================
+   JU RANDORI — CENTRE DU SCORE
+======================================== */
+
+.fight-center-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  min-width: 0;
+  padding: 20px;
+
+  background: var(--color-afdp-blue);
+  color: white;
+
+  border-radius: 15px;
+  text-align: center;
+}
+
+.fight-center-panel .surtitle {
+  color: var(--color-horizon-gold);
+}
+
+.fight-main-score {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+
+  margin: 16px 0;
+  font-size: clamp(30px, 4vw, 46px);
+}
+
+.fight-main-score strong {
+  color: white;
+}
+
+.fight-main-score span {
+  color: var(--color-horizon-gold);
+}
+
+.fight-status {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+
+  margin-top: 5px;
+  padding: 8px 12px;
+
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.fight-status.finished {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.fight-status.tie {
+  background: #fff4cc;
+  color: #735c00;
+}
+
+.fight-progress-text {
+  margin: 12px 0 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* ========================================
+   JU RANDORI — TITRES
+======================================== */
+
+.randori-section-title {
+  margin-bottom: 18px;
+}
+
+.randori-section-title h2,
+.randori-section-title h3 {
+  margin: 6px 0;
+}
+
+.randori-section-title p:not(.surtitle) {
+  color: var(--color-muted);
+  margin: 5px 0;
+}
+
+/* ========================================
+   JU RANDORI — PÉNALITÉS
+======================================== */
+
+.penalties {
+  margin: 28px 0;
+}
+
+.penalties-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.penalty-card {
+  min-width: 0;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.penalty-card-aka {
+  border-top: 4px solid #d32f2f;
+}
+
+.penalty-card-shiro {
+  border-top: 4px solid var(--color-afdp-blue);
+}
+
+.penalty-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.penalty-card-header h3 {
+  margin: 5px 0;
+}
+
+.negative-points {
+  white-space: nowrap;
+  background: #f0f2f5;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.penalty-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.penalty-summary span {
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 9px;
+  font-size: 13px;
+}
+
+.penalty-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.penalty-buttons button {
+  border: 1px solid #d7dce4;
+  background: #f5f7fa;
+  color: var(--color-text);
+
+  padding: 9px 11px;
+  border-radius: 8px;
+
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.penalty-buttons button:hover {
+  border-color: var(--color-afdp-blue);
+}
+
+.penalty-buttons .danger-penalty {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: #e2bcbc;
+}
+
+/* ========================================
+   JU RANDORI — ASSAUTS
+======================================== */
+
+.randori-assauts,
+.randori-tiebreak {
+  margin: 32px 0;
+}
+
+.assauts-list,
+.tiebreak-techniques {
+  display: grid;
+  gap: 14px;
+}
+
+.assaut-card {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-horizon-gold);
+
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.assaut-card.assaut-complet {
+  border-left-color: var(--color-success);
+  background: #fbfefb;
+}
+
+.assaut-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+
+  margin-bottom: 14px;
+}
+
+.assaut-header h3 {
+  margin: 5px 0 0;
+}
+
+.assaut-status {
+  white-space: nowrap;
+  background: #eef1f5;
+  color: var(--color-muted);
+
+  padding: 7px 10px;
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.assaut-status.complete {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+/* ========================================
+   JU RANDORI — FUKUSHIN
+======================================== */
+
+.juge {
+  display: grid;
+  grid-template-columns:
+    minmax(100px, 0.6fr)
+    minmax(0, 2fr);
+
+  align-items: center;
+  gap: 14px;
+
+  padding: 11px 0;
+  border-top: 1px solid #edf0f4;
+}
+
+.juge:first-of-type {
+  border-top: 0;
+}
+
+.juge-label {
+  color: var(--color-text);
+}
+
+.juge-votes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+/* ========================================
+   JU RANDORI — VOTES
+======================================== */
+
+.juge-votes .vote-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-weight: 800;
+}
+
+.juge-votes .vote-button:hover {
+  border-color: #aeb6c1;
+}
+
+.juge-votes .vote-button.selected {
+  transform: scale(1.02);
+}
+
+/* ========================================
+   JU RANDORI — DÉPARTAGE
+======================================== */
+
+.randori-tiebreak {
+  padding: 24px;
+  border: 2px solid var(--color-horizon-gold);
+  border-radius: 16px;
+  background: #fffdf7;
+}
+
+.tiebreak-heading {
+  margin-bottom: 22px;
+  text-align: center;
+}
+
+.tiebreak-heading h2 {
+  margin: 7px 0 10px;
+}
+
+.tiebreak-heading p {
+  color: var(--color-muted);
+}
+
+.tiebreak-scoreboard {
+  margin-top: 24px;
+}
+
+/* ========================================
+   JU RANDORI — DRAPEAUX
+======================================== */
+
+.flags-decision {
+  margin-top: 25px;
+}
+
+.flags-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.flag-choice {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  gap: 7px;
+
+  min-height: 100px;
+  padding: 18px;
+
+  border-radius: 12px;
+  border: 2px solid var(--color-border);
+
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.flag-choice strong {
+  font-size: 20px;
+}
+
+.flag-aka {
+  background: #fff5f5;
+}
+
+.flag-shiro {
+  background: white;
+}
+
+.flag-aka.selected {
+  background: #d32f2f;
+  color: white;
+  border-color: #a71919;
+}
+
+.flag-shiro.selected {
+  border-color: var(--color-afdp-blue);
+  color: var(--color-afdp-blue);
+  box-shadow: 0 0 0 3px rgba(39, 82, 150, 0.12);
+}
+
+/* ========================================
+   JU RANDORI — RÉSULTAT
+======================================== */
+
+.match-result {
+  margin-top: 28px;
+}
+
+.randori-result {
+  padding: 26px;
+  border-radius: 16px;
+  background: #f8f9fb;
+  border: 1px solid var(--color-border);
+}
+
+.final-score-line {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+
+  margin: 22px 0;
+}
+
+.final-score-line > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.final-score-line strong {
+  font-size: 38px;
+}
+
+.final-score-separator {
+  color: var(--color-horizon-gold);
+  font-size: 32px;
+  font-weight: 900;
+}
+
+.randori-winner-banner {
+  margin: 22px 0;
+  padding: 22px;
+
+  text-align: center;
+
+  background: var(--color-success-bg);
+  border: 2px solid var(--color-success);
+  border-radius: 13px;
+}
+
+.randori-winner-banner h2 {
+  margin: 8px 0;
+  color: var(--color-success);
+}
+
+.randori-winner-banner p:not(.surtitle) {
+  margin: 6px 0;
+  color: var(--color-muted);
+}
+
+.save-match-zone {
+  margin-top: 25px;
+  text-align: center;
+}
+
+.save-match-button {
+  min-width: min(420px, 100%);
+  padding: 15px 24px;
+  font-size: 16px;
+}
+
+.randori-info {
+  margin-top: 24px;
+}
+
+/* ========================================
+   KATA — MATCH MANAGER
+======================================== */
+
+.match-score {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 22px 0;
+}
+
+.match-score > div {
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border-top: 3px solid var(--color-horizon-gold);
+  text-align: center;
+}
+
+.match-score h2 {
+  margin: 8px 0;
+  color: var(--color-afdp-blue);
 }
 
 /* ========================================
@@ -1153,6 +1750,25 @@ footer span {
 
   .results-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .randori-scoreboard {
+    grid-template-columns:
+      minmax(0, 1fr)
+      160px
+      minmax(0, 1fr);
+  }
+
+  .fighter-panel {
+    padding: 18px;
+  }
+
+  .fight-center-panel {
+    padding: 16px 10px;
+  }
+
+  .penalty-summary {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1299,6 +1915,87 @@ footer span {
       minmax(180px, 2fr)
       minmax(140px, 1fr);
   }
+
+  /* JU RANDORI */
+
+  .randori-manager {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .randori-progress {
+    width: 100%;
+  }
+
+  .randori-scoreboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fight-center-panel {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 150px;
+  }
+
+  .fighter-aka {
+    grid-column: 1;
+  }
+
+  .fighter-shiro {
+    grid-column: 2;
+  }
+
+  .fighter-panel {
+    padding: 15px 10px;
+  }
+
+  .fighter-name {
+    font-size: 17px;
+  }
+
+  .fighter-score {
+    font-size: 46px;
+  }
+
+  .penalties-grid,
+  .randori-penalties-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .juge {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .juge-votes {
+    width: 100%;
+  }
+
+  .vote-button {
+    padding: 10px 5px;
+    font-size: 13px;
+  }
+
+  .flags-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .final-score-line {
+    gap: 12px;
+  }
+
+  .final-score-line > div {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .final-score-line strong {
+    font-size: 32px;
+  }
+
+  .randori-tiebreak {
+    padding: 17px;
+  }
 }
 
 /* ========================================
@@ -1356,23 +2053,65 @@ footer span {
   .competition-form {
     padding: 18px;
   }
+
+  /* JU RANDORI */
+
+  .randori-manager {
+    padding: 14px;
+  }
+
+  .randori-scoreboard {
+    gap: 9px;
+  }
+
+  .fighter-panel {
+    padding: 13px 7px;
+  }
+
+  .fighter-label {
+    font-size: 14px;
+  }
+
+  .fighter-name {
+    font-size: 15px;
+  }
+
+  .fighter-score {
+    font-size: 40px;
+  }
+
+  .juge-votes {
+    gap: 5px;
+  }
+
+  .vote-button {
+    min-height: 42px;
+    padding: 8px 3px;
+    font-size: 11px;
+  }
+
+  .assaut-card {
+    padding: 14px;
+  }
+
+  .assaut-header {
+    align-items: flex-start;
+  }
+
+  .penalty-card {
+    padding: 15px;
+  }
 }
 
 /* =========================================================
    IMPRESSION — RÉSULTATS OFFICIELS
-   GARDER CE BLOC TOUT À LA FIN DU FICHIER
 ========================================================= */
 
 @media print {
-
   @page {
     size: A4 portrait;
     margin: 12mm 14mm 14mm;
   }
-
-  /* =====================================
-     BASE
-  ===================================== */
 
   html,
   body,
@@ -1395,10 +2134,6 @@ footer span {
     font-size: 10pt !important;
   }
 
-  /* =====================================
-     MASQUER L'INTERFACE
-  ===================================== */
-
   .header,
   .top-banner,
   .navigation,
@@ -1417,10 +2152,6 @@ footer span {
   .app > footer {
     display: none !important;
   }
-
-  /* =====================================
-     CONTENU PRINCIPAL
-  ===================================== */
 
   .app {
     display: block !important;
@@ -1448,10 +2179,6 @@ footer span {
 
     background: #ffffff !important;
   }
-
-  /* =====================================
-     ENTÊTE DU DOCUMENT
-  ===================================== */
 
   .print-results-header {
     display: block !important;
@@ -1533,19 +2260,10 @@ footer span {
     font-size: 8.5pt !important;
   }
 
-  /* =====================================
-     STATISTIQUES
-     NON IMPRIMÉES
-  ===================================== */
-
   .results-stats,
   .result-stat-card {
     display: none !important;
   }
-
-  /* =====================================
-     TITRE PODIUMS
-  ===================================== */
 
   .results-podium-header {
     display: block !important;
@@ -1577,10 +2295,6 @@ footer span {
     line-height: 1.15 !important;
   }
 
-  /* =====================================
-     LISTE DES RÉSULTATS
-  ===================================== */
-
   .official-results-list {
     display: block !important;
 
@@ -1589,10 +2303,6 @@ footer span {
     margin: 0 !important;
     padding: 0 !important;
   }
-
-  /* =====================================
-     CATÉGORIES
-  ===================================== */
 
   .results-category {
     display: block !important;
@@ -1646,10 +2356,6 @@ footer span {
     line-height: 1.15 !important;
   }
 
-  /* =====================================
-     PODIUM
-  ===================================== */
-
   .results-podium {
     display: block !important;
 
@@ -1661,10 +2367,6 @@ footer span {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
-
-  /* =====================================
-     TABLEAU PODIUM
-  ===================================== */
 
   .results-podium .ranking-table {
     display: block !important;
@@ -1749,10 +2451,6 @@ footer span {
     font-weight: 800 !important;
   }
 
-  /* =====================================
-     COULEURS
-  ===================================== */
-
   .results-manager .surtitle {
     color: #c9a227 !important;
   }
@@ -1769,10 +2467,6 @@ footer span {
   .results-podium .ranking-header span {
     color: #ffffff !important;
   }
-
-  /* =====================================
-     PIED DU DOCUMENT
-  ===================================== */
 
   .print-results-footer {
     display: flex !important;
@@ -1807,10 +2501,6 @@ footer span {
     text-align: right !important;
   }
 
-  /* =====================================
-     ÉLÉMENTS À NE JAMAIS IMPRIMER
-  ===================================== */
-
   .results-manager .empty-state,
   .results-manager .competition-list,
   .results-manager .competition-form {
@@ -1818,21 +2508,17 @@ footer span {
     page-break-inside: avoid !important;
   }
 }
+
 /* =========================================================
    IMPRESSION V2 — RÉSULTATS OFFICIELS AFDP
-   Ce bloc doit rester TOUT À LA FIN de style.css
+   CE BLOC DOIT RESTER TOUT À LA FIN DE STYLE.CSS
 ========================================================= */
 
 @media print {
-
   @page {
     size: A4 portrait;
     margin: 11mm 13mm 11mm;
   }
-
-  /* ---------------------------------------------------------
-     DOCUMENT
-  --------------------------------------------------------- */
 
   html,
   body,
@@ -1868,9 +2554,9 @@ footer span {
     padding: 0 !important;
   }
 
-  /* ---------------------------------------------------------
+  /* ========================================
      ENTÊTE OFFICIEL
-  --------------------------------------------------------- */
+  ======================================== */
 
   .print-results-header {
     display: block !important;
@@ -1941,9 +2627,9 @@ footer span {
     font-size: 9.5pt !important;
   }
 
-  /* ---------------------------------------------------------
+  /* ========================================
      TITRE PODIUMS
-  --------------------------------------------------------- */
+  ======================================== */
 
   .results-podium-header {
     display: block !important;
@@ -1977,9 +2663,9 @@ footer span {
     font-weight: 900 !important;
   }
 
-  /* ---------------------------------------------------------
+  /* ========================================
      CATÉGORIES
-  --------------------------------------------------------- */
+  ======================================== */
 
   .official-results-list {
     display: block !important;
@@ -2040,9 +2726,9 @@ footer span {
     font-weight: 900 !important;
   }
 
-  /* ---------------------------------------------------------
+  /* ========================================
      TABLEAUX
-  --------------------------------------------------------- */
+  ======================================== */
 
   .results-podium {
     display: block !important;
@@ -2094,9 +2780,9 @@ footer span {
     padding: 3mm 4mm !important;
   }
 
-  /* ---------------------------------------------------------
+  /* ========================================
      EN-TÊTE TABLEAU
-  --------------------------------------------------------- */
+  ======================================== */
 
   .results-podium .ranking-header {
     background: #275296 !important;
@@ -2115,9 +2801,9 @@ footer span {
     color: #ffffff !important;
   }
 
-  /* ---------------------------------------------------------
+  /* ========================================
      LIGNES TABLEAU
-  --------------------------------------------------------- */
+  ======================================== */
 
   .results-podium .ranking-row {
     min-height: 9mm !important;
@@ -2155,22 +2841,19 @@ footer span {
     font-weight: 900 !important;
   }
 
-  /* ---------------------------------------------------------
+  /* ========================================
      MÉDAILLES
-  --------------------------------------------------------- */
+  ======================================== */
 
-  .results-podium .ranking-row:nth-child(2)
-    > strong:first-child,
-  .results-podium .ranking-row:nth-child(3)
-    > strong:first-child,
-  .results-podium .ranking-row:nth-child(4)
-    > strong:first-child {
+  .results-podium .ranking-row:nth-child(2) > strong:first-child,
+  .results-podium .ranking-row:nth-child(3) > strong:first-child,
+  .results-podium .ranking-row:nth-child(4) > strong:first-child {
     font-size: 11pt !important;
   }
 
-  /* ---------------------------------------------------------
+  /* ========================================
      PIED DU DOCUMENT
-  --------------------------------------------------------- */
+  ======================================== */
 
   .print-results-footer {
     display: flex !important;
