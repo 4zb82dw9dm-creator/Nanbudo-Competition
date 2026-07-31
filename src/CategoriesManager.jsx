@@ -42,6 +42,13 @@ const EVENT_DEFINITIONS = {
 const MIN_GROUP_SIZE = 3;
 const TARGET_GROUP_SIZE = 4;
 
+const AGE_CLASS_ORDER = {
+  Enfant: 1,
+  Junior: 2,
+  Senior: 3,
+  Vétéran: 4,
+};
+
 const ASSISTANT_LIMITS = {
   kata0: {
     maxAgeSpread: 6,
@@ -79,8 +86,14 @@ function CategoriesManager({
   const [selectedIds, setSelectedIds] = useState([]);
   const [categoryName, setCategoryName] = useState("");
   const [eventType, setEventType] = useState("kata0");
-  const [suggestionInfo, setSuggestionInfo] =
-    useState(null);
+  const [suggestionInfo, setSuggestionInfo] = useState(null);
+
+  /*
+    Propositions préparées par le générateur automatique.
+    Elles ne sont pas enregistrées dans competition.categories
+    tant que l'organisateur ne les valide pas.
+  */
+  const [automaticGroups, setAutomaticGroups] = useState([]);
 
   const currentEvent =
     EVENT_DEFINITIONS[eventType] ||
@@ -92,6 +105,45 @@ function CategoriesManager({
 
   function sameId(a, b) {
     return String(a) === String(b);
+  }
+
+  function makeId(prefix = "id") {
+    if (
+      typeof crypto !== "undefined" &&
+      typeof crypto.randomUUID === "function"
+    ) {
+      return `${prefix}-${crypto.randomUUID()}`;
+    }
+
+    return `${prefix}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}`;
+  }
+
+  function normalizeSex(sex) {
+    const value = String(sex || "")
+      .trim()
+      .toLowerCase();
+
+    if (
+      value === "homme" ||
+      value === "h" ||
+      value === "masculin" ||
+      value === "m"
+    ) {
+      return "Homme";
+    }
+
+    if (
+      value === "femme" ||
+      value === "f" ||
+      value === "féminin" ||
+      value === "feminin"
+    ) {
+      return "Femme";
+    }
+
+    return sex || "Non renseigné";
   }
 
   function getAge(competitor) {
@@ -111,9 +163,7 @@ function CategoriesManager({
       return null;
     }
 
-    const birthDate = new Date(
-      competitor.dateNaissance
-    );
+    const birthDate = new Date(competitor.dateNaissance);
 
     if (Number.isNaN(birthDate.getTime())) {
       return null;
@@ -138,8 +188,7 @@ function CategoriesManager({
     if (
       monthDifference < 0 ||
       (monthDifference === 0 &&
-        referenceDate.getDate() <
-          birthDate.getDate())
+        referenceDate.getDate() < birthDate.getDate())
     ) {
       age -= 1;
     }
@@ -164,9 +213,7 @@ function CategoriesManager({
   }
 
   function getGradeValue(competitor) {
-    const grade = String(
-      competitor.grade || ""
-    )
+    const grade = String(competitor.grade || "")
       .trim()
       .toLowerCase();
 
@@ -193,6 +240,14 @@ function CategoriesManager({
     return null;
   }
 
+  /*
+    Classes principales.
+
+    Enfant  : moins de 14 ans
+    Junior  : 14 à 17 ans
+    Senior  : 18 à 39 ans
+    Vétéran : 40 ans et plus
+  */
   function getAgeClass(age) {
     if (age === null) {
       return null;
@@ -213,6 +268,13 @@ function CategoriesManager({
     return "Vétéran";
   }
 
+  /*
+    Tranches prioritaires chez les enfants.
+
+    Elles servent au regroupement automatique.
+    Elles peuvent être assouplies si l'effectif
+    ne permet pas de former une poule.
+  */
   function getChildBand(age) {
     if (age === null || age >= 14) {
       return null;
@@ -243,9 +305,7 @@ function CategoriesManager({
       : "juRandori";
   }
 
-  function eventIsJuRandori(
-    type = eventType
-  ) {
+  function eventIsJuRandori(type = eventType) {
     return (
       type === "juRandori1" ||
       type === "juRandori2"
@@ -258,6 +318,14 @@ function CategoriesManager({
   ) {
     const age = getAge(competitor);
 
+    /*
+      Si l'âge manque, le participant reste visible
+      pour permettre à l'organisateur de repérer
+      et corriger sa fiche.
+
+      En revanche il ne sera pas utilisé par le
+      générateur automatique.
+    */
     if (age === null) {
       return true;
     }
@@ -277,17 +345,11 @@ function CategoriesManager({
     competitor,
     type = eventType
   ) {
-    if (
-      Array.isArray(competitor.epreuves)
-    ) {
-      return competitor.epreuves.includes(
-        type
-      );
+    if (Array.isArray(competitor.epreuves)) {
+      return competitor.epreuves.includes(type);
     }
 
-    return (
-      competitor.epreuves?.[type] === true
-    );
+    return competitor.epreuves?.[type] === true;
   }
 
   function isAssignedToEvent(
@@ -297,97 +359,104 @@ function CategoriesManager({
     return categories.some(
       (category) =>
         category.epreuve === type &&
-        (
-          category.competitorIds || []
-        ).some((id) =>
+        (category.competitorIds || []).some((id) =>
           sameId(id, competitorId)
         )
     );
   }
 
-  const eligibleCompetitors =
-    useMemo(() => {
-      return competitors
-        .filter((competitor) =>
-          isRegisteredForEvent(
-            competitor,
-            eventType
-          )
+  function getCompetitor(id) {
+    return competitors.find((competitor) =>
+      sameId(competitor.id, id)
+    );
+  }
+
+  function getEventLabel(type) {
+    return (
+      EVENT_DEFINITIONS[type]?.label ||
+      type ||
+      "Épreuve"
+    );
+  }
+
+  function compareCompetitors(a, b) {
+    const ageA = getAge(a);
+    const ageB = getAge(b);
+
+    const classA = getAgeClass(ageA);
+    const classB = getAgeClass(ageB);
+
+    const orderA =
+      AGE_CLASS_ORDER[classA] || 99;
+
+    const orderB =
+      AGE_CLASS_ORDER[classB] || 99;
+
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    const sexA = normalizeSex(a.sexe);
+    const sexB = normalizeSex(b.sexe);
+
+    if (sexA !== sexB) {
+      return sexA.localeCompare(sexB, "fr");
+    }
+
+    if (ageA !== ageB) {
+      if (ageA === null) return 1;
+      if (ageB === null) return -1;
+
+      return ageA - ageB;
+    }
+
+    const weightA = getWeight(a);
+    const weightB = getWeight(b);
+
+    if (weightA !== weightB) {
+      if (weightA === null) return 1;
+      if (weightB === null) return -1;
+
+      return weightA - weightB;
+    }
+
+    const gradeA = getGradeValue(a);
+    const gradeB = getGradeValue(b);
+
+    if (gradeA !== gradeB) {
+      if (gradeA === null) return 1;
+      if (gradeB === null) return -1;
+
+      return gradeA - gradeB;
+    }
+
+    return `${a.nom || ""} ${a.prenom || ""}`.localeCompare(
+      `${b.nom || ""} ${b.prenom || ""}`,
+      "fr"
+    );
+  }
+
+  const eligibleCompetitors = useMemo(() => {
+    return competitors
+      .filter((competitor) =>
+        isRegisteredForEvent(
+          competitor,
+          eventType
         )
-        .filter((competitor) =>
-          isAgeAllowedForEvent(
-            competitor,
-            eventType
-          )
+      )
+      .filter((competitor) =>
+        isAgeAllowedForEvent(
+          competitor,
+          eventType
         )
-        .sort((a, b) => {
-          const ageA = getAge(a);
-          const ageB = getAge(b);
-
-          const classA =
-            getAgeClass(ageA) || "";
-
-          const classB =
-            getAgeClass(ageB) || "";
-
-          const classOrder = {
-            Enfant: 1,
-            Junior: 2,
-            Senior: 3,
-            Vétéran: 4,
-          };
-
-          const orderA =
-            classOrder[classA] || 99;
-
-          const orderB =
-            classOrder[classB] || 99;
-
-          if (orderA !== orderB) {
-            return orderA - orderB;
-          }
-
-          const sexA = a.sexe || "";
-          const sexB = b.sexe || "";
-
-          if (sexA !== sexB) {
-            return sexA.localeCompare(
-              sexB,
-              "fr"
-            );
-          }
-
-          if (ageA !== ageB) {
-            if (ageA === null) return 1;
-            if (ageB === null) return -1;
-
-            return ageA - ageB;
-          }
-
-          const weightA = getWeight(a);
-          const weightB = getWeight(b);
-
-          if (weightA !== weightB) {
-            if (weightA === null) return 1;
-            if (weightB === null) return -1;
-
-            return weightA - weightB;
-          }
-
-          return `${a.nom || ""} ${
-            a.prenom || ""
-          }`.localeCompare(
-            `${b.nom || ""} ${
-              b.prenom || ""
-            }`,
-            "fr"
-          );
-        });
-    }, [
-      competitors,
-      categories,
-      eventType,
-    ]);
+      )
+      .sort(compareCompetitors);
+  }, [
+    competitors,
+    categories,
+    eventType,
+    competition.date,
+  ]);
 
   const availableCompetitors = useMemo(
     () =>
@@ -404,34 +473,17 @@ function CategoriesManager({
     ]
   );
 
-  const eventCategories =
-    categories.filter(
-      (category) =>
-        category.epreuve === eventType
-    );
-
-  function getCompetitor(id) {
-    return competitors.find(
-      (competitor) =>
-        sameId(competitor.id, id)
-    );
-  }
-
-  function getEventLabel(type) {
-    return (
-      EVENT_DEFINITIONS[type]?.label ||
-      type ||
-      "Épreuve"
-    );
-  }
+  const eventCategories = categories.filter(
+    (category) =>
+      category.epreuve === eventType
+  );
 
   function toggleCompetitor(id) {
     if (isAssignedToEvent(id)) {
       return;
     }
 
-    const competitor =
-      getCompetitor(id);
+    const competitor = getCompetitor(id);
 
     if (!competitor) {
       return;
@@ -479,9 +531,8 @@ function CategoriesManager({
     ];
 
     /*
-      Junior / Senior / Vétéran / Enfant
-      ne peuvent jamais être mélangés dans
-      la même catégorie.
+      Les classes principales ne peuvent pas
+      être mélangées dans une catégorie.
     */
     if (
       selectedAgeClasses.length > 0 &&
@@ -500,22 +551,30 @@ function CategoriesManager({
     }
 
     /*
-      Masculin / féminin séparés par défaut,
-      mais porte de sortie manuelle.
+      Masculin / féminin séparés par défaut.
+
+      La sélection manuelle conserve une porte
+      de sortie pour une décision exceptionnelle
+      de la Commission.
     */
     const selectedSexes = [
       ...new Set(
         selectedCompetitors
-          .map((item) => item.sexe)
+          .map((item) =>
+            normalizeSex(item.sexe)
+          )
           .filter(Boolean)
       ),
     ];
 
+    const competitorSex =
+      normalizeSex(competitor.sexe);
+
     if (
       selectedSexes.length > 0 &&
-      competitor.sexe &&
+      competitorSex &&
       !selectedSexes.includes(
-        competitor.sexe
+        competitorSex
       )
     ) {
       const confirmed =
@@ -536,25 +595,6 @@ function CategoriesManager({
     setSuggestionInfo(null);
   }
 
-  /*
-    La sélection globale de tous les inscrits
-    est volontairement supprimée.
-
-    Elle pourrait mélanger Junior, Senior
-    et Vétéran.
-  */
-  function selectAllAvailable() {
-    if (
-      availableCompetitors.length === 0
-    ) {
-      return;
-    }
-
-    alert(
-      "La sélection globale est désactivée afin d'éviter de mélanger les classes d'âge. Sélectionne les compétiteurs d'une même classe ou utilise « Proposer un groupe »."
-    );
-  }
-
   function clearSelection() {
     setSelectedIds([]);
     setSuggestionInfo(null);
@@ -564,13 +604,15 @@ function CategoriesManager({
     const ages = group
       .map(getAge)
       .filter(
-        (value) => value !== null
+        (value) =>
+          value !== null
       );
 
     const weights = group
       .map(getWeight)
       .filter(
-        (value) => value !== null
+        (value) =>
+          value !== null
       );
 
     return {
@@ -598,9 +640,10 @@ function CategoriesManager({
     const sexes = [
       ...new Set(
         group
-          .map(
-            (competitor) =>
+          .map((competitor) =>
+            normalizeSex(
               competitor.sexe
+            )
           )
           .filter(Boolean)
       ),
@@ -625,9 +668,7 @@ function CategoriesManager({
     return classes.length <= 1;
   }
 
-  function groupHasSameCombatFamily(
-    group
-  ) {
+  function groupHasSameCombatFamily(group) {
     const families = [
       ...new Set(
         group
@@ -657,13 +698,7 @@ function CategoriesManager({
       return false;
     }
 
-    /*
-      Blocage absolu entre les grandes
-      classes d'âge.
-    */
-    if (
-      !groupHasSameAgeClass(group)
-    ) {
+    if (!groupHasSameAgeClass(group)) {
       return false;
     }
 
@@ -723,8 +758,7 @@ function CategoriesManager({
     }
 
     if (
-      currentLimits.maxWeightSpread !==
-        null &&
+      currentLimits.maxWeightSpread !== null &&
       spread.hasCompleteWeights &&
       spread.weightSpread >
         currentLimits.maxWeightSpread
@@ -798,11 +832,23 @@ function CategoriesManager({
       getChildBand(referenceAge) !==
         getChildBand(candidateAge);
 
+    /*
+      Chez les enfants, on favorise fortement
+      la même tranche avant d'élargir.
+    */
     const childBandPenalty =
       differentChildBand
         ? 2500
         : 0;
 
+    /*
+      Âge = critère principal.
+
+      En Ju Randori :
+      poids = critère important.
+
+      Grade = critère secondaire.
+    */
     const ageScore =
       ageDifference === null
         ? 5000
@@ -850,15 +896,18 @@ function CategoriesManager({
               competitor.id,
               startCompetitor.id
             ) &&
-            competitor.sexe ===
-              startCompetitor.sexe &&
+            normalizeSex(
+              competitor.sexe
+            ) ===
+              normalizeSex(
+                startCompetitor.sexe
+              ) &&
             getAgeClass(
               getAge(competitor)
             ) === startAgeClass
         )
         .map((competitor) => ({
           competitor,
-
           score:
             calculateCandidateScore(
               startCompetitor,
@@ -921,8 +970,15 @@ function CategoriesManager({
     const startAge =
       getAge(startCompetitor);
 
+    if (startAge === null) {
+      alert(
+        "Impossible de proposer automatiquement un groupe : l'âge du compétiteur n'est pas renseigné."
+      );
+
+      return;
+    }
+
     const isChild =
-      startAge !== null &&
       startAge < 14;
 
     let result =
@@ -933,13 +989,6 @@ function CategoriesManager({
 
     let relaxedChildBand = false;
 
-    /*
-      Si moins de 3 enfants dans la tranche
-      idéale, on élargit aux âges enfants
-      voisins.
-
-      La classe Enfant reste obligatoire.
-    */
     if (
       isChild &&
       result.group.length <
@@ -1017,8 +1066,9 @@ function CategoriesManager({
 
     if (!categoryName.trim()) {
       const sexLabel =
-        startCompetitor.sexe ||
-        "Non renseigné";
+        normalizeSex(
+          startCompetitor.sexe
+        );
 
       const ageLabel =
         getAgeClass(startAge) ||
@@ -1035,6 +1085,1107 @@ function CategoriesManager({
         `${currentEvent.shortLabel} — ${ageLabel}${bandLabel} — ${sexLabel}`
       );
     }
+  }
+
+  /*
+    ----------------------------------------------------
+    GÉNÉRATEUR AUTOMATIQUE
+    ----------------------------------------------------
+  */
+
+  function calculateIdealGroupSizes(count) {
+    /*
+      Objectif :
+      - groupes de 4 autant que possible ;
+      - éviter les restes de 1 ou 2 lorsque
+        l'effectif permet des groupes de 3/4.
+
+      Exemples :
+      3  -> 3
+      4  -> 4
+      5  -> 3 + 2 (2 à vérifier)
+      6  -> 3 + 3
+      7  -> 4 + 3
+      8  -> 4 + 4
+      9  -> 3 + 3 + 3
+      10 -> 4 + 3 + 3
+      11 -> 4 + 4 + 3
+      12 -> 4 + 4 + 4
+    */
+
+    if (count <= 0) {
+      return [];
+    }
+
+    if (count <= 4) {
+      return [count];
+    }
+
+    /*
+      Recherche d'une combinaison uniquement
+      composée de 3 et de 4.
+    */
+    for (
+      let numberOfGroups =
+        Math.ceil(count / TARGET_GROUP_SIZE);
+      numberOfGroups <=
+        Math.ceil(count / MIN_GROUP_SIZE);
+      numberOfGroups += 1
+    ) {
+      if (
+        count >=
+          numberOfGroups *
+            MIN_GROUP_SIZE &&
+        count <=
+          numberOfGroups *
+            TARGET_GROUP_SIZE
+      ) {
+        const sizes =
+          Array(numberOfGroups).fill(
+            MIN_GROUP_SIZE
+          );
+
+        let remaining =
+          count -
+          numberOfGroups *
+            MIN_GROUP_SIZE;
+
+        let index = 0;
+
+        while (remaining > 0) {
+          sizes[index] += 1;
+          remaining -= 1;
+          index += 1;
+        }
+
+        /*
+          Les 4 passent en premier.
+        */
+        return sizes.sort(
+          (a, b) => b - a
+        );
+      }
+    }
+
+    /*
+      Cas rares où aucune combinaison 3/4
+      n'est possible.
+
+      Exemple : 5 => 3 + 2.
+    */
+    const sizes = [];
+    let remaining = count;
+
+    while (
+      remaining >=
+      TARGET_GROUP_SIZE
+    ) {
+      sizes.push(
+        TARGET_GROUP_SIZE
+      );
+
+      remaining -=
+        TARGET_GROUP_SIZE;
+    }
+
+    if (remaining > 0) {
+      sizes.push(remaining);
+    }
+
+    return sizes;
+  }
+
+  function getAutomaticSortScore(
+    competitor
+  ) {
+    const age =
+      getAge(competitor);
+
+    const weight =
+      getWeight(competitor);
+
+    const grade =
+      getGradeValue(
+        competitor
+      );
+
+    /*
+      Valeur utilisée uniquement pour
+      ordonner les profils avant répartition.
+
+      L'âge reste dominant.
+    */
+    return (
+      (age ?? 999) * 100000 +
+      (currentEvent.useWeight
+        ? (weight ?? 999) * 100
+        : 0) +
+      (grade ?? 99)
+    );
+  }
+
+  function sortForAutomaticGrouping(list) {
+    return [...list].sort((a, b) => {
+      const scoreA =
+        getAutomaticSortScore(a);
+
+      const scoreB =
+        getAutomaticSortScore(b);
+
+      if (scoreA !== scoreB) {
+        return scoreA - scoreB;
+      }
+
+      return compareCompetitors(a, b);
+    });
+  }
+
+  function splitBySizes(
+    list,
+    sizes
+  ) {
+    const groups = [];
+    let cursor = 0;
+
+    sizes.forEach((size) => {
+      groups.push(
+        list.slice(
+          cursor,
+          cursor + size
+        )
+      );
+
+      cursor += size;
+    });
+
+    return groups;
+  }
+
+  function buildBalancedGroups(list) {
+    const sorted =
+      sortForAutomaticGrouping(
+        list
+      );
+
+    const sizes =
+      calculateIdealGroupSizes(
+        sorted.length
+      );
+
+    return splitBySizes(
+      sorted,
+      sizes
+    );
+  }
+
+  function getAutomaticGroupName(
+    group,
+    index,
+    relaxedChildBand = false
+  ) {
+    const first = group[0];
+
+    if (!first) {
+      return `${currentEvent.shortLabel} — Groupe ${index + 1}`;
+    }
+
+    const age =
+      getAge(first);
+
+    const ageClass =
+      getAgeClass(age) ||
+      "Âge à vérifier";
+
+    const sex =
+      normalizeSex(first.sexe);
+
+    let childBand = "";
+
+    if (
+      ageClass === "Enfant" &&
+      !relaxedChildBand
+    ) {
+      const bands = [
+        ...new Set(
+          group
+            .map((competitor) =>
+              getChildBand(
+                getAge(competitor)
+              )
+            )
+            .filter(Boolean)
+        ),
+      ];
+
+      if (bands.length === 1) {
+        childBand =
+          ` ${bands[0]}`;
+      }
+    }
+
+    return `${currentEvent.shortLabel} — ${ageClass}${childBand} — ${sex} — Groupe ${
+      index + 1
+    }`;
+  }
+
+  function makeAutomaticProposal(
+    group,
+    index,
+    {
+      relaxedChildBand = false,
+    } = {}
+  ) {
+    const ages =
+      group
+        .map(getAge)
+        .filter(
+          (age) =>
+            age !== null
+        );
+
+    const ageClass =
+      ages.length > 0
+        ? getAgeClass(
+            ages[0]
+          )
+        : null;
+
+    const spread =
+      getGroupSpread(group);
+
+    const status =
+      group.length >=
+      MIN_GROUP_SIZE
+        ? "Prête à valider"
+        : "À vérifier";
+
+    const warnings = [];
+
+    if (
+      group.length <
+      MIN_GROUP_SIZE
+    ) {
+      warnings.push(
+        `Seulement ${group.length} compétiteur(s)`
+      );
+    }
+
+    if (
+      spread.hasCompleteAges &&
+      spread.ageSpread >
+        currentLimits.maxAgeSpread
+    ) {
+      warnings.push(
+        `Écart d'âge ${spread.ageSpread} ans`
+      );
+    }
+
+    if (
+      currentLimits.maxWeightSpread !==
+        null &&
+      spread.hasCompleteWeights &&
+      spread.weightSpread >
+        currentLimits.maxWeightSpread
+    ) {
+      warnings.push(
+        `Écart de poids ${spread.weightSpread} kg`
+      );
+    }
+
+    if (relaxedChildBand) {
+      warnings.push(
+        "Tranches enfants rapprochées faute d'effectif"
+      );
+    }
+
+    return {
+      id: makeId(
+        "proposal"
+      ),
+
+      nom:
+        getAutomaticGroupName(
+          group,
+          index,
+          relaxedChildBand
+        ),
+
+      epreuve:
+        eventType,
+
+      competitorIds:
+        group.map(
+          (competitor) =>
+            competitor.id
+        ),
+
+      ageClass,
+
+      sexe:
+        group.length > 0
+          ? normalizeSex(
+              group[0].sexe
+            )
+          : null,
+
+      count:
+        group.length,
+
+      statut:
+        status,
+
+      warnings,
+
+      relaxedChildBand,
+
+      ageSpread:
+        spread.ageSpread,
+
+      weightSpread:
+        spread.weightSpread,
+    };
+  }
+
+  function buildAutomaticGroupsForBucket(
+    bucket
+  ) {
+    if (bucket.length === 0) {
+      return [];
+    }
+
+    const firstAge =
+      getAge(bucket[0]);
+
+    const ageClass =
+      getAgeClass(firstAge);
+
+    /*
+      Pour Junior / Senior / Vétéran :
+      répartition directement par profils proches.
+    */
+    if (ageClass !== "Enfant") {
+      return buildBalancedGroups(
+        bucket
+      ).map((group, index) =>
+        makeAutomaticProposal(
+          group,
+          index
+        )
+      );
+    }
+
+    /*
+      ENFANTS
+
+      Premier objectif :
+      rester dans 6–7 / 8–9 / 10–11 / 12–13.
+
+      Mais Randori et Ju Randori ne doivent
+      jamais être mélangés.
+    */
+
+    const combatBuckets = {};
+
+    bucket.forEach((competitor) => {
+      const age =
+        getAge(competitor);
+
+      const family =
+        getCombatFamily(age) ||
+        "unknown";
+
+      if (!combatBuckets[family]) {
+        combatBuckets[family] = [];
+      }
+
+      combatBuckets[family].push(
+        competitor
+      );
+    });
+
+    const proposals = [];
+
+    Object.values(
+      combatBuckets
+    ).forEach(
+      (combatBucket) => {
+        const bandBuckets = {};
+
+        combatBucket.forEach(
+          (competitor) => {
+            const band =
+              getChildBand(
+                getAge(competitor)
+              ) ||
+              "unknown";
+
+            if (!bandBuckets[band]) {
+              bandBuckets[band] = [];
+            }
+
+            bandBuckets[band].push(
+              competitor
+            );
+          }
+        );
+
+        const completeBandGroups = [];
+        const leftovers = [];
+
+        Object.values(
+          bandBuckets
+        ).forEach(
+          (bandBucket) => {
+            const sorted =
+              sortForAutomaticGrouping(
+                bandBucket
+              );
+
+            /*
+              Si la tranche contient au moins
+              3 enfants, on essaie de la gérer
+              seule.
+            */
+            if (
+              sorted.length >=
+              MIN_GROUP_SIZE
+            ) {
+              const sizes =
+                calculateIdealGroupSizes(
+                  sorted.length
+                );
+
+              const groups =
+                splitBySizes(
+                  sorted,
+                  sizes
+                );
+
+              groups.forEach(
+                (group) => {
+                  if (
+                    group.length >=
+                    MIN_GROUP_SIZE
+                  ) {
+                    completeBandGroups.push(
+                      group
+                    );
+                  } else {
+                    leftovers.push(
+                      ...group
+                    );
+                  }
+                }
+              );
+            } else {
+              leftovers.push(
+                ...sorted
+              );
+            }
+          }
+        );
+
+        completeBandGroups.forEach(
+          (group) => {
+            proposals.push(
+              makeAutomaticProposal(
+                group,
+                proposals.length
+              )
+            );
+          }
+        );
+
+        /*
+          Les restants de plusieurs petites
+          tranches peuvent être rapprochés.
+
+          On reste :
+          - Enfant
+          - même sexe
+          - même famille Randori/Ju Randori
+        */
+        if (
+          leftovers.length > 0
+        ) {
+          const relaxedGroups =
+            buildBalancedGroups(
+              leftovers
+            );
+
+          relaxedGroups.forEach(
+            (group) => {
+              proposals.push(
+                makeAutomaticProposal(
+                  group,
+                  proposals.length,
+                  {
+                    relaxedChildBand:
+                      true,
+                  }
+                )
+              );
+            }
+          );
+        }
+      }
+    );
+
+    return proposals;
+  }
+
+  function generateAutomaticGroups() {
+    setSelectedIds([]);
+    setCategoryName("");
+    setSuggestionInfo(null);
+
+    const usable =
+      availableCompetitors.filter(
+        (competitor) => {
+          const age =
+            getAge(competitor);
+
+          if (age === null) {
+            return false;
+          }
+
+          const ageClass =
+            getAgeClass(age);
+
+          if (!ageClass) {
+            return false;
+          }
+
+          const sex =
+            normalizeSex(
+              competitor.sexe
+            );
+
+          if (
+            sex !== "Homme" &&
+            sex !== "Femme"
+          ) {
+            return false;
+          }
+
+          return true;
+        }
+      );
+
+    if (usable.length === 0) {
+      alert(
+        "Aucun compétiteur disponible avec un âge et un sexe exploitables pour la génération automatique."
+      );
+
+      setAutomaticGroups([]);
+      return;
+    }
+
+    /*
+      Séparation absolue automatique :
+
+      classe d'âge
+      +
+      sexe
+
+      Un Junior n'est donc jamais mis avec
+      un Senior ou un Vétéran.
+
+      Homme et Femme restent séparés.
+    */
+    const buckets = {};
+
+    usable.forEach(
+      (competitor) => {
+        const age =
+          getAge(competitor);
+
+        const ageClass =
+          getAgeClass(age);
+
+        const sex =
+          normalizeSex(
+            competitor.sexe
+          );
+
+        const key =
+          `${ageClass}__${sex}`;
+
+        if (!buckets[key]) {
+          buckets[key] = [];
+        }
+
+        buckets[key].push(
+          competitor
+        );
+      }
+    );
+
+    const proposals = [];
+
+    Object.keys(buckets)
+      .sort((keyA, keyB) => {
+        const [
+          classA,
+          sexA,
+        ] = keyA.split("__");
+
+        const [
+          classB,
+          sexB,
+        ] = keyB.split("__");
+
+        const classDifference =
+          (AGE_CLASS_ORDER[classA] ||
+            99) -
+          (AGE_CLASS_ORDER[classB] ||
+            99);
+
+        if (
+          classDifference !== 0
+        ) {
+          return classDifference;
+        }
+
+        return sexA.localeCompare(
+          sexB,
+          "fr"
+        );
+      })
+      .forEach((key) => {
+        const bucket =
+          buckets[key];
+
+        const generated =
+          buildAutomaticGroupsForBucket(
+            bucket
+          );
+
+        proposals.push(
+          ...generated
+        );
+      });
+
+    /*
+      Les participants non exploitables
+      ne disparaissent pas.
+
+      Ils restent dans la liste et pourront
+      être traités manuellement.
+    */
+    setAutomaticGroups(
+      proposals
+    );
+
+    if (
+      proposals.length === 0
+    ) {
+      alert(
+        "Aucun groupe automatique n'a pu être préparé."
+      );
+    }
+  }
+
+  function removeAutomaticGroup(
+    proposalId
+  ) {
+    setAutomaticGroups(
+      (current) =>
+        current.filter(
+          (proposal) =>
+            !sameId(
+              proposal.id,
+              proposalId
+            )
+        )
+    );
+  }
+
+  function editAutomaticGroupName(
+    proposalId,
+    value
+  ) {
+    setAutomaticGroups(
+      (current) =>
+        current.map(
+          (proposal) =>
+            sameId(
+              proposal.id,
+              proposalId
+            )
+              ? {
+                  ...proposal,
+                  nom: value,
+                }
+              : proposal
+        )
+    );
+  }
+
+  function validateAutomaticGroup(
+    proposalId
+  ) {
+    const proposal =
+      automaticGroups.find(
+        (item) =>
+          sameId(
+            item.id,
+            proposalId
+          )
+      );
+
+    if (!proposal) {
+      return;
+    }
+
+    const proposalCompetitors =
+      proposal.competitorIds
+        .map((id) =>
+          getCompetitor(id)
+        )
+        .filter(Boolean);
+
+    if (
+      proposalCompetitors.length === 0
+    ) {
+      alert(
+        "Cette proposition ne contient plus de compétiteur valide."
+      );
+
+      return;
+    }
+
+    /*
+      Sécurité : classe d'âge identique.
+    */
+    if (
+      !groupHasSameAgeClass(
+        proposalCompetitors
+      )
+    ) {
+      alert(
+        "Validation impossible : cette proposition mélange plusieurs classes d'âge."
+      );
+
+      return;
+    }
+
+    /*
+      Sécurité : sexe identique dans les
+      propositions automatiques.
+    */
+    if (
+      !groupHasSameSex(
+        proposalCompetitors
+      )
+    ) {
+      alert(
+        "Validation impossible : une proposition automatique ne peut pas mélanger masculin et féminin."
+      );
+
+      return;
+    }
+
+    /*
+      Sécurité Randori/Ju Randori.
+    */
+    if (
+      (eventType === "randori" ||
+        eventIsJuRandori()) &&
+      !groupHasSameCombatFamily(
+        proposalCompetitors
+      )
+    ) {
+      alert(
+        "Validation impossible : Randori et Ju Randori ne peuvent pas être mélangés."
+      );
+
+      return;
+    }
+
+    const conflict =
+      proposal.competitorIds.some(
+        (id) =>
+          isAssignedToEvent(
+            id,
+            proposal.epreuve
+          )
+      );
+
+    if (conflict) {
+      alert(
+        "Validation impossible : un compétiteur de cette proposition appartient déjà à une catégorie."
+      );
+
+      return;
+    }
+
+    if (
+      proposal.competitorIds.length <
+      MIN_GROUP_SIZE
+    ) {
+      const confirmed =
+        window.confirm(
+          `Cette proposition ne contient que ${proposal.competitorIds.length} compétiteur(s). Elle sera enregistrée comme « Regroupement à vérifier ». Continuer ?`
+        );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const newCategory = {
+      id: makeId(
+        "category"
+      ),
+
+      nom:
+        proposal.nom.trim() ||
+        `${currentEvent.shortLabel} — ${proposal.ageClass || "Catégorie"}`,
+
+      epreuve:
+        proposal.epreuve,
+
+      epreuveLabel:
+        EVENT_DEFINITIONS[
+          proposal.epreuve
+        ]?.label ||
+        proposal.epreuve,
+
+      competitorIds: [
+        ...proposal.competitorIds,
+      ],
+
+      statut:
+        proposal.competitorIds
+          .length >=
+        MIN_GROUP_SIZE
+          ? "Prête"
+          : "Regroupement à vérifier",
+
+      creationMode:
+        "automatic-assistant",
+
+      ageClass:
+        proposal.ageClass,
+
+      sexe:
+        proposal.sexe,
+
+      derogation:
+        proposal.warnings.length > 0,
+    };
+
+    onUpdateCompetition({
+      ...competition,
+
+      categories: [
+        ...categories,
+        newCategory,
+      ],
+    });
+
+    removeAutomaticGroup(
+      proposalId
+    );
+  }
+
+  function validateAllAutomaticGroups() {
+    if (
+      automaticGroups.length === 0
+    ) {
+      return;
+    }
+
+    /*
+      On valide automatiquement uniquement
+      les groupes d'au moins 3 compétiteurs.
+
+      Les groupes de 1 ou 2 restent affichés
+      pour décision de l'organisateur.
+    */
+    const readyGroups =
+      automaticGroups.filter(
+        (proposal) =>
+          proposal.competitorIds
+            .length >=
+          MIN_GROUP_SIZE
+      );
+
+    const groupsToReview =
+      automaticGroups.filter(
+        (proposal) =>
+          proposal.competitorIds
+            .length <
+          MIN_GROUP_SIZE
+      );
+
+    if (
+      readyGroups.length === 0
+    ) {
+      alert(
+        "Aucune proposition d'au moins 3 compétiteurs n'est prête à être validée."
+      );
+
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Valider ${readyGroups.length} catégorie(s) prête(s) ?${
+          groupsToReview.length > 0
+            ? `\n\n${groupsToReview.length} proposition(s) de moins de 3 compétiteurs resteront à vérifier.`
+            : ""
+        }`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const alreadyAssigned = new Set();
+
+    categories
+      .filter(
+        (category) =>
+          category.epreuve ===
+          eventType
+      )
+      .forEach((category) => {
+        (
+          category.competitorIds ||
+          []
+        ).forEach((id) =>
+          alreadyAssigned.add(
+            String(id)
+          )
+        );
+      });
+
+    const newCategories = [];
+
+    readyGroups.forEach(
+      (proposal) => {
+        const hasConflict =
+          proposal.competitorIds.some(
+            (id) =>
+              alreadyAssigned.has(
+                String(id)
+              )
+          );
+
+        if (hasConflict) {
+          return;
+        }
+
+        const proposalCompetitors =
+          proposal.competitorIds
+            .map((id) =>
+              getCompetitor(id)
+            )
+            .filter(Boolean);
+
+        if (
+          !groupHasSameAgeClass(
+            proposalCompetitors
+          ) ||
+          !groupHasSameSex(
+            proposalCompetitors
+          )
+        ) {
+          return;
+        }
+
+        const newCategory = {
+          id: makeId(
+            "category"
+          ),
+
+          nom:
+            proposal.nom.trim() ||
+            `${currentEvent.shortLabel} — ${proposal.ageClass || "Catégorie"}`,
+
+          epreuve:
+            proposal.epreuve,
+
+          epreuveLabel:
+            EVENT_DEFINITIONS[
+              proposal.epreuve
+            ]?.label ||
+            proposal.epreuve,
+
+          competitorIds: [
+            ...proposal.competitorIds,
+          ],
+
+          statut:
+            "Prête",
+
+          creationMode:
+            "automatic-assistant",
+
+          ageClass:
+            proposal.ageClass,
+
+          sexe:
+            proposal.sexe,
+
+          derogation:
+            proposal.warnings.length > 0,
+        };
+
+        newCategories.push(
+          newCategory
+        );
+
+        proposal.competitorIds.forEach(
+          (id) =>
+            alreadyAssigned.add(
+              String(id)
+            )
+        );
+      }
+    );
+
+    if (
+      newCategories.length === 0
+    ) {
+      alert(
+        "Aucune catégorie n'a pu être validée."
+      );
+
+      return;
+    }
+
+    onUpdateCompetition({
+      ...competition,
+
+      categories: [
+        ...categories,
+        ...newCategories,
+      ],
+    });
+
+    const validatedProposalIds =
+      new Set(
+        readyGroups.map(
+          (proposal) =>
+            String(
+              proposal.id
+            )
+        )
+      );
+
+    setAutomaticGroups(
+      groupsToReview.filter(
+        (proposal) =>
+          !validatedProposalIds.has(
+            String(
+              proposal.id
+            )
+          )
+      )
+    );
   }
 
   function createCategory() {
@@ -1072,7 +2223,7 @@ function CategoriesManager({
       invalidIds.length > 0
     ) {
       alert(
-        "Un ou plusieurs compétiteurs sélectionnés ne sont pas admissibles dans cette épreuve. Vérifie notamment la règle Randori moins de 10 ans / Ju Randori à partir de 10 ans."
+        "Un ou plusieurs compétiteurs sélectionnés ne sont pas admissibles dans cette épreuve."
       );
 
       return;
@@ -1100,11 +2251,6 @@ function CategoriesManager({
         )
         .filter(Boolean);
 
-    /*
-      Sécurité finale :
-      aucune création entre classes d'âge
-      différentes.
-    */
     if (
       !groupHasSameAgeClass(
         selectedCompetitors
@@ -1133,9 +2279,6 @@ function CategoriesManager({
 
     const confirmations = [];
 
-    /*
-      Porte de sortie F/M.
-    */
     if (
       !groupHasSameSex(
         selectedCompetitors
@@ -1171,8 +2314,7 @@ function CategoriesManager({
     }
 
     if (
-      currentLimits.maxWeightSpread !==
-        null &&
+      currentLimits.maxWeightSpread !== null &&
       spread.hasCompleteWeights &&
       spread.weightSpread >
         currentLimits.maxWeightSpread
@@ -1209,8 +2351,22 @@ function CategoriesManager({
       ),
     ];
 
+    const sexes = [
+      ...new Set(
+        selectedCompetitors
+          .map((competitor) =>
+            normalizeSex(
+              competitor.sexe
+            )
+          )
+          .filter(Boolean)
+      ),
+    ];
+
     const newCategory = {
-      id: `${Date.now()}-category`,
+      id: makeId(
+        "category"
+      ),
 
       nom:
         categoryName.trim(),
@@ -1240,6 +2396,11 @@ function CategoriesManager({
         ageClasses.length === 1
           ? ageClasses[0]
           : null,
+
+      sexe:
+        sexes.length === 1
+          ? sexes[0]
+          : "Mixte",
 
       derogation:
         confirmations.length > 0,
@@ -1336,9 +2497,10 @@ function CategoriesManager({
     const sexes = [
       ...new Set(
         selectedCompetitors
-          .map(
-            (competitor) =>
+          .map((competitor) =>
+            normalizeSex(
               competitor.sexe
+            )
           )
           .filter(Boolean)
       ),
@@ -1399,12 +2561,39 @@ function CategoriesManager({
   const selectedSummary =
     getSelectedSummary();
 
+  /*
+    Permet de signaler combien de personnes
+    n'ont pas pu être utilisées automatiquement.
+  */
+  const automaticEligibleCount =
+    availableCompetitors.filter(
+      (competitor) => {
+        const age =
+          getAge(competitor);
+
+        const sex =
+          normalizeSex(
+            competitor.sexe
+          );
+
+        return (
+          age !== null &&
+          (sex === "Homme" ||
+            sex === "Femme")
+        );
+      }
+    ).length;
+
+  const automaticExcludedCount =
+    availableCompetitors.length -
+    automaticEligibleCount;
+
   return (
     <div className="categories-manager">
       <div className="manager-header">
         <div>
           <p className="surtitle">
-            BÊTA 0.3
+            BÊTA 0.4
           </p>
 
           <h2>Catégories</h2>
@@ -1436,25 +2625,25 @@ function CategoriesManager({
 
         <p>
           Masculin et féminin sont séparés par
-          défaut. Les classes d'âge sont :
-          Enfant moins de 14 ans, Junior de 14 à
-          17 ans, Senior de 18 à 39 ans et Vétéran
-          à partir de 40 ans. Les classes d'âge ne
-          sont jamais mélangées automatiquement.
-          Chez les enfants, l'assistant privilégie
-          les tranches 6–7, 8–9, 10–11 et
-          12–13 ans puis élargit si l'effectif est
-          insuffisant. Moins de 10 ans : Randori.
-          À partir de 10 ans : Ju Randori.
-          Objectif 4 compétiteurs, minimum 3.
-          Poids et grade servent à rapprocher les
-          profils.
+          défaut. Les classes d'âge sont : Enfant
+          moins de 14 ans, Junior de 14 à 17 ans,
+          Senior de 18 à 39 ans et Vétéran à partir
+          de 40 ans. Les classes d'âge ne sont
+          jamais mélangées automatiquement. Chez les
+          enfants, l'assistant privilégie les
+          tranches 6–7, 8–9, 10–11 et 12–13 ans,
+          puis rapproche les tranches compatibles si
+          l'effectif est insuffisant. Moins de
+          10 ans : Randori. À partir de 10 ans :
+          Ju Randori. Objectif : groupes de 4,
+          minimum 3. L'assistant évite autant que
+          possible les restes de 1 ou 2.
         </p>
       </div>
 
       <div className="competition-form">
         <h3>
-          Préparer une catégorie
+          Préparer les catégories
         </h3>
 
         <div className="form-row">
@@ -1471,6 +2660,7 @@ function CategoriesManager({
                 setSelectedIds([]);
                 setCategoryName("");
                 setSuggestionInfo(null);
+                setAutomaticGroups([]);
               }}
             >
               <option value="kata0">
@@ -1500,7 +2690,7 @@ function CategoriesManager({
           </label>
 
           <label>
-            Nom de la catégorie
+            Nom de la catégorie manuelle
 
             <input
               value={categoryName}
@@ -1523,8 +2713,8 @@ function CategoriesManager({
             {eventType === "randori"
               ? "Seuls les compétiteurs de moins de 10 ans sont admissibles dans cette épreuve."
               : eventIsJuRandori()
-              ? "Les compétiteurs de 10 ans et plus sont admissibles, mais Junior, Senior et Vétéran restent dans des catégories distinctes."
-              : "Les compétiteurs sont regroupés par classe d'âge et par sexe, puis rapprochés selon leur âge, leur poids et leur grade."}
+              ? "Les compétiteurs de 10 ans et plus sont admissibles. Junior, Senior et Vétéran restent obligatoirement dans des catégories distinctes."
+              : "L'assistant sépare d'abord les classes d'âge et les sexes, puis recherche les regroupements les plus cohérents."}
           </p>
         </div>
 
@@ -1548,28 +2738,45 @@ function CategoriesManager({
                 : ""}{" "}
               pour cette épreuve.
             </p>
+
+            {automaticExcludedCount > 0 && (
+              <p>
+                {automaticExcludedCount} compétiteur
+                {automaticExcludedCount > 1
+                  ? "s"
+                  : ""}{" "}
+                sans âge ou sexe exploitable seront
+                laissé
+                {automaticExcludedCount > 1
+                  ? "s"
+                  : ""}{" "}
+                au contrôle manuel.
+              </p>
+            )}
           </div>
 
           {eligibleCompetitors.length > 0 && (
             <div className="competition-actions">
               <button
-                className="manage-button"
+                className="primary"
                 type="button"
                 onClick={
-                  selectAllAvailable
+                  generateAutomaticGroups
                 }
                 disabled={
-                  availableCompetitors.length ===
+                  automaticEligibleCount ===
                   0
                 }
               >
-                Sélectionner les disponibles
+                Créer les groupes automatiquement
               </button>
 
               <button
                 className="manage-button"
                 type="button"
-                onClick={clearSelection}
+                onClick={
+                  clearSelection
+                }
                 disabled={
                   selectedIds.length ===
                   0
@@ -1580,6 +2787,204 @@ function CategoriesManager({
             </div>
           )}
         </div>
+
+        {automaticGroups.length > 0 && (
+          <section className="category-section">
+            <div className="category-section-header">
+              <div>
+                <p className="surtitle">
+                  ASSISTANT
+                </p>
+
+                <h3>
+                  Propositions automatiques
+                </h3>
+
+                <p>
+                  {automaticGroups.length} groupe
+                  {automaticGroups.length > 1
+                    ? "s"
+                    : ""}{" "}
+                  préparé
+                  {automaticGroups.length > 1
+                    ? "s"
+                    : ""}
+                  . Vérifie les propositions avant
+                  validation.
+                </p>
+              </div>
+
+              <div className="competition-actions">
+                <button
+                  className="primary"
+                  type="button"
+                  onClick={
+                    validateAllAutomaticGroups
+                  }
+                >
+                  Valider tous les groupes prêts
+                </button>
+
+                <button
+                  className="delete-button"
+                  type="button"
+                  onClick={() =>
+                    setAutomaticGroups([])
+                  }
+                >
+                  Annuler les propositions
+                </button>
+              </div>
+            </div>
+
+            <div className="competition-list">
+              {automaticGroups.map(
+                (proposal) => (
+                  <article
+                    className="competition"
+                    key={
+                      proposal.id
+                    }
+                  >
+                    <div>
+                      <p className="surtitle">
+                        {proposal.ageClass ||
+                          "À vérifier"}
+                        {" · "}
+                        {proposal.sexe ||
+                          "Sexe à vérifier"}
+                      </p>
+
+                      <input
+                        value={
+                          proposal.nom
+                        }
+                        onChange={(event) =>
+                          editAutomaticGroupName(
+                            proposal.id,
+                            event.target.value
+                          )
+                        }
+                      />
+
+                      <p>
+                        <strong>
+                          {proposal.count} compétiteur
+                          {proposal.count > 1
+                            ? "s"
+                            : ""}
+                        </strong>
+                        {" · "}
+                        {proposal.statut}
+                      </p>
+
+                      <p>
+                        Écart d'âge :{" "}
+                        {proposal.ageSpread} an(s)
+
+                        {currentEvent.useWeight
+                          ? ` · Écart de poids : ${proposal.weightSpread} kg`
+                          : ""}
+                      </p>
+
+                      {proposal.warnings.length > 0 && (
+                        <div className="beta-note">
+                          <strong>
+                            Contrôle recommandé
+                          </strong>
+
+                          {proposal.warnings.map(
+                            (warning) => (
+                              <p
+                                key={
+                                  warning
+                                }
+                              >
+                                {warning}
+                              </p>
+                            )
+                          )}
+                        </div>
+                      )}
+
+                      <div className="competitor-events">
+                        {proposal.competitorIds.map(
+                          (id) => {
+                            const competitor =
+                              getCompetitor(
+                                id
+                              );
+
+                            if (!competitor) {
+                              return null;
+                            }
+
+                            const age =
+                              getAge(
+                                competitor
+                              );
+
+                            const weight =
+                              getWeight(
+                                competitor
+                              );
+
+                            return (
+                              <span
+                                key={
+                                  id
+                                }
+                              >
+                                {competitor.nom}{" "}
+                                {competitor.prenom}
+                                {age !== null
+                                  ? ` · ${age} ans`
+                                  : ""}
+                                {currentEvent.useWeight &&
+                                weight !== null
+                                  ? ` · ${weight} kg`
+                                  : ""}
+                                {competitor.grade
+                                  ? ` · ${competitor.grade}`
+                                  : ""}
+                              </span>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="competition-actions">
+                      <button
+                        className="primary"
+                        type="button"
+                        onClick={() =>
+                          validateAutomaticGroup(
+                            proposal.id
+                          )
+                        }
+                      >
+                        Valider ce groupe
+                      </button>
+
+                      <button
+                        className="delete-button"
+                        type="button"
+                        onClick={() =>
+                          removeAutomaticGroup(
+                            proposal.id
+                          )
+                        }
+                      >
+                        Retirer
+                      </button>
+                    </div>
+                  </article>
+                )
+              )}
+            </div>
+          </section>
+        )}
 
         <div className="category-competitor-list">
           {eligibleCompetitors.length === 0 ? (
@@ -1606,15 +3011,21 @@ function CategoriesManager({
                   );
 
                 const age =
-                  getAge(competitor);
+                  getAge(
+                    competitor
+                  );
 
                 const weight =
-                  getWeight(competitor);
+                  getWeight(
+                    competitor
+                  );
 
                 return (
                   <div
                     className="category-competitor"
-                    key={competitor.id}
+                    key={
+                      competitor.id
+                    }
                   >
                     <input
                       type="checkbox"
@@ -1649,8 +3060,9 @@ function CategoriesManager({
 
                     <div className="category-data">
                       <span>
-                        {competitor.sexe ||
-                          "Sexe non renseigné"}
+                        {normalizeSex(
+                          competitor.sexe
+                        )}
                       </span>
 
                       <span>
@@ -1661,7 +3073,9 @@ function CategoriesManager({
 
                       <span>
                         {age !== null
-                          ? getAgeClass(age)
+                          ? getAgeClass(
+                              age
+                            )
                           : "Classe d'âge inconnue"}
                       </span>
 
@@ -1714,14 +3128,13 @@ function CategoriesManager({
         {suggestionInfo && (
           <div className="beta-note">
             <strong>
-              Proposition de l'assistant
+              Proposition individuelle
             </strong>
 
             {suggestionInfo.ideal ? (
               <p>
                 Groupe idéal de 4 compétiteurs
-                proposé dans la même classe d'âge
-                et du même sexe.
+                proposé.
               </p>
             ) : suggestionInfo.ready ? (
               <p>
@@ -1742,18 +3155,15 @@ function CategoriesManager({
                   ? "s"
                   : ""}
                 . Le regroupement doit être
-                contrôlé avant validation.
+                contrôlé.
               </p>
             )}
 
             {suggestionInfo.relaxedChildBand && (
               <p>
                 Effectif insuffisant dans la tranche
-                enfant initiale : l'assistant a
-                recherché des enfants d'âges voisins
-                sans changer de classe d'âge ni
-                franchir la limite Randori /
-                Ju Randori.
+                enfant initiale : des âges voisins
+                ont été recherchés.
               </p>
             )}
 
@@ -1764,6 +3174,7 @@ function CategoriesManager({
               {" · "}
               Écart d'âge :{" "}
               {suggestionInfo.ageSpread} an(s)
+
               {currentEvent.useWeight
                 ? ` · Écart de poids : ${suggestionInfo.weightSpread} kg`
                 : ""}
@@ -1799,8 +3210,7 @@ function CategoriesManager({
                 <>
                   {" · "}
                   Poids :{" "}
-                  {selectedSummary.minWeight !==
-                  null
+                  {selectedSummary.minWeight !== null
                     ? selectedSummary.minWeight ===
                       selectedSummary.maxWeight
                       ? `${selectedSummary.minWeight} kg`
@@ -1815,12 +3225,15 @@ function CategoriesManager({
         <button
           className="primary"
           type="button"
-          onClick={createCategory}
+          onClick={
+            createCategory
+          }
           disabled={
-            selectedIds.length === 0
+            selectedIds.length ===
+            0
           }
         >
-          Valider et créer la catégorie (
+          Valider et créer la catégorie manuelle (
           {selectedIds.length})
         </button>
       </div>
@@ -1846,29 +3259,30 @@ function CategoriesManager({
           </div>
         </div>
 
-        {categories.length === 0 ? (
+        {eventCategories.length === 0 ? (
           <div className="empty-state">
             <span className="empty-number">
               0
             </span>
 
             <h3>
-              Aucune catégorie
+              Aucune catégorie pour cette épreuve
             </h3>
 
             <p>
-              Utilise l'assistant ou sélectionne
-              manuellement les compétiteurs pour
-              créer la première catégorie.
+              Utilise le générateur automatique ou
+              prépare une catégorie manuellement.
             </p>
           </div>
         ) : (
           <div className="competition-list">
-            {categories.map(
+            {eventCategories.map(
               (category) => (
                 <article
                   className="competition"
-                  key={category.id}
+                  key={
+                    category.id
+                  }
                 >
                   <div>
                     <p className="surtitle">
@@ -1894,8 +3308,12 @@ function CategoriesManager({
                         ? ` · ${category.ageClass}`
                         : ""}
 
+                      {category.sexe
+                        ? ` · ${category.sexe}`
+                        : ""}
+
                       {category.derogation
-                        ? " · Dérogation Commission"
+                        ? " · À contrôler"
                         : ""}
                     </p>
 
@@ -1912,7 +3330,11 @@ function CategoriesManager({
                           }
 
                           return (
-                            <span key={id}>
+                            <span
+                              key={
+                                id
+                              }
+                            >
                               {competitor.nom}{" "}
                               {competitor.prenom}
                             </span>
