@@ -9,9 +9,6 @@ function MatchManager({
   mode,
   type,
   eventType,
-
-  // Utilisé pour distinguer un passage normal,
-  // une finale et un Kata imposé de départage.
   kataStage = "",
 }) {
   /*
@@ -104,13 +101,7 @@ function MatchManager({
     const noteMin = Math.min(...notes);
 
     const indexMax = notes.indexOf(noteMax);
-
     let indexMin = notes.indexOf(noteMin);
-
-    /*
-     * Si les 5 notes sont identiques,
-     * on retire deux juges différents.
-     */
 
     if (indexMin === indexMax) {
       indexMin = notes.findIndex(
@@ -202,14 +193,6 @@ function MatchManager({
    * =========================================================
    * JU RANDORI — DÉPARTAGE
    * =========================================================
-   *
-   * En cas d'égalité après les 7 assauts :
-   *
-   * 1. Tsuki
-   * 2. Mae Geri
-   * 3. Mawashi Geri
-   *
-   * Chaque technique est jugée par les 3 Fukushin.
    */
 
   const techniquesDepartage = [
@@ -261,7 +244,7 @@ function MatchManager({
 
   /*
    * =========================================================
-   * MODIFIER UN VOTE NORMAL
+   * MODIFICATION DES VOTES
    * =========================================================
    */
 
@@ -281,20 +264,8 @@ function MatchManager({
       )
     );
 
-    /*
-     * Si le combat est modifié,
-     * une ancienne décision de départage
-     * ne doit plus être considérée comme valide.
-     */
-
     setDecisionDrapeaux("");
   }
-
-  /*
-   * =========================================================
-   * MODIFIER UN VOTE DE DÉPARTAGE
-   * =========================================================
-   */
 
   function modifierVoteDepartage(
     numeroAssaut,
@@ -317,6 +288,28 @@ function MatchManager({
 
   /*
    * =========================================================
+   * VÉRIFICATION DES 7 ASSAUTS
+   * =========================================================
+   */
+
+  const assautsComplets = assauts.every(
+    (assaut) =>
+      assaut.juge1 &&
+      assaut.juge2 &&
+      assaut.juge3
+  );
+
+  const nombreVotesRenseignes = assauts.reduce(
+    (total, assaut) =>
+      total +
+      ["juge1", "juge2", "juge3"].filter(
+        (juge) => Boolean(assaut[juge])
+      ).length,
+    0
+  );
+
+  /*
+   * =========================================================
    * CALCUL DES 7 ASSAUTS
    * =========================================================
    */
@@ -326,20 +319,24 @@ function MatchManager({
     let shiro = 0;
 
     assauts.forEach((assaut) => {
-      Object.values(assaut).forEach((vote) => {
-        if (vote === "aka") {
-          aka += 1;
-        }
+      ["juge1", "juge2", "juge3"].forEach(
+        (juge) => {
+          const vote = assaut[juge];
 
-        if (vote === "shiro") {
-          shiro += 1;
-        }
+          if (vote === "aka") {
+            aka += 1;
+          }
 
-        if (vote === "hikiwake") {
-          aka += 1;
-          shiro += 1;
+          if (vote === "shiro") {
+            shiro += 1;
+          }
+
+          if (vote === "hikiwake") {
+            aka += 1;
+            shiro += 1;
+          }
         }
-      });
+      );
     });
 
     return {
@@ -390,12 +387,6 @@ function MatchManager({
   const scoreDepartage =
     calculerScoreDepartage();
 
-  /*
-   * =========================================================
-   * VÉRIFICATION DES ASSAUTS DE DÉPARTAGE
-   * =========================================================
-   */
-
   const departageComplet =
     assautsDepartage.every(
       (assaut) =>
@@ -426,7 +417,6 @@ function MatchManager({
 
       if (typePenalite === "shikaku") {
         nouvelles.shikaku = true;
-
         return nouvelles;
       }
 
@@ -498,11 +488,16 @@ function MatchManager({
 
   /*
    * =========================================================
-   * VAINQUEUR APRÈS LES 7 ASSAUTS
+   * VAINQUEUR NORMAL
    * =========================================================
    */
 
   function determinerVainqueurNormal() {
+    /*
+     * Une disqualification peut terminer le
+     * combat immédiatement.
+     */
+
     if (
       akaDisqualifie &&
       !shiroDisqualifie
@@ -521,6 +516,15 @@ function MatchManager({
       akaDisqualifie &&
       shiroDisqualifie
     ) {
+      return null;
+    }
+
+    /*
+     * Sans disqualification, les 7 assauts
+     * doivent être entièrement arbitrés.
+     */
+
+    if (!assautsComplets) {
       return null;
     }
 
@@ -546,20 +550,15 @@ function MatchManager({
 
   /*
    * =========================================================
-   * FAUT-IL UN DÉPARTAGE ?
+   * DÉPARTAGE
    * =========================================================
    */
 
   const departageActif =
+    assautsComplets &&
     !akaDisqualifie &&
     !shiroDisqualifie &&
     scoreFinalAka === scoreFinalShiro;
-
-  /*
-   * =========================================================
-   * VAINQUEUR DU DÉPARTAGE
-   * =========================================================
-   */
 
   function determinerVainqueurDepartage() {
     if (!departageActif) {
@@ -590,12 +589,6 @@ function MatchManager({
   const vainqueurDepartage =
     determinerVainqueurDepartage();
 
-  /*
-   * =========================================================
-   * ÉGALITÉ APRÈS DÉPARTAGE
-   * =========================================================
-   */
-
   const egaliteApresDepartage =
     departageActif &&
     departageComplet &&
@@ -609,7 +602,6 @@ function MatchManager({
    */
 
   let vainqueurOfficiel = null;
-
   let decisionType = null;
 
   if (
@@ -703,23 +695,21 @@ function MatchManager({
 
             <p>
               Ce passage est utilisé pour
-              départager les compétiteurs
-              après une égalité en finale
-              ou en petite finale.
+              départager les compétiteurs après
+              une égalité en finale ou en petite
+              finale.
             </p>
 
             <p>
-              Le Kata est imposé par
-              l'équipe d'arbitrage.
+              Le Kata est imposé par l'équipe
+              d'arbitrage.
             </p>
           </div>
         )}
 
         <div className="match-score">
           <div>
-            <strong>
-              NOTE FINALE
-            </strong>
+            <strong>NOTE FINALE</strong>
 
             <h2>
               {resultatKata.total.toFixed(1)}
@@ -732,9 +722,7 @@ function MatchManager({
         </div>
 
         <div className="penalties">
-          <h3>
-            Notes des arbitres
-          </h3>
+          <h3>Notes des arbitres</h3>
 
           <p>
             Notes autorisées : 3,9 à 4,9.
@@ -759,9 +747,7 @@ function MatchManager({
                     </h3>
 
                     <h2>
-                      {Number(note).toFixed(
-                        1
-                      )}
+                      {Number(note).toFixed(1)}
                     </h2>
 
                     <input
@@ -804,9 +790,7 @@ function MatchManager({
                           key={valeur}
                           value={valeur}
                         >
-                          {valeur.toFixed(
-                            1
-                          )}
+                          {valeur.toFixed(1)}
                         </option>
                       ))}
                     </select>
@@ -814,23 +798,21 @@ function MatchManager({
                     {index ===
                       resultatKata.indexMax && (
                       <p>
-                        ⬆️ Note la plus
-                        haute — retirée
+                        ⬆️ Note la plus haute —
+                        retirée
                       </p>
                     )}
 
                     {index ===
                       resultatKata.indexMin && (
                       <p>
-                        ⬇️ Note la plus
-                        basse — retirée
+                        ⬇️ Note la plus basse —
+                        retirée
                       </p>
                     )}
 
                     {!eliminee && (
-                      <p>
-                        ✅ Note retenue
-                      </p>
+                      <p>✅ Note retenue</p>
                     )}
                   </div>
                 );
@@ -858,18 +840,14 @@ function MatchManager({
           <p>
             Note la plus basse retirée :{" "}
             <strong>
-              {resultatKata.noteMin.toFixed(
-                1
-              )}
+              {resultatKata.noteMin.toFixed(1)}
             </strong>
           </p>
 
           <p>
             Note la plus haute retirée :{" "}
             <strong>
-              {resultatKata.noteMax.toFixed(
-                1
-              )}
+              {resultatKata.noteMax.toFixed(1)}
             </strong>
           </p>
 
@@ -887,9 +865,7 @@ function MatchManager({
           <p>
             Total :{" "}
             <strong>
-              {resultatKata.total.toFixed(
-                1
-              )}
+              {resultatKata.total.toFixed(1)}
             </strong>
           </p>
 
@@ -958,70 +934,164 @@ function MatchManager({
    */
 
   return (
-    <section className="match-manager">
-      <div className="manager-header">
+    <section className="match-manager randori-manager">
+      {/* =====================================
+          EN-TÊTE
+      ===================================== */}
+
+      <div className="manager-header randori-header">
         <div>
           <p className="surtitle">
             JU RANDORI
           </p>
 
-          <h2>
-            Feuille de combat
-          </h2>
+          <h2>Feuille de combat</h2>
 
           {eventType && (
             <p>{eventType}</p>
           )}
         </div>
+
+        <div className="randori-progress">
+          <strong>
+            {nombreVotesRenseignes}/21
+          </strong>
+
+          <span>
+            votes renseignés
+          </span>
+        </div>
       </div>
 
       {/* =====================================
-          SCORE PRINCIPAL
+          TABLEAU PRINCIPAL
+          AKA / CENTRE / SHIRO
       ===================================== */}
 
-      <div className="match-score">
-        <div>
-          <strong>
-            🔴 AKA
-          </strong>
+      <div className="randori-scoreboard">
+        {/* AKA */}
 
-          <h2>
-            {scoreFinalAka}
+        <div className="fighter-panel fighter-aka">
+          <p className="fighter-label">
+            🔴 AKA
+          </p>
+
+          <h2 className="fighter-name">
+            {match?.aka?.nom ||
+              "Compétiteur"}{" "}
+            {match?.aka?.prenom || ""}
           </h2>
 
+          <div className="fighter-score">
+            {scoreFinalAka}
+          </div>
+
           <p>
-            Assauts : {score.aka} ·
-            Pénalités : -
-            {pointsNegatifsAka}
+            Score brut :{" "}
+            <strong>{score.aka}</strong>
           </p>
 
           <p>
-            {match?.aka?.nom ||
-              "Compétiteur AKA"}{" "}
-            {match?.aka?.prenom || ""}
+            Points négatifs :{" "}
+            <strong>
+              {pointsNegatifsAka}
+            </strong>
+          </p>
+
+          {akaDisqualifie && (
+            <div className="fighter-disqualified">
+              ⛔ DISQUALIFIÉ
+            </div>
+          )}
+        </div>
+
+        {/* CENTRE */}
+
+        <div className="fight-center-panel">
+          <p className="surtitle">
+            SCORE OFFICIEL
+          </p>
+
+          <div className="fight-main-score">
+            <strong>{scoreFinalAka}</strong>
+
+            <span>—</span>
+
+            <strong>{scoreFinalShiro}</strong>
+          </div>
+
+          {!assautsComplets &&
+            !akaDisqualifie &&
+            !shiroDisqualifie && (
+              <div className="fight-status">
+                Combat en cours
+              </div>
+            )}
+
+          {assautsComplets &&
+            !departageActif &&
+            vainqueurNormal && (
+              <div className="fight-status finished">
+                7 assauts terminés
+              </div>
+            )}
+
+          {departageActif && (
+            <div className="fight-status tie">
+              ⚖️ ÉGALITÉ
+            </div>
+          )}
+
+          {decisionType ===
+            "disqualification" && (
+            <div className="fight-status finished">
+              Combat terminé
+            </div>
+          )}
+
+          <p className="fight-progress-text">
+            {nombreVotesRenseignes} vote
+            {nombreVotesRenseignes > 1
+              ? "s"
+              : ""}{" "}
+            sur 21
           </p>
         </div>
 
-        <div>
-          <strong>
-            ⚪ SHIRO
-          </strong>
+        {/* SHIRO */}
 
-          <h2>
-            {scoreFinalShiro}
+        <div className="fighter-panel fighter-shiro">
+          <p className="fighter-label">
+            SHIRO ⚪
+          </p>
+
+          <h2 className="fighter-name">
+            {match?.shiro?.nom ||
+              "Compétiteur"}{" "}
+            {match?.shiro?.prenom || ""}
           </h2>
 
+          <div className="fighter-score">
+            {scoreFinalShiro}
+          </div>
+
           <p>
-            Assauts : {score.shiro} ·
-            Pénalités : -
-            {pointsNegatifsShiro}
+            Score brut :{" "}
+            <strong>{score.shiro}</strong>
           </p>
 
           <p>
-            {match?.shiro?.nom ||
-              "Compétiteur SHIRO"}{" "}
-            {match?.shiro?.prenom || ""}
+            Points négatifs :{" "}
+            <strong>
+              {pointsNegatifsShiro}
+            </strong>
           </p>
+
+          {shiroDisqualifie && (
+            <div className="fighter-disqualified">
+              ⛔ DISQUALIFIÉ
+            </div>
+          )}
         </div>
       </div>
 
@@ -1029,197 +1099,259 @@ function MatchManager({
           PÉNALITÉS
       ===================================== */}
 
-      <div className="penalties">
-        <h3>Pénalités</h3>
+      <div className="penalties randori-penalties">
+        <div className="randori-section-title">
+          <p className="surtitle">
+            SANCTIONS
+          </p>
 
-        <div className="penalties-grid">
-          <div className="penalty-card">
-            <h3>
-              🔴 AKA
-            </h3>
+          <h3>Pénalités</h3>
+        </div>
 
-            <p>
-              Keikoku :{" "}
-              {penalitesAka.keikoku}
-              {" · "}
-              Fujubun :{" "}
-              {penalitesAka.fujubun}
-              {" · "}
-              Chui :{" "}
-              {penalitesAka.chui}
-              {" · "}
-              Hansoku Chui :{" "}
-              {
-                penalitesAka.hansokuChui
-              }
-            </p>
+        <div className="penalties-grid randori-penalties-grid">
+          {/* AKA */}
 
-            <p>
-              Points négatifs :{" "}
-              <strong>
-                {pointsNegatifsAka}
+          <div className="penalty-card penalty-card-aka">
+            <div className="penalty-card-header">
+              <div>
+                <p className="surtitle">
+                  AKA
+                </p>
+
+                <h3>
+                  🔴{" "}
+                  {match?.aka?.nom ||
+                    "Compétiteur"}
+                </h3>
+              </div>
+
+              <strong className="negative-points">
+                -{pointsNegatifsAka} PN
               </strong>
-            </p>
+            </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "aka",
-                  "keikoku"
-                )
-              }
-            >
-              + Keikoku
-            </button>
+            <div className="penalty-summary">
+              <span>
+                Keikoku{" "}
+                <strong>
+                  {penalitesAka.keikoku}
+                </strong>
+              </span>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "aka",
-                  "fujubun"
-                )
-              }
-            >
-              + Fujubun
-            </button>
+              <span>
+                Fujubun{" "}
+                <strong>
+                  {penalitesAka.fujubun}
+                </strong>
+              </span>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "aka",
-                  "chui"
-                )
-              }
-            >
-              + Chui
-            </button>
+              <span>
+                Chui{" "}
+                <strong>
+                  {penalitesAka.chui}
+                </strong>
+              </span>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "aka",
-                  "hansokuChui"
-                )
-              }
-            >
-              + Hansoku Chui
-            </button>
+              <span>
+                Hansoku Chui{" "}
+                <strong>
+                  {
+                    penalitesAka.hansokuChui
+                  }
+                </strong>
+              </span>
+            </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "aka",
-                  "shikaku"
-                )
-              }
-            >
-              Shikaku
-            </button>
+            <div className="penalty-buttons">
+              <button
+                type="button"
+                onClick={() =>
+                  ajouterPenalite(
+                    "aka",
+                    "keikoku"
+                  )
+                }
+              >
+                + Keikoku
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  ajouterPenalite(
+                    "aka",
+                    "fujubun"
+                  )
+                }
+              >
+                + Fujubun
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  ajouterPenalite(
+                    "aka",
+                    "chui"
+                  )
+                }
+              >
+                + Chui
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  ajouterPenalite(
+                    "aka",
+                    "hansokuChui"
+                  )
+                }
+              >
+                + Hansoku Chui
+              </button>
+
+              <button
+                type="button"
+                className="danger-penalty"
+                onClick={() =>
+                  ajouterPenalite(
+                    "aka",
+                    "shikaku"
+                  )
+                }
+              >
+                Shikaku
+              </button>
+            </div>
 
             {penalitesAka.shikaku && (
-              <strong>
+              <div className="fighter-disqualified">
                 ⛔ SHIKAKU
-              </strong>
+              </div>
             )}
           </div>
 
-          <div className="penalty-card">
-            <h3>
-              ⚪ SHIRO
-            </h3>
+          {/* SHIRO */}
 
-            <p>
-              Keikoku :{" "}
-              {penalitesShiro.keikoku}
-              {" · "}
-              Fujubun :{" "}
-              {penalitesShiro.fujubun}
-              {" · "}
-              Chui :{" "}
-              {penalitesShiro.chui}
-              {" · "}
-              Hansoku Chui :{" "}
-              {
-                penalitesShiro.hansokuChui
-              }
-            </p>
+          <div className="penalty-card penalty-card-shiro">
+            <div className="penalty-card-header">
+              <div>
+                <p className="surtitle">
+                  SHIRO
+                </p>
 
-            <p>
-              Points négatifs :{" "}
-              <strong>
-                {pointsNegatifsShiro}
+                <h3>
+                  ⚪{" "}
+                  {match?.shiro?.nom ||
+                    "Compétiteur"}
+                </h3>
+              </div>
+
+              <strong className="negative-points">
+                -{pointsNegatifsShiro} PN
               </strong>
-            </p>
+            </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "shiro",
-                  "keikoku"
-                )
-              }
-            >
-              + Keikoku
-            </button>
+            <div className="penalty-summary">
+              <span>
+                Keikoku{" "}
+                <strong>
+                  {penalitesShiro.keikoku}
+                </strong>
+              </span>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "shiro",
-                  "fujubun"
-                )
-              }
-            >
-              + Fujubun
-            </button>
+              <span>
+                Fujubun{" "}
+                <strong>
+                  {penalitesShiro.fujubun}
+                </strong>
+              </span>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "shiro",
-                  "chui"
-                )
-              }
-            >
-              + Chui
-            </button>
+              <span>
+                Chui{" "}
+                <strong>
+                  {penalitesShiro.chui}
+                </strong>
+              </span>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "shiro",
-                  "hansokuChui"
-                )
-              }
-            >
-              + Hansoku Chui
-            </button>
+              <span>
+                Hansoku Chui{" "}
+                <strong>
+                  {
+                    penalitesShiro.hansokuChui
+                  }
+                </strong>
+              </span>
+            </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                ajouterPenalite(
-                  "shiro",
-                  "shikaku"
-                )
-              }
-            >
-              Shikaku
-            </button>
+            <div className="penalty-buttons">
+              <button
+                type="button"
+                onClick={() =>
+                  ajouterPenalite(
+                    "shiro",
+                    "keikoku"
+                  )
+                }
+              >
+                + Keikoku
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  ajouterPenalite(
+                    "shiro",
+                    "fujubun"
+                  )
+                }
+              >
+                + Fujubun
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  ajouterPenalite(
+                    "shiro",
+                    "chui"
+                  )
+                }
+              >
+                + Chui
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  ajouterPenalite(
+                    "shiro",
+                    "hansokuChui"
+                  )
+                }
+              >
+                + Hansoku Chui
+              </button>
+
+              <button
+                type="button"
+                className="danger-penalty"
+                onClick={() =>
+                  ajouterPenalite(
+                    "shiro",
+                    "shikaku"
+                  )
+                }
+              >
+                Shikaku
+              </button>
+            </div>
 
             {penalitesShiro.shikaku && (
-              <strong>
+              <div className="fighter-disqualified">
                 ⛔ SHIKAKU
-              </strong>
+              </div>
             )}
           </div>
         </div>
@@ -1229,153 +1361,62 @@ function MatchManager({
           7 ASSAUTS
       ===================================== */}
 
-      <div className="assauts">
-        <h3>
-          Assauts réglementaires
-        </h3>
+      <div className="assauts randori-assauts">
+        <div className="randori-section-title">
+          <p className="surtitle">
+            ARBITRAGE
+          </p>
 
-        {assauts.map(
-          (assaut, index) => (
-            <div
-              className="assaut-card"
-              key={index}
-            >
-              <h3>
-                Assaut {index + 1}
-              </h3>
+          <h3>
+            7 assauts réglementaires
+          </h3>
 
-              {[
-                "juge1",
-                "juge2",
-                "juge3",
-              ].map(
-                (juge, jugeIndex) => (
-                  <div
-                    className="juge"
-                    key={juge}
-                  >
-                    <span>
-                      Fukushin{" "}
-                      {jugeIndex + 1}
-                    </span>
+          <p>
+            Chaque Fukushin vote AKA,
+            Hikiwake ou SHIRO.
+          </p>
+        </div>
 
-                    <button
-                      type="button"
-                      className={
-                        assaut[juge] ===
-                        "aka"
-                          ? "vote-button selected aka"
-                          : "vote-button"
-                      }
-                      onClick={() =>
-                        modifierVote(
-                          index,
-                          juge,
-                          "aka"
-                        )
-                      }
-                    >
-                      AKA
-                    </button>
+        <div className="assauts-list">
+          {assauts.map(
+            (assaut, index) => {
+              const assautComplet =
+                assaut.juge1 &&
+                assaut.juge2 &&
+                assaut.juge3;
 
-                    <button
-                      type="button"
-                      className={
-                        assaut[juge] ===
-                        "hikiwake"
-                          ? "vote-button selected hikiwake"
-                          : "vote-button"
-                      }
-                      onClick={() =>
-                        modifierVote(
-                          index,
-                          juge,
-                          "hikiwake"
-                        )
-                      }
-                    >
-                      Hikiwake
-                    </button>
-
-                    <button
-                      type="button"
-                      className={
-                        assaut[juge] ===
-                        "shiro"
-                          ? "vote-button selected shiro"
-                          : "vote-button"
-                      }
-                      onClick={() =>
-                        modifierVote(
-                          index,
-                          juge,
-                          "shiro"
-                        )
-                      }
-                    >
-                      SHIRO
-                    </button>
-                  </div>
-                )
-              )}
-            </div>
-          )
-        )}
-      </div>
-
-      {/* =====================================
-          DÉPARTAGE
-      ===================================== */}
-
-      {departageActif &&
-        !akaDisqualifie &&
-        !shiroDisqualifie && (
-          <div className="assauts">
-            <div className="beta-note">
-              <strong>
-                ⚖️ Égalité après les 7
-                assauts
-              </strong>
-
-              <p>
-                Score :{" "}
-                <strong>
-                  {scoreFinalAka} —{" "}
-                  {scoreFinalShiro}
-                </strong>
-              </p>
-
-              <p>
-                Procéder aux trois
-                techniques de départage :
-                Tsuki, Mae Geri et Mawashi
-                Geri.
-              </p>
-            </div>
-
-            <h3>
-              Départage Ju Randori
-            </h3>
-
-            {assautsDepartage.map(
-              (assaut, index) => (
+              return (
                 <div
-                  className="assaut-card"
-                  key={
-                    assaut.technique ||
-                    index
-                  }
+                  className={`assaut-card ${
+                    assautComplet
+                      ? "assaut-complet"
+                      : ""
+                  }`}
+                  key={index}
                 >
-                  <p className="surtitle">
-                    DÉPARTAGE
-                  </p>
+                  <div className="assaut-header">
+                    <div>
+                      <p className="surtitle">
+                        ASSAUT
+                      </p>
 
-                  <h3>
-                    {index + 1}.{" "}
-                    {
-                      assaut.technique
-                    }
-                  </h3>
+                      <h3>
+                        Assaut {index + 1}
+                      </h3>
+                    </div>
+
+                    <span
+                      className={`assaut-status ${
+                        assautComplet
+                          ? "complete"
+                          : ""
+                      }`}
+                    >
+                      {assautComplet
+                        ? "✓ Complet"
+                        : "À arbitrer"}
+                    </span>
+                  </div>
 
                   {[
                     "juge1",
@@ -1390,111 +1431,345 @@ function MatchManager({
                         className="juge"
                         key={juge}
                       >
-                        <span>
+                        <strong className="juge-label">
                           Fukushin{" "}
-                          {jugeIndex +
-                            1}
-                        </span>
+                          {jugeIndex + 1}
+                        </strong>
 
-                        <button
-                          type="button"
-                          className={
-                            assaut[
-                              juge
-                            ] === "aka"
-                              ? "vote-button selected aka"
-                              : "vote-button"
-                          }
-                          onClick={() =>
-                            modifierVoteDepartage(
-                              index,
-                              juge,
-                              "aka"
-                            )
-                          }
-                        >
-                          AKA
-                        </button>
+                        <div className="juge-votes">
+                          <button
+                            type="button"
+                            className={
+                              assaut[
+                                juge
+                              ] === "aka"
+                                ? "vote-button selected aka"
+                                : "vote-button"
+                            }
+                            onClick={() =>
+                              modifierVote(
+                                index,
+                                juge,
+                                "aka"
+                              )
+                            }
+                          >
+                            🔴 AKA
+                          </button>
 
-                        <button
-                          type="button"
-                          className={
-                            assaut[
-                              juge
-                            ] ===
-                            "hikiwake"
-                              ? "vote-button selected hikiwake"
-                              : "vote-button"
-                          }
-                          onClick={() =>
-                            modifierVoteDepartage(
-                              index,
-                              juge,
+                          <button
+                            type="button"
+                            className={
+                              assaut[
+                                juge
+                              ] ===
                               "hikiwake"
-                            )
-                          }
-                        >
-                          Hikiwake
-                        </button>
+                                ? "vote-button selected hikiwake"
+                                : "vote-button"
+                            }
+                            onClick={() =>
+                              modifierVote(
+                                index,
+                                juge,
+                                "hikiwake"
+                              )
+                            }
+                          >
+                            Hikiwake
+                          </button>
 
-                        <button
-                          type="button"
-                          className={
-                            assaut[
-                              juge
-                            ] ===
-                            "shiro"
-                              ? "vote-button selected shiro"
-                              : "vote-button"
-                          }
-                          onClick={() =>
-                            modifierVoteDepartage(
-                              index,
-                              juge,
-                              "shiro"
-                            )
-                          }
-                        >
-                          SHIRO
-                        </button>
+                          <button
+                            type="button"
+                            className={
+                              assaut[
+                                juge
+                              ] === "shiro"
+                                ? "vote-button selected shiro"
+                                : "vote-button"
+                            }
+                            onClick={() =>
+                              modifierVote(
+                                index,
+                                juge,
+                                "shiro"
+                              )
+                            }
+                          >
+                            SHIRO ⚪
+                          </button>
+                        </div>
                       </div>
                     )
                   )}
                 </div>
-              )
-            )}
+              );
+            }
+          )}
+        </div>
+      </div>
 
-            <div className="match-score">
-              <div>
+      {/* =====================================
+          INFORMATION COMBAT EN COURS
+      ===================================== */}
+
+      {!assautsComplets &&
+        !akaDisqualifie &&
+        !shiroDisqualifie && (
+          <div className="beta-note randori-info">
+            <strong>
+              Arbitrage en cours
+            </strong>
+
+            <p>
+              {nombreVotesRenseignes} vote
+              {nombreVotesRenseignes > 1
+                ? "s"
+                : ""}{" "}
+              renseigné
+              {nombreVotesRenseignes > 1
+                ? "s"
+                : ""}{" "}
+              sur 21.
+            </p>
+
+            <p>
+              Les 7 assauts doivent être
+              entièrement arbitrés avant de
+              déterminer le résultat du combat.
+            </p>
+          </div>
+        )}
+
+      {/* =====================================
+          DÉPARTAGE
+      ===================================== */}
+
+      {departageActif &&
+        !akaDisqualifie &&
+        !shiroDisqualifie && (
+          <div className="assauts randori-tiebreak">
+            <div className="tiebreak-heading">
+              <p className="surtitle">
+                DÉPARTAGE
+              </p>
+
+              <h2>
+                ⚖️ Égalité après les 7 assauts
+              </h2>
+
+              <p>
+                Score réglementaire :{" "}
                 <strong>
-                  🔴 AKA
+                  {scoreFinalAka} —{" "}
+                  {scoreFinalShiro}
                 </strong>
+              </p>
 
-                <h2>
-                  {
-                    scoreDepartage.aka
-                  }
-                </h2>
+              <p>
+                Procéder aux trois techniques
+                supplémentaires.
+              </p>
+            </div>
 
-                <p>
-                  Score départage
+            <div className="tiebreak-techniques">
+              {assautsDepartage.map(
+                (assaut, index) => {
+                  const techniqueComplete =
+                    assaut.juge1 &&
+                    assaut.juge2 &&
+                    assaut.juge3;
+
+                  return (
+                    <div
+                      className={`assaut-card ${
+                        techniqueComplete
+                          ? "assaut-complet"
+                          : ""
+                      }`}
+                      key={
+                        assaut.technique ||
+                        index
+                      }
+                    >
+                      <div className="assaut-header">
+                        <div>
+                          <p className="surtitle">
+                            DÉPARTAGE{" "}
+                            {index + 1}
+                          </p>
+
+                          <h3>
+                            {
+                              assaut.technique
+                            }
+                          </h3>
+                        </div>
+
+                        <span
+                          className={`assaut-status ${
+                            techniqueComplete
+                              ? "complete"
+                              : ""
+                          }`}
+                        >
+                          {techniqueComplete
+                            ? "✓ Complet"
+                            : "À arbitrer"}
+                        </span>
+                      </div>
+
+                      {[
+                        "juge1",
+                        "juge2",
+                        "juge3",
+                      ].map(
+                        (
+                          juge,
+                          jugeIndex
+                        ) => (
+                          <div
+                            className="juge"
+                            key={juge}
+                          >
+                            <strong className="juge-label">
+                              Fukushin{" "}
+                              {jugeIndex +
+                                1}
+                            </strong>
+
+                            <div className="juge-votes">
+                              <button
+                                type="button"
+                                className={
+                                  assaut[
+                                    juge
+                                  ] ===
+                                  "aka"
+                                    ? "vote-button selected aka"
+                                    : "vote-button"
+                                }
+                                onClick={() =>
+                                  modifierVoteDepartage(
+                                    index,
+                                    juge,
+                                    "aka"
+                                  )
+                                }
+                              >
+                                🔴 AKA
+                              </button>
+
+                              <button
+                                type="button"
+                                className={
+                                  assaut[
+                                    juge
+                                  ] ===
+                                  "hikiwake"
+                                    ? "vote-button selected hikiwake"
+                                    : "vote-button"
+                                }
+                                onClick={() =>
+                                  modifierVoteDepartage(
+                                    index,
+                                    juge,
+                                    "hikiwake"
+                                  )
+                                }
+                              >
+                                Hikiwake
+                              </button>
+
+                              <button
+                                type="button"
+                                className={
+                                  assaut[
+                                    juge
+                                  ] ===
+                                  "shiro"
+                                    ? "vote-button selected shiro"
+                                    : "vote-button"
+                                }
+                                onClick={() =>
+                                  modifierVoteDepartage(
+                                    index,
+                                    juge,
+                                    "shiro"
+                                  )
+                                }
+                              >
+                                SHIRO ⚪
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  );
+                }
+              )}
+            </div>
+
+            <div className="randori-scoreboard tiebreak-scoreboard">
+              <div className="fighter-panel fighter-aka">
+                <p className="fighter-label">
+                  🔴 AKA
                 </p>
+
+                <div className="fighter-score">
+                  {scoreDepartage.aka}
+                </div>
+
+                <p>Score départage</p>
               </div>
 
-              <div>
-                <strong>
-                  ⚪ SHIRO
-                </strong>
-
-                <h2>
-                  {
-                    scoreDepartage.shiro
-                  }
-                </h2>
-
-                <p>
-                  Score départage
+              <div className="fight-center-panel">
+                <p className="surtitle">
+                  DÉPARTAGE
                 </p>
+
+                <div className="fight-main-score">
+                  <strong>
+                    {scoreDepartage.aka}
+                  </strong>
+
+                  <span>—</span>
+
+                  <strong>
+                    {scoreDepartage.shiro}
+                  </strong>
+                </div>
+
+                {!departageComplet && (
+                  <div className="fight-status">
+                    En cours
+                  </div>
+                )}
+
+                {departageComplet &&
+                  vainqueurDepartage && (
+                    <div className="fight-status finished">
+                      Terminé
+                    </div>
+                  )}
+
+                {egaliteApresDepartage && (
+                  <div className="fight-status tie">
+                    Égalité persistante
+                  </div>
+                )}
+              </div>
+
+              <div className="fighter-panel fighter-shiro">
+                <p className="fighter-label">
+                  SHIRO ⚪
+                </p>
+
+                <div className="fighter-score">
+                  {scoreDepartage.shiro}
+                </div>
+
+                <p>Score départage</p>
               </div>
             </div>
 
@@ -1505,77 +1780,75 @@ function MatchManager({
                 </strong>
 
                 <p>
-                  Renseigne les votes
-                  des trois Fukushin pour
-                  les trois techniques.
+                  Renseigne les votes des trois
+                  Fukushin pour Tsuki, Mae Geri
+                  et Mawashi Geri.
                 </p>
               </div>
             )}
 
             {departageComplet &&
-              vainqueurDepartage ===
-                "aka" && (
-                <div className="beta-note">
-                  <strong>
-                    🏆 AKA vainqueur
-                  </strong>
-
-                  <p>
-                    Victoire après
-                    départage.
+              vainqueurDepartage && (
+                <div className="randori-winner-banner">
+                  <p className="surtitle">
+                    VAINQUEUR DU DÉPARTAGE
                   </p>
-                </div>
-              )}
 
-            {departageComplet &&
-              vainqueurDepartage ===
-                "shiro" && (
-                <div className="beta-note">
-                  <strong>
-                    🏆 SHIRO vainqueur
-                  </strong>
-
-                  <p>
-                    Victoire après
-                    départage.
-                  </p>
+                  <h2>
+                    🏆{" "}
+                    {vainqueurDepartage ===
+                    "aka"
+                      ? `AKA — ${
+                          match?.aka?.nom ||
+                          ""
+                        } ${
+                          match?.aka?.prenom ||
+                          ""
+                        }`
+                      : `SHIRO — ${
+                          match?.shiro?.nom ||
+                          ""
+                        } ${
+                          match?.shiro
+                            ?.prenom || ""
+                        }`}
+                  </h2>
                 </div>
               )}
 
             {/* =================================
-                ÉGALITÉ PERSISTANTE
+                DRAPEAUX
             ================================= */}
 
             {egaliteApresDepartage && (
-              <div className="competition-form">
+              <div className="competition-form flags-decision">
                 <p className="surtitle">
                   ÉGALITÉ PERSISTANTE
                 </p>
 
                 <h3>
-                  Décision aux drapeaux
+                  🏁 Décision aux drapeaux
                 </h3>
 
                 <p>
                   Le score reste à égalité
-                  après les trois
-                  techniques de départage.
+                  après Tsuki, Mae Geri et
+                  Mawashi Geri.
                 </p>
 
                 <p>
-                  L'équipe d'arbitrage
-                  doit désigner le
-                  vainqueur.
+                  L'équipe d'arbitrage doit
+                  désigner le vainqueur.
                 </p>
 
-                <div className="competition-actions">
+                <div className="flags-grid">
                   <button
                     type="button"
                     className={
                       decisionDrapeaux ===
                       "aka"
-                        ? "vote-button selected aka"
-                        : "vote-button"
+                        ? "flag-choice flag-aka selected"
+                        : "flag-choice flag-aka"
                     }
                     onClick={() =>
                       setDecisionDrapeaux(
@@ -1583,7 +1856,16 @@ function MatchManager({
                       )
                     }
                   >
-                    🔴 AKA vainqueur
+                    <strong>
+                      🔴 AKA
+                    </strong>
+
+                    <span>
+                      {match?.aka?.nom ||
+                        "Compétiteur"}{" "}
+                      {match?.aka?.prenom ||
+                        ""}
+                    </span>
                   </button>
 
                   <button
@@ -1591,8 +1873,8 @@ function MatchManager({
                     className={
                       decisionDrapeaux ===
                       "shiro"
-                        ? "vote-button selected shiro"
-                        : "vote-button"
+                        ? "flag-choice flag-shiro selected"
+                        : "flag-choice flag-shiro"
                     }
                     onClick={() =>
                       setDecisionDrapeaux(
@@ -1600,25 +1882,44 @@ function MatchManager({
                       )
                     }
                   >
-                    ⚪ SHIRO vainqueur
+                    <strong>
+                      SHIRO ⚪
+                    </strong>
+
+                    <span>
+                      {match?.shiro?.nom ||
+                        "Compétiteur"}{" "}
+                      {match?.shiro?.prenom ||
+                        ""}
+                    </span>
                   </button>
                 </div>
 
                 {decisionDrapeaux && (
-                  <div className="match-result">
-                    <p>
-                      🏁 Décision aux
-                      drapeaux
+                  <div className="randori-winner-banner">
+                    <p className="surtitle">
+                      DÉCISION AUX DRAPEAUX
                     </p>
 
-                    <strong>
+                    <h2>
                       🏆{" "}
                       {decisionDrapeaux ===
                       "aka"
-                        ? "AKA"
-                        : "SHIRO"}{" "}
-                      vainqueur
-                    </strong>
+                        ? `AKA — ${
+                            match?.aka
+                              ?.nom || ""
+                          } ${
+                            match?.aka
+                              ?.prenom || ""
+                          }`
+                        : `SHIRO — ${
+                            match?.shiro
+                              ?.nom || ""
+                          } ${
+                            match?.shiro
+                              ?.prenom || ""
+                          }`}
+                    </h2>
                   </div>
                 )}
               </div>
@@ -1630,29 +1931,63 @@ function MatchManager({
           RÉSULTAT FINAL
       ===================================== */}
 
-      <div className="match-result">
-        <h3>
-          Résultat
-        </h3>
+      <div className="match-result randori-result">
+        <div className="randori-section-title">
+          <p className="surtitle">
+            RÉSULTAT OFFICIEL
+          </p>
 
-        <p>
-          AKA :{" "}
-          <strong>
-            {scoreFinalAka}
-          </strong>
-          {" — "}
-          SHIRO :{" "}
-          <strong>
-            {scoreFinalShiro}
-          </strong>
-        </p>
+          <h2>Résultat du combat</h2>
+        </div>
 
-        {akaDisqualifie &&
+        <div className="final-score-line">
+          <div>
+            <span>🔴 AKA</span>
+
+            <strong>
+              {scoreFinalAka}
+            </strong>
+          </div>
+
+          <span className="final-score-separator">
+            —
+          </span>
+
+          <div>
+            <strong>
+              {scoreFinalShiro}
+            </strong>
+
+            <span>SHIRO ⚪</span>
+          </div>
+        </div>
+
+        {!assautsComplets &&
+          !akaDisqualifie &&
           !shiroDisqualifie && (
             <div className="beta-note">
               <strong>
-                🏆 SHIRO vainqueur
+                Combat en cours
               </strong>
+
+              <p>
+                Le résultat sera disponible
+                lorsque les 7 assauts auront été
+                entièrement arbitrés.
+              </p>
+            </div>
+          )}
+
+        {akaDisqualifie &&
+          !shiroDisqualifie && (
+            <div className="randori-winner-banner">
+              <p className="surtitle">
+                DISQUALIFICATION
+              </p>
+
+              <h2>
+                🏆 SHIRO vainqueur
+              </h2>
 
               <p>
                 AKA est disqualifié.
@@ -1662,10 +1997,14 @@ function MatchManager({
 
         {shiroDisqualifie &&
           !akaDisqualifie && (
-            <div className="beta-note">
-              <strong>
+            <div className="randori-winner-banner">
+              <p className="surtitle">
+                DISQUALIFICATION
+              </p>
+
+              <h2>
                 🏆 AKA vainqueur
-              </strong>
+              </h2>
 
               <p>
                 SHIRO est disqualifié.
@@ -1677,66 +2016,69 @@ function MatchManager({
           shiroDisqualifie && (
             <div className="beta-note">
               <strong>
-                ⛔ Double
-                disqualification
+                ⛔ Double disqualification
               </strong>
 
               <p>
-                Le combat ne peut pas
-                être enregistré avec un
-                vainqueur automatique.
+                Le combat ne peut pas être
+                enregistré avec un vainqueur
+                automatique.
               </p>
             </div>
           )}
 
-        {!departageActif &&
-          !akaDisqualifie &&
-          !shiroDisqualifie &&
-          vainqueurNormal === "aka" && (
-            <div className="beta-note">
-              <strong>
-                🏆 AKA vainqueur
-              </strong>
-
-              <p>
-                Victoire au score.
+        {decisionType === "score" &&
+          vainqueurOfficiel && (
+            <div className="randori-winner-banner">
+              <p className="surtitle">
+                VICTOIRE AU SCORE
               </p>
-            </div>
-          )}
 
-        {!departageActif &&
-          !akaDisqualifie &&
-          !shiroDisqualifie &&
-          vainqueurNormal ===
-            "shiro" && (
-            <div className="beta-note">
-              <strong>
-                🏆 SHIRO vainqueur
-              </strong>
-
-              <p>
-                Victoire au score.
-              </p>
+              <h2>
+                🏆{" "}
+                {vainqueurOfficiel === "aka"
+                  ? `AKA — ${
+                      match?.aka?.nom || ""
+                    } ${
+                      match?.aka?.prenom || ""
+                    }`
+                  : `SHIRO — ${
+                      match?.shiro?.nom || ""
+                    } ${
+                      match?.shiro?.prenom ||
+                      ""
+                    }`}
+              </h2>
             </div>
           )}
 
         {decisionType ===
           "departage" &&
           vainqueurOfficiel && (
-            <div className="beta-note">
-              <strong>
+            <div className="randori-winner-banner">
+              <p className="surtitle">
+                VICTOIRE APRÈS DÉPARTAGE
+              </p>
+
+              <h2>
                 🏆{" "}
-                {vainqueurOfficiel ===
-                "aka"
-                  ? "AKA"
-                  : "SHIRO"}{" "}
-                vainqueur
-              </strong>
+                {vainqueurOfficiel === "aka"
+                  ? `AKA — ${
+                      match?.aka?.nom || ""
+                    } ${
+                      match?.aka?.prenom || ""
+                    }`
+                  : `SHIRO — ${
+                      match?.shiro?.nom || ""
+                    } ${
+                      match?.shiro?.prenom ||
+                      ""
+                    }`}
+              </h2>
 
               <p>
-                Victoire après départage
-                Tsuki / Mae Geri /
-                Mawashi Geri.
+                Tsuki · Mae Geri · Mawashi
+                Geri
               </p>
             </div>
           )}
@@ -1744,20 +2086,26 @@ function MatchManager({
         {decisionType ===
           "drapeaux" &&
           vainqueurOfficiel && (
-            <div className="beta-note">
-              <strong>
-                🏆{" "}
-                {vainqueurOfficiel ===
-                "aka"
-                  ? "AKA"
-                  : "SHIRO"}{" "}
-                vainqueur
-              </strong>
-
-              <p>
-                🏁 Décision aux drapeaux
-                après égalité persistante.
+            <div className="randori-winner-banner">
+              <p className="surtitle">
+                DÉCISION AUX DRAPEAUX
               </p>
+
+              <h2>
+                🏆{" "}
+                {vainqueurOfficiel === "aka"
+                  ? `AKA — ${
+                      match?.aka?.nom || ""
+                    } ${
+                      match?.aka?.prenom || ""
+                    }`
+                  : `SHIRO — ${
+                      match?.shiro?.nom || ""
+                    } ${
+                      match?.shiro?.prenom ||
+                      ""
+                    }`}
+              </h2>
             </div>
           )}
 
@@ -1766,107 +2114,113 @@ function MatchManager({
         ===================================== */}
 
         {onSave && (
-          <button
-            type="button"
-            className="primary"
-            disabled={
-              !vainqueurOfficiel
-            }
-            onClick={() => {
-              if (
+          <div className="save-match-zone">
+            <button
+              type="button"
+              className="primary save-match-button"
+              disabled={
                 !vainqueurOfficiel
-              ) {
-                return;
               }
+              onClick={() => {
+                if (
+                  !vainqueurOfficiel
+                ) {
+                  return;
+                }
 
-              onSave({
-                type: "ju-randori",
+                onSave({
+                  type: "ju-randori",
 
-                /*
-                 * 7 ASSAUTS
-                 */
+                  /*
+                   * 7 ASSAUTS
+                   */
 
-                assauts,
+                  assauts,
 
-                scoreBrutAka:
-                  score.aka,
+                  scoreBrutAka:
+                    score.aka,
 
-                scoreBrutShiro:
-                  score.shiro,
+                  scoreBrutShiro:
+                    score.shiro,
 
-                scoreAka:
-                  scoreFinalAka,
+                  scoreAka:
+                    scoreFinalAka,
 
-                scoreShiro:
-                  scoreFinalShiro,
+                  scoreShiro:
+                    scoreFinalShiro,
 
-                /*
-                 * PÉNALITÉS
-                 */
+                  /*
+                   * PÉNALITÉS
+                   */
 
-                penalitesAka,
+                  penalitesAka,
 
-                penalitesShiro,
+                  penalitesShiro,
 
-                pointsNegatifsAka,
+                  pointsNegatifsAka,
 
-                pointsNegatifsShiro,
+                  pointsNegatifsShiro,
 
-                akaDisqualifie,
+                  akaDisqualifie,
 
-                shiroDisqualifie,
+                  shiroDisqualifie,
 
-                /*
-                 * DÉPARTAGE
-                 */
+                  /*
+                   * DÉPARTAGE
+                   */
 
-                departageActif,
+                  departageActif,
 
-                assautsDepartage:
-                  departageActif
-                    ? assautsDepartage
-                    : [],
+                  assautsDepartage:
+                    departageActif
+                      ? assautsDepartage
+                      : [],
 
-                scoreDepartageAka:
-                  departageActif
-                    ? scoreDepartage.aka
-                    : null,
+                  scoreDepartageAka:
+                    departageActif
+                      ? scoreDepartage.aka
+                      : null,
 
-                scoreDepartageShiro:
-                  departageActif
-                    ? scoreDepartage.shiro
-                    : null,
+                  scoreDepartageShiro:
+                    departageActif
+                      ? scoreDepartage.shiro
+                      : null,
 
-                /*
-                 * RÉSULTAT
-                 */
+                  /*
+                   * RÉSULTAT
+                   */
 
-                vainqueur:
-                  vainqueurOfficiel,
+                  vainqueur:
+                    vainqueurOfficiel,
 
-                decisionType,
+                  decisionType,
 
-                decisionDrapeaux:
-                  decisionType ===
-                  "drapeaux"
-                    ? decisionDrapeaux
-                    : null,
-              });
-            }}
-          >
-            {!vainqueurOfficiel
-              ? departageActif &&
-                !departageComplet
-                ? "Terminer le départage avant d'enregistrer"
-                : egaliteApresDepartage &&
-                  !decisionDrapeaux
-                ? "Désigner le vainqueur avant d'enregistrer"
-                : "Combat en cours"
-              : match?.statut ===
-                "Terminé"
-              ? "Enregistrer les modifications"
-              : "Enregistrer le combat"}
-          </button>
+                  decisionDrapeaux:
+                    decisionType ===
+                    "drapeaux"
+                      ? decisionDrapeaux
+                      : null,
+                });
+              }}
+            >
+              {!vainqueurOfficiel
+                ? !assautsComplets &&
+                  !akaDisqualifie &&
+                  !shiroDisqualifie
+                  ? `Arbitrage en cours — ${nombreVotesRenseignes}/21`
+                  : departageActif &&
+                    !departageComplet
+                  ? "Terminer le départage avant d'enregistrer"
+                  : egaliteApresDepartage &&
+                    !decisionDrapeaux
+                  ? "Désigner le vainqueur avant d'enregistrer"
+                  : "Combat en cours"
+                : match?.statut ===
+                  "Terminé"
+                ? "Enregistrer les modifications"
+                : "Enregistrer le combat"}
+            </button>
+          </div>
         )}
       </div>
     </section>
