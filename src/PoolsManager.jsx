@@ -834,21 +834,21 @@ function PoolsManager({
   function generateKataPassages(competitorIds) {
   const passages = [];
 
-  const firstRound = [...competitorIds];
+  const passage1 = [...competitorIds];
 
-  const offset = Math.floor(
+  const offset = Math.ceil(
     competitorIds.length / 2
   );
 
-  const secondRound =
-    competitorIds.map((_, index) => {
-      return competitorIds[
+  const passage2 = competitorIds.map(
+    (_, index) =>
+      competitorIds[
         (index + offset) %
           competitorIds.length
-      ];
-    });
+      ]
+  );
 
-  firstRound.forEach((competitorId) => {
+  passage1.forEach((competitorId) => {
     passages.push({
       id: makeId("kata-passage-1"),
 
@@ -873,7 +873,7 @@ function PoolsManager({
     });
   });
 
-  secondRound.forEach((competitorId) => {
+  passage2.forEach((competitorId) => {
     passages.push({
       id: makeId("kata-passage-2"),
 
@@ -899,8 +899,7 @@ function PoolsManager({
   });
 
   return passages;
-}
-  function getKataPassage(
+}  function getKataPassage(
     pool,
     competitorId,
     numero
