@@ -3106,3 +3106,116 @@ footer span {
     text-align: left;
   }
 }
+
+/* ========================================
+   KATA — BANDEAU LIVE STICKY
+======================================== */
+
+.kata-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  gap: 16px;
+  margin: 0 0 24px;
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-horizon-gold);
+  border-radius: 16px;
+  box-shadow: 0 14px 35px rgba(0, 43, 73, 0.14);
+}
+
+.kata-live-main {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.kata-live-main > div {
+  min-width: 0;
+  padding: 16px;
+  background: #f7f9fc;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.kata-live-main h2 {
+  margin: 6px 0;
+  color: var(--color-afdp-blue);
+  font-size: clamp(32px, 6vw, 52px);
+  line-height: 1;
+}
+
+.kata-live-main p {
+  margin: 4px 0;
+}
+
+.kata-live-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 10px;
+}
+
+.kata-live-details span {
+  min-width: 0;
+  padding: 10px 12px;
+  background: #f7f9fc;
+  border-radius: 10px;
+  color: var(--color-text);
+}
+
+.kata-live-details strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.kata-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.kata-progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-afdp-blue);
+}
+
+.kata-progress-track {
+  height: 12px;
+  overflow: hidden;
+  background: #e7edf4;
+  border-radius: 999px;
+}
+
+.kata-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-horizon-gold), var(--color-afdp-blue));
+  border-radius: inherit;
+  transition: width 0.2s ease;
+}
+
+@media (max-width: 700px) {
+  .kata-sticky-header {
+    margin-inline: -8px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .kata-live-main {
+    grid-template-columns: 1fr;
+  }
+
+  .kata-live-main > div {
+    padding: 12px;
+  }
+
+  .kata-live-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

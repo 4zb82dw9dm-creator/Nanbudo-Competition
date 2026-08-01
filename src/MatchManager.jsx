@@ -10,6 +10,8 @@ function MatchManager({
   type,
   eventType,
   kataStage = "",
+  category,
+  pool,
 }) {
   /*
    * =========================================================
@@ -132,6 +134,45 @@ function MatchManager({
   }
 
   const resultatKata = calculerKata();
+
+  const kataJudgesCompleted = notesKata.filter((note) =>
+    Number.isFinite(Number(note))
+  ).length;
+
+  const kataJudgesTotal = notesKata.length;
+
+  const kataProgressPercent = kataJudgesTotal
+    ? (kataJudgesCompleted / kataJudgesTotal) * 100
+    : 0;
+
+  const moyenneKata = notesKata.length
+    ? notesKata.reduce(
+        (somme, note) => somme + Number(note),
+        0
+      ) / notesKata.length
+    : 0;
+
+  const competitorDisplayName = competitor
+    ? `${competitor.nom || ""} ${
+        competitor.prenom || ""
+      }`.trim()
+    : "Compétiteur";
+
+  const kataCategoryLabel =
+    category?.nom || category?.name || pool?.nom || "—";
+
+  const kataTatamiLabel =
+    pool?.tatami ||
+    pool?.tatamiNumber ||
+    pool?.tatamiId ||
+    category?.tatami ||
+    "—";
+
+  const kataPassageNumber =
+    typeof passage === "number" ||
+    typeof passage === "string"
+      ? passage
+      : "—";
 
   /*
    * =========================================================
@@ -707,17 +748,92 @@ function MatchManager({
           </div>
         )}
 
-        <div className="match-score">
-          <div>
-            <strong>NOTE FINALE</strong>
+        <div className="kata-sticky-header">
+          <div className="kata-live-main">
+            <div>
+              <p className="surtitle">
+                Score live
+              </p>
 
-            <h2>
-              {resultatKata.total.toFixed(1)}
-            </h2>
+              <h2>
+                {resultatKata.total.toFixed(1)}
+              </h2>
 
-            <p>
-              Total des 3 notes retenues
-            </p>
+              <p>
+                Total des 3 notes retenues
+              </p>
+            </div>
+
+            <div>
+              <p className="surtitle">
+                Moyenne provisoire
+              </p>
+
+              <h2>
+                {moyenneKata.toFixed(1)}
+              </h2>
+
+              <p>
+                Moyenne des notes saisies
+              </p>
+            </div>
+          </div>
+
+          <div className="kata-live-details">
+            <span>
+              <strong>Nom</strong>
+              {competitor?.nom || "—"}
+            </span>
+
+            <span>
+              <strong>Prénom</strong>
+              {competitor?.prenom || "—"}
+            </span>
+
+            <span>
+              <strong>Club</strong>
+              {competitor?.club || "—"}
+            </span>
+
+            <span>
+              <strong>Catégorie</strong>
+              {kataCategoryLabel}
+            </span>
+
+            <span>
+              <strong>Épreuve</strong>
+              {eventType || "—"}
+            </span>
+
+            <span>
+              <strong>Tatami</strong>
+              {kataTatamiLabel}
+            </span>
+
+            <span>
+              <strong>Passage</strong>
+              {kataPassageNumber}
+            </span>
+          </div>
+
+          <div className="kata-progress"
+            aria-label={`Arbitres : ${kataJudgesCompleted} / ${kataJudgesTotal}`}
+          >
+            <div className="kata-progress-label">
+              <strong>Arbitres</strong>
+              <span>
+                {kataJudgesCompleted} / {kataJudgesTotal}
+              </span>
+            </div>
+
+            <div className="kata-progress-track">
+              <div
+                className="kata-progress-bar"
+                style={{
+                  width: `${kataProgressPercent}%`,
+                }}
+              />
+            </div>
           </div>
         </div>
 

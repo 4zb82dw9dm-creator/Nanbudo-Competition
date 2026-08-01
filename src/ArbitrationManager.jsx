@@ -3320,6 +3320,11 @@ function ArbitrationManager({
                   competitor={getCompetitor(
                     selectedPassage.competitorId
                   )}
+                  category={selectedCategory}
+                  pool={selectedPool}
+                  eventType={getEventLabel(
+                    selectedEvent
+                  )}
                   passage={selectedPassage.numero}
                   initialResult={
                     selectedPassage.statut === "Terminé"
@@ -3349,6 +3354,11 @@ function ArbitrationManager({
                     }
                     competitor={getCompetitor(
                       selectedFinalPassage.competitorId
+                    )}
+                    category={selectedCategory}
+                    pool={selectedPool}
+                    eventType={getEventLabel(
+                      selectedEvent
                     )}
                     passage={
                       selectedFinalPassage.phase ===
