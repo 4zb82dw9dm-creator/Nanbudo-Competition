@@ -917,8 +917,42 @@ function ArbitrationManager({
    * COMBAT — ENREGISTREMENT
    * =========================================================
    */
+function updateMatchStatus(
+  match,
+  matchType,
+  newStatus
+) {
+  if (!selectedPool) return;
 
-  function saveOfficialMatch(result) {
+  const updatedPools = pools.map((pool) => {
+    if (!sameId(pool.id, selectedPool.id)) {
+      return pool;
+    }
+
+    const key =
+      matchType === "final"
+        ? "finalMatches"
+        : "matches";
+
+    return {
+      ...pool,
+
+      [key]: pool[key].map((m) =>
+        sameId(m.id, match.id)
+          ? {
+              ...m,
+              statut: newStatus,
+            }
+          : m
+      ),
+    };
+  });
+
+  onUpdateCompetition({
+    ...competition,
+    pools: updatedPools,
+  });
+}  function saveOfficialMatch(result) {
     if (!selectedPool || !selectedMatch) {
       return;
     }
