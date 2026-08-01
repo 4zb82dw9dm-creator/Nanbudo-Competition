@@ -1043,6 +1043,42 @@ function MatchManager({
     );
   }
 
+  const combatCategoryLabel =
+    category?.nom || category?.name || pool?.nom || "—";
+
+  const combatTatamiLabel =
+    pool?.tatami ||
+    pool?.tatamiNumber ||
+    pool?.tatamiId ||
+    category?.tatami ||
+    "—";
+
+  const combatEventLabel =
+    eventType || type || mode || "Randori";
+
+  const akaDisplayName = `${match?.aka?.nom || "Compétiteur"} ${
+    match?.aka?.prenom || ""
+  }`.trim();
+
+  const shiroDisplayName = `${match?.shiro?.nom || "Compétiteur"} ${
+    match?.shiro?.prenom || ""
+  }`.trim();
+
+  const combatProgressPercent =
+    (nombreVotesRenseignes / 21) * 100;
+
+  let decisionProvisoire = "Égalité";
+
+  if (akaDisqualifie && !shiroDisqualifie) {
+    decisionProvisoire = "Blanc";
+  } else if (shiroDisqualifie && !akaDisqualifie) {
+    decisionProvisoire = "Rouge";
+  } else if (scoreFinalAka > scoreFinalShiro) {
+    decisionProvisoire = "Rouge";
+  } else if (scoreFinalShiro > scoreFinalAka) {
+    decisionProvisoire = "Blanc";
+  }
+
   /*
    * =========================================================
    * AFFICHAGE JU RANDORI
@@ -1058,7 +1094,7 @@ function MatchManager({
       <div className="manager-header randori-header">
         <div>
           <p className="surtitle">
-            JU RANDORI
+            {combatEventLabel}
           </p>
 
           <h2>Feuille de combat</h2>
@@ -1076,6 +1112,94 @@ function MatchManager({
           <span>
             votes renseignés
           </span>
+        </div>
+      </div>
+
+      <div className="kata-sticky-header randori-sticky-header">
+        <div className="kata-live-main randori-live-main">
+          <div>
+            <p className="surtitle">
+              Score live
+            </p>
+
+            <h2>
+              {scoreFinalAka} — {scoreFinalShiro}
+            </h2>
+
+            <p>
+              Rouge / Blanc
+            </p>
+          </div>
+
+          <div>
+            <p className="surtitle">
+              Décision provisoire
+            </p>
+
+            <h2>{decisionProvisoire}</h2>
+
+            <p>
+              Mise à jour à chaque saisie
+            </p>
+          </div>
+        </div>
+
+        <div className="kata-live-details randori-live-details">
+          <span>
+            <strong>Tatami</strong>
+            {combatTatamiLabel}
+          </span>
+
+          <span>
+            <strong>Épreuve</strong>
+            {combatEventLabel}
+          </span>
+
+          <span>
+            <strong>Catégorie</strong>
+            {combatCategoryLabel}
+          </span>
+
+          <span>
+            <strong>Rouge</strong>
+            {akaDisplayName}
+          </span>
+
+          <span>
+            <strong>Club rouge</strong>
+            {match?.aka?.club || "—"}
+          </span>
+
+          <span>
+            <strong>Blanc</strong>
+            {shiroDisplayName}
+          </span>
+
+          <span>
+            <strong>Club blanc</strong>
+            {match?.shiro?.club || "—"}
+          </span>
+        </div>
+
+        <div
+          className="kata-progress"
+          aria-label={`Arbitres : ${nombreVotesRenseignes} / 21`}
+        >
+          <div className="kata-progress-label">
+            <strong>Arbitres</strong>
+            <span>
+              {nombreVotesRenseignes} / 21 votes
+            </span>
+          </div>
+
+          <div className="kata-progress-track">
+            <div
+              className="kata-progress-bar"
+              style={{
+                width: `${combatProgressPercent}%`,
+              }}
+            />
+          </div>
         </div>
       </div>
 
