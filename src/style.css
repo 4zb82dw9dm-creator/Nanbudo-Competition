@@ -3219,3 +3219,25 @@ footer span {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ========================================
+   RANDORI / JU RANDORI — BANDEAU LIVE STICKY
+======================================== */
+
+.randori-sticky-header {
+  border-top-color: var(--color-afdp-red);
+}
+
+.randori-live-main h2 {
+  color: var(--color-afdp-red);
+}
+
+.randori-live-details span:nth-child(4),
+.randori-live-details span:nth-child(5) {
+  border-left: 4px solid var(--color-afdp-red);
+}
+
+.randori-live-details span:nth-child(6),
+.randori-live-details span:nth-child(7) {
+  border-left: 4px solid var(--color-afdp-blue);
+}
