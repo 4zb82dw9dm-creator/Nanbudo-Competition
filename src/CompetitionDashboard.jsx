@@ -5,6 +5,7 @@ import ArbitrationManager from "./ArbitrationManager";
 import ResultsManager from "./ResultsManager";
 import PlanningManager from "./PlanningManager";
 import ControlCenter from "./ControlCenter";
+import LiveCompetitionManager from "./LiveCompetitionManager";
 
 const EMPTY_FORM = {
   nom: "",
@@ -858,6 +859,13 @@ function CompetitionDashboard({
         </button>
 
         <button
+          className={view === "live" ? "active" : ""}
+          onClick={() => setView("live")}
+        >
+          Compétition Live
+        </button>
+
+        <button
           className={view === "results" ? "active" : ""}
           onClick={() => setView("results")}
         >
@@ -1323,6 +1331,13 @@ function CompetitionDashboard({
 
       {view === "planning" && (
         <PlanningManager competition={competition} />
+      )}
+
+      {view === "live" && (
+        <LiveCompetitionManager
+          competition={competition}
+          onUpdateCompetition={onUpdateCompetition}
+        />
       )}
 
       {view === "results" && (
