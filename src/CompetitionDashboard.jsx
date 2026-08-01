@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import CategoriesManager from "./CategoriesManager";
 import PoolsManager from "./PoolsManager";
+import PlanningManager from "./PlanningManager";
 import ArbitrationManager from "./ArbitrationManager";
 import ResultsManager from "./ResultsManager";
 
@@ -835,6 +836,13 @@ function CompetitionDashboard({
         </button>
 
         <button
+          className={view === "planning" ? "active" : ""}
+          onClick={() => setView("planning")}
+        >
+          Planning
+        </button>
+
+        <button
           className={view === "arbitrage" ? "active" : ""}
           onClick={() => setView("arbitrage")}
         >
@@ -1289,6 +1297,13 @@ function CompetitionDashboard({
 
       {view === "poules" && (
         <PoolsManager
+          competition={competition}
+          onUpdateCompetition={onUpdateCompetition}
+        />
+      )}
+
+      {view === "planning" && (
+        <PlanningManager
           competition={competition}
           onUpdateCompetition={onUpdateCompetition}
         />

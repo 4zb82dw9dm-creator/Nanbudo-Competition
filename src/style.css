@@ -2892,3 +2892,50 @@ footer span {
     text-align: right !important;
   }
 }
+
+/* ========================================
+   PLANNING
+======================================== */
+
+.planning-manager {
+  display: grid;
+  gap: 18px;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 20px rgba(20, 33, 61, 0.06);
+}
+
+.planning-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.planning-table th,
+.planning-table td {
+  padding: 13px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.planning-table th {
+  background: var(--color-afdp-blue);
+  color: white;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.planning-table tr[draggable="true"] {
+  cursor: grab;
+}
+
+.planning-table tbody tr:hover {
+  background: #f8fafc;
+}
