@@ -284,27 +284,33 @@ function CategoriesManager({
     return age < 10 ? "randori" : "juRandori";
   }
 
-  function isAgeAllowedForEvent(
-    competitor,
-    type = eventType
-  ) {
-    const age = getAge(competitor);
+function isAgeAllowedForEvent(
+  competitor,
+  type = eventType
+) {
+  const age = getAge(competitor);
 
-    if (age === null) {
-      return true;
-    }
-
-    if (type === "randori") {
-      return age < 10;
-    }
-
-    if (eventIsJuRandori(type)) {
-      return age >= 10;
-    }
-
+  if (age === null) {
     return true;
   }
 
+  // Kata 0 réservé aux 10 ans maximum
+  if (type === "kata0") {
+    return age <= 10;
+  }
+
+  // Randori réservé aux 10 ans maximum
+  if (type === "randori") {
+    return age <= 10;
+  }
+
+  // Ju Randori réservé aux plus de 10 ans
+  if (eventIsJuRandori(type)) {
+    return age > 10;
+  }
+
+  return true;
+}
   function isRegisteredForEvent(
     competitor,
     type = eventType
