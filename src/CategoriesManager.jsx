@@ -2170,7 +2170,7 @@ function isAgeAllowedForEvent(
       eventType === "randori" &&
       selectedCompetitors.some(
         (competitor) =>
-          getAge(competitor) >= 10
+          getAge(competitor) > 10
       )
     ) {
       alert(
@@ -2183,7 +2183,7 @@ function isAgeAllowedForEvent(
       eventIsJuRandori() &&
       selectedCompetitors.some(
         (competitor) =>
-          getAge(competitor) < 10
+          getAge(competitor) <= 10
       )
     ) {
       alert(
