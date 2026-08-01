@@ -1,4 +1,8 @@
 import { useState } from "react";
+import {
+  buildPoolQualityReport,
+  distributeCompetitorsIntoPools,
+} from "./poolEngine";
 
 const EVENT_LABELS = {
   kata0: "Kata 0 — Shihotai",
@@ -360,37 +364,52 @@ function PoolsManager({
     return [];
   }
 
-  const players = [...competitorIds];
+  const remainingPairs = [];
 
-  const ghost = "__BYE__";
-
-  if (players.length % 2 !== 0) {
-    players.push(ghost);
+  for (let i = 0; i < competitorIds.length; i++) {
+    for (let j = i + 1; j < competitorIds.length; j++) {
+      remainingPairs.push([competitorIds[i], competitorIds[j]]);
+    }
   }
 
-  const rounds = [];
-  const rotation = [...players];
+  const orderedPairs = [];
+  const lastPassage = new Map(
+    competitorIds.map((id) => [String(id), -Infinity])
+  );
 
-  const roundsCount = rotation.length - 1;
+  while (remainingPairs.length > 0) {
+    const best = remainingPairs
+      .map((pair, index) => {
+        const recovery = Math.min(
+          orderedPairs.length - lastPassage.get(String(pair[0])),
+          orderedPairs.length - lastPassage.get(String(pair[1]))
+        );
 
-  for (let round = 0; round < roundsCount; round++) {
-    const currentRound = [];
+        return {
+          index,
+          recovery,
+          consecutive: recovery <= 1,
+        };
+      })
+      .sort(
+        (a, b) =>
+          Number(a.consecutive) - Number(b.consecutive) ||
+          b.recovery - a.recovery
+      )[0];
 
-    for (let i = 0; i < rotation.length / 2; i++) {
-      const a = rotation[i];
-      const b = rotation[rotation.length - 1 - i];
+    const pair = remainingPairs.splice(best.index, 1)[0];
+    orderedPairs.push(pair);
+    lastPassage.set(String(pair[0]), orderedPairs.length - 1);
+    lastPassage.set(String(pair[1]), orderedPairs.length - 1);
+  }
 
-      if (a !== ghost && b !== ghost) {
-      currentRound.push({
+  return orderedPairs.map(([akaId, shiroId], index) => ({
     id: makeId("match"),
 
-    numero:
-        rounds.length +
-        currentRound.length +
-        1,
+    numero: index + 1,
 
-    akaId: a,
-    shiroId: b,
+    akaId,
+    shiroId,
 
     akaScore: null,
     shiroScore: null,
@@ -401,27 +420,9 @@ function PoolsManager({
     winnerId: null,
 
     statut: "À jouer",
-});      }
-    }
-
-    rounds.push(...currentRound);
-
-    const fixed = rotation[0];
-
-    const moving = rotation.slice(1);
-
-    moving.unshift(moving.pop());
-
-    rotation.splice(
-      0,
-      rotation.length,
-      fixed,
-      ...moving
-    );
-  }
-
-  return rounds;
-}  /*
+  }));
+}
+  /*
    * =========================================================
    * COMBAT — CLASSEMENT
    * =========================================================
@@ -1107,86 +1108,113 @@ function PoolsManager({
       return;
     }
 
-    const competitorIds =
-      category.competitorIds || [];
-
-    const kata =
-      isKata(
-        category.epreuve
+    const poolCompetitorIds =
+      distributeCompetitorsIntoPools(
+        validation.competitors
       );
 
-    const newPool = {
-      id: makeId("pool"),
+    const generatedMatchesByPool = [];
 
-      categoryId:
-        category.id,
-
-      epreuve:
-        category.epreuve,
-
-      epreuveLabel:
-        getEventLabel(
+    const newPools = poolCompetitorIds.map(
+      (competitorIds, index) => {
+        const kata = isKata(
           category.epreuve
-        ),
+        );
 
-      type: kata
-        ? "kata"
-        : "combat",
+        const matches = kata
+          ? []
+          : generateMatches(
+              competitorIds
+            );
 
-      nom: `Poule - ${category.nom}`,
+        generatedMatchesByPool.push(
+          matches
+        );
 
-      competitorIds: [
-        ...competitorIds,
-      ],
+        return {
+          id: makeId("pool"),
 
-      ageClass:
-        category.ageClass ||
-        getAgeClass(
-          getAge(
-            validation.competitors[0]
-          )
-        ),
+          categoryId:
+            category.id,
 
-      sexe:
-        category.sexe ||
-        normalizeSex(
-          validation.competitors[0]
-            ?.sexe
-        ),
+          epreuve:
+            category.epreuve,
 
-      matches: kata
-        ? []
-        : generateMatches(
-            competitorIds
-          ),
+          epreuveLabel:
+            getEventLabel(
+              category.epreuve
+            ),
 
-      passages: kata
-        ? generateKataPassages(
-            competitorIds
-          )
-        : [],
+          type: kata
+            ? "kata"
+            : "combat",
 
-      combatTieBreaks: [],
+          nom:
+            poolCompetitorIds.length > 1
+              ? `Poule ${index + 1} - ${category.nom}`
+              : `Poule - ${category.nom}`,
 
-      statut: "Prête",
+          competitorIds: [
+            ...competitorIds,
+          ],
 
-      closingMode: "",
+          ageClass:
+            category.ageClass ||
+            getAgeClass(
+              getAge(
+                validation.competitors[0]
+              )
+            ),
 
-      rankingLocked: [],
+          sexe:
+            category.sexe ||
+            normalizeSex(
+              validation.competitors[0]
+                ?.sexe
+            ),
 
-      finalMatches: [],
+          matches,
 
-      finalPassages: [],
+          passages: kata
+            ? generateKataPassages(
+                competitorIds
+              )
+            : [],
 
-      podium: null,
-    };
+          combatTieBreaks: [],
+
+          statut: "Prête",
+
+          closingMode: "",
+
+          rankingLocked: [],
+
+          finalMatches: [],
+
+          finalPassages: [],
+
+          podium: null,
+        };
+      }
+    );
+
+    const poolQualityReport =
+      buildPoolQualityReport(
+        poolCompetitorIds,
+        validation.competitors,
+        generatedMatchesByPool
+      );
 
     onUpdateCompetition({
       ...competition,
 
       pools: [
         ...pools,
-        newPool,
+        ...newPools.map((pool, index) => ({
+          ...pool,
+          poolQualityReport,
+          poolQualityIndex: index,
+        })),
       ],
     });
 
@@ -1973,6 +2001,15 @@ function PoolsManager({
                 tieBreaksNeeded.length ===
                   0;
 
+              const qualityReport =
+                pool.poolQualityReport;
+
+              const poolQuality =
+                qualityReport?.conflicts?.[
+                  pool.poolQualityIndex ||
+                    0
+                ];
+
               return (
                 <article
                   className="competition"
@@ -2048,6 +2085,37 @@ function PoolsManager({
                         }
                       )}
                     </div>
+
+                    {qualityReport && (
+                      <div className="beta-note">
+                        <strong>
+                          Qualité de répartition : {qualityReport.score}/100
+                        </strong>
+
+                        <p>
+                          {qualityReport.poolCount} poule
+                          {qualityReport.poolCount > 1 ? "s" : ""}
+                          {" · tailles : "}
+                          {qualityReport.sizes.join(" + ")}
+                          {" · clubs dans cette poule : "}
+                          {poolQuality?.clubCount || 0}
+                        </p>
+
+                        <p>
+                          {poolQuality?.duplicatedClubs?.length > 0
+                            ? `Conflits club : ${poolQuality.duplicatedClubs
+                                .map((item) => `${item.club} ×${item.count}`)
+                                .join(", ")}`
+                            : "✔ clubs équilibrés"}
+                        </p>
+
+                        <p>
+                          {qualityReport.consecutiveCount === 0
+                            ? "✔ aucune rotation consécutive"
+                            : `${qualityReport.consecutiveCount} rotation(s) consécutive(s) inévitable(s) ou détectée(s)`}
+                        </p>
+                      </div>
+                    )}
 
                     {/* ======================
                         KATA
