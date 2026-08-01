@@ -7,6 +7,7 @@ import PlanningManager from "./PlanningManager";
 import ControlCenter from "./ControlCenter";
 import LiveCompetitionManager from "./LiveCompetitionManager";
 import SimulationManager from "./SimulationManager";
+import CompetitionHealthManager from "./CompetitionHealthManager";
 
 const EMPTY_FORM = {
   nom: "",
@@ -879,6 +880,13 @@ function CompetitionDashboard({
         >
           Simulation
         </button>
+
+        <button
+          className={view === "health" ? "active" : ""}
+          onClick={() => setView("health")}
+        >
+          Santé
+        </button>
       </nav>
 
       {view === "dashboard" && (
@@ -1354,6 +1362,13 @@ function CompetitionDashboard({
 
       {view === "simulation" && (
         <SimulationManager competition={competition} />
+      )}
+
+      {view === "health" && (
+        <CompetitionHealthManager
+          competition={competition}
+          onUpdateCompetition={onUpdateCompetition}
+        />
       )}
     </section>
   );
