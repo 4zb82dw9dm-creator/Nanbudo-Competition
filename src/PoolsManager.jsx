@@ -381,13 +381,13 @@ function PoolsManager({
       const b = rotation[rotation.length - 1 - i];
 
       if (a !== ghost && b !== ghost) {
-        currentRound.push({
-          id: makeId("match"),
+       currentRound.push({
+    id: makeId("match"),
 
-          akaId: a,
-          shiroId: b,
+    numero: rounds.length + currentRound.length + 1,
 
-          akaScore: null,
+    akaId: a,
+    shiroId: b,          akaScore: null,
           shiroScore: null,
 
           pointsNegatifsAka: 0,
