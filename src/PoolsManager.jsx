@@ -355,33 +355,37 @@ function PoolsManager({
    * =========================================================
    */
 
-  function generateMatches(competitorIds) {
-  const ids = [...competitorIds];
-
-  const rounds = [];
-  const hasBye = ids.length % 2 !== 0;
-
-  if (hasBye) {
-    ids.push(null);
+ function generateMatches(competitorIds) {
+  if (competitorIds.length < 2) {
+    return [];
   }
 
-  const totalPlayers = ids.length;
-  const totalRounds = totalPlayers - 1;
-  const matchesPerRound = totalPlayers / 2;
+  const players = [...competitorIds];
 
-  let rotation = [...ids];
+  const ghost = "__BYE__";
 
-  for (let round = 0; round < totalRounds; round++) {
-    for (let i = 0; i < matchesPerRound; i++) {
-      const home = rotation[i];
-      const away = rotation[totalPlayers - 1 - i];
+  if (players.length % 2 !== 0) {
+    players.push(ghost);
+  }
 
-      if (home !== null && away !== null) {
-        rounds.push({
+  const rounds = [];
+  const rotation = [...players];
+
+  const roundsCount = rotation.length - 1;
+
+  for (let round = 0; round < roundsCount; round++) {
+    const currentRound = [];
+
+    for (let i = 0; i < rotation.length / 2; i++) {
+      const a = rotation[i];
+      const b = rotation[rotation.length - 1 - i];
+
+      if (a !== ghost && b !== ghost) {
+        currentRound.push({
           id: makeId("match"),
 
-          akaId: home,
-          shiroId: away,
+          akaId: a,
+          shiroId: b,
 
           akaScore: null,
           shiroScore: null,
@@ -396,18 +400,24 @@ function PoolsManager({
       }
     }
 
+    rounds.push(...currentRound);
+
     const fixed = rotation[0];
 
     const moving = rotation.slice(1);
 
     moving.unshift(moving.pop());
 
-    rotation = [fixed, ...moving];
+    rotation.splice(
+      0,
+      rotation.length,
+      fixed,
+      ...moving
+    );
   }
 
   return rounds;
-}
-  /*
+}  /*
    * =========================================================
    * COMBAT — CLASSEMENT
    * =========================================================
