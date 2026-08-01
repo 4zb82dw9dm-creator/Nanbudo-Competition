@@ -551,7 +551,7 @@ function isAgeAllowedForEvent(
       category.epreuve === "randori" &&
       categoryCompetitors.some((competitor) => {
         const age = getAge(competitor);
-        return age !== null && age >= 10;
+        return age !== null && age > 10;
       })
     ) {
       problems.push(
