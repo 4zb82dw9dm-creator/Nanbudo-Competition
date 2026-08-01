@@ -356,23 +356,32 @@ function PoolsManager({
    */
 
   function generateMatches(competitorIds) {
-    const matches = [];
+  const ids = [...competitorIds];
 
-    for (
-      let i = 0;
-      i < competitorIds.length;
-      i++
-    ) {
-      for (
-        let j = i + 1;
-        j < competitorIds.length;
-        j++
-      ) {
-        matches.push({
+  const rounds = [];
+  const hasBye = ids.length % 2 !== 0;
+
+  if (hasBye) {
+    ids.push(null);
+  }
+
+  const totalPlayers = ids.length;
+  const totalRounds = totalPlayers - 1;
+  const matchesPerRound = totalPlayers / 2;
+
+  let rotation = [...ids];
+
+  for (let round = 0; round < totalRounds; round++) {
+    for (let i = 0; i < matchesPerRound; i++) {
+      const home = rotation[i];
+      const away = rotation[totalPlayers - 1 - i];
+
+      if (home !== null && away !== null) {
+        rounds.push({
           id: makeId("match"),
 
-          akaId: competitorIds[i],
-          shiroId: competitorIds[j],
+          akaId: home,
+          shiroId: away,
 
           akaScore: null,
           shiroScore: null,
@@ -387,9 +396,17 @@ function PoolsManager({
       }
     }
 
-    return matches;
+    const fixed = rotation[0];
+
+    const moving = rotation.slice(1);
+
+    moving.unshift(moving.pop());
+
+    rotation = [fixed, ...moving];
   }
 
+  return rounds;
+}
   /*
    * =========================================================
    * COMBAT — CLASSEMENT
