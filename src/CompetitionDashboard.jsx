@@ -3,6 +3,7 @@ import CategoriesManager from "./CategoriesManager";
 import PoolsManager from "./PoolsManager";
 import ArbitrationManager from "./ArbitrationManager";
 import ResultsManager from "./ResultsManager";
+import PlanningManager from "./PlanningManager";
 
 const EMPTY_FORM = {
   nom: "",
@@ -842,6 +843,13 @@ function CompetitionDashboard({
         </button>
 
         <button
+          className={view === "planning" ? "active" : ""}
+          onClick={() => setView("planning")}
+        >
+          Planning
+        </button>
+
+        <button
           className={view === "results" ? "active" : ""}
           onClick={() => setView("results")}
         >
@@ -1299,6 +1307,10 @@ function CompetitionDashboard({
           competition={competition}
           onUpdateCompetition={onUpdateCompetition}
         />
+      )}
+
+      {view === "planning" && (
+        <PlanningManager competition={competition} />
       )}
 
       {view === "results" && (
