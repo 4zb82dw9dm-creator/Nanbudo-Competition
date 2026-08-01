@@ -1965,101 +1965,100 @@ function ArbitrationManager({
    * =========================================================
    */
 
-  function renderMatch(match, label, matchType) {
-    const aka = getCompetitor(match.akaId);
-    const shiro = getCompetitor(match.shiroId);
+ function renderMatch(match, label, matchType) {
+  const aka = getCompetitor(match.akaId);
+  const shiro = getCompetitor(match.shiroId);
 
-    const winner = match.winnerId
-      ? getCompetitor(match.winnerId)
-      : null;
+  const winner = match.winnerId
+    ? getCompetitor(match.winnerId)
+    : null;
 
-    return (
-      <article
-        className={`competition ${
-          match.statut === "Terminé"
-            ? "competition-terminee"
-            : ""
-        }`}
-        key={match.id}
+  const statusIcon =
+    match.statut === "Terminé"
+      ? "🟢"
+      : match.statut === "En cours"
+      ? "🔴"
+      : match.statut === "Appelé"
+      ? "🟡"
+      : "⚪";
+
+  return (
+    <article
+      className={`competition ${
+        match.statut === "Terminé"
+          ? "competition-terminee"
+          : ""
+      }`}
+      key={match.id}
+    >
+      <div>
+        <p className="surtitle">
+          {label}
+        </p>
+
+        <h3>
+          Combat {match.numero || ""}
+        </h3>
+
+        <p>
+          {statusIcon} {match.statut}
+        </p>
+
+        <h3>
+          🔴 AKA —{" "}
+          {aka
+            ? `${aka.nom} ${aka.prenom}`
+            : "Inconnu"}
+        </h3>
+
+        <p>VS</p>
+
+        <h3>
+          ⚪ SHIRO —{" "}
+          {shiro
+            ? `${shiro.nom} ${shiro.prenom}`
+            : "Inconnu"}
+        </h3>
+
+        {match.statut === "Terminé" && (
+          <div className="beta-note">
+            <strong>
+              {match.akaScore}
+              {" — "}
+              {match.shiroScore}
+            </strong>
+
+            <p>
+              {winner
+                ? `Vainqueur : ${winner.nom} ${winner.prenom}`
+                : "Résultat incomplet"}
+            </p>
+
+            <p>
+              PN AKA :{" "}
+              {Number(match.pointsNegatifsAka) || 0}
+              {" · "}
+              PN SHIRO :{" "}
+              {Number(match.pointsNegatifsShiro) || 0}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <button
+        className="manage-button"
+        type="button"
+        onClick={() =>
+          selectMatch(match, matchType)
+        }
       >
-        <div>
-          <p className="surtitle">{label}</p>
-
-          <h3>
-            🔴 AKA —{" "}
-            {aka
-              ? `${aka.nom} ${aka.prenom}`
-              : "Inconnu"}
-          </h3>
-
-          <p>contre</p>
-
-          <h3>
-            ⚪ SHIRO —{" "}
-            {shiro
-              ? `${shiro.nom} ${shiro.prenom}`
-              : "Inconnu"}
-          </h3>
-
-          {match.statut === "Terminé" && (
-            <div className="beta-note">
-              <strong>
-                {match.akaScore}
-                {" — "}
-                {match.shiroScore}
-              </strong>
-
-              <p>
-                {winner
-                  ? `Vainqueur : ${winner.nom} ${winner.prenom}`
-                  : "Résultat incomplet"}
-              </p>
-
-              <p>
-                PN AKA :{" "}
-                {Number(match.pointsNegatifsAka) || 0}
-                {" · "}
-                PN SHIRO :{" "}
-                {Number(match.pointsNegatifsShiro) || 0}
-              </p>
-
-              {match.decisionType === "departage" && (
-                <p>
-                  ⚖️ Victoire après départage
-                </p>
-              )}
-
-              {match.decisionType === "drapeaux" && (
-                <p>
-                  🏁 Décision aux drapeaux
-                </p>
-              )}
-
-              {match.decisionType ===
-                "disqualification" && (
-                <p>
-                  ⛔ Victoire par disqualification
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <button
-          className="manage-button"
-          type="button"
-          onClick={() =>
-            selectMatch(match, matchType)
-          }
-        >
-          {match.statut === "Terminé"
-            ? "Modifier"
-            : "Arbitrer"}
-        </button>
-      </article>
-    );
-  }
-
+        {match.statut === "Terminé"
+          ? "Modifier"
+          : "Arbitrer"}
+      </button>
+    </article>
+  );
+}
   /*
    * =========================================================
    * AFFICHAGE DÉPARTAGE COMBAT
