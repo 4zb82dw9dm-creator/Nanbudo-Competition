@@ -281,7 +281,7 @@ function CategoriesManager({
       return null;
     }
 
-    return age < 10 ? "randori" : "juRandori";
+    return age <= 10 ? "randori" : "juRandori";
   }
 
 function isAgeAllowedForEvent(
