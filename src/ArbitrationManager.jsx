@@ -2045,14 +2045,56 @@ function ArbitrationManager({
         )}
       </div>
 
-      <button
-        className="manage-button"
-        type="button"
-        onClick={() =>
-          selectMatch(match, matchType)
-        }
-      >
-        {match.statut === "Terminé"
+     <div className="competition-actions">
+
+  {match.statut === "À jouer" && (
+    <button
+      className="manage-button"
+      type="button"
+      onClick={() =>
+        updateMatchStatus(
+          match,
+          matchType,
+          "Appelé"
+        )
+      }
+    >
+      📢 Appeler
+    </button>
+  )}
+
+  {match.statut === "Appelé" && (
+    <button
+      className="primary"
+      type="button"
+      onClick={() =>
+        updateMatchStatus(
+          match,
+          matchType,
+          "En cours"
+        )
+      }
+    >
+      ▶ Démarrer
+    </button>
+  )}
+
+  {(match.statut === "En cours" ||
+    match.statut === "Terminé") && (
+    <button
+      className="manage-button"
+      type="button"
+      onClick={() =>
+        selectMatch(match, matchType)
+      }
+    >
+      {match.statut === "Terminé"
+        ? "Modifier"
+        : "Arbitrer"}
+    </button>
+  )}
+
+</div>        {match.statut === "Terminé"
           ? "Modifier"
           : "Arbitrer"}
       </button>
