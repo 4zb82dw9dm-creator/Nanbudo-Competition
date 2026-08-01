@@ -3,6 +3,7 @@ import "./style.css";
 import "./home.css";
 import CompetitionManager from "./CompetitionManager";
 import RegistrationManager from "./RegistrationManager";
+import CompetitorManager from "./CompetitorManager";
 import logoAfdp from "./assets/logo-afdp.png";
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
   const commissionNav = [
     ["competitions", "🏆", "Compétitions"],
     ["inscriptions", "✍", "Inscriptions"],
+    ["competiteurs", "🥋", "Compétiteurs"],
     ["organisateurs", "♙", "Organisateurs"],
     ["documents", "▤", "Documents"],
   ];
@@ -127,6 +129,7 @@ function App() {
           <main className="content">
             {section === "competitions" && <CompetitionManager />}
             {section === "inscriptions" && <RegistrationManager />}
+            {section === "competiteurs" && <CompetitorManager />}
             {section === "organisateurs" && <OrganizerSection />}
             {section === "documents" && <DocumentsSection />}
           </main>
