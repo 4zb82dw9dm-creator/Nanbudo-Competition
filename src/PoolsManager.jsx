@@ -821,68 +821,75 @@ function PoolsManager({
    * =========================================================
    */
 
-  function generateKataPassages(
-    competitorIds
-  ) {
-    const passages = [];
+  function generateKataPassages(competitorIds) {
+  const passages = [];
 
-    competitorIds.forEach(
-      (competitorId) => {
-        passages.push({
-          id: makeId(
-            "kata-passage-1"
-          ),
+  const firstRound = [...competitorIds];
 
-          competitorId,
+  const offset = Math.floor(
+    competitorIds.length / 2
+  );
 
-          numero: 1,
+  const secondRound =
+    competitorIds.map((_, index) => {
+      return competitorIds[
+        (index + offset) %
+          competitorIds.length
+      ];
+    });
 
-          notes: [
-            null,
-            null,
-            null,
-            null,
-            null,
-          ],
+  firstRound.forEach((competitorId) => {
+    passages.push({
+      id: makeId("kata-passage-1"),
 
-          noteMinRetiree: null,
-          noteMaxRetiree: null,
+      competitorId,
 
-          score: null,
+      numero: 1,
 
-          statut: "À noter",
-        });
+      notes: [
+        null,
+        null,
+        null,
+        null,
+        null,
+      ],
 
-        passages.push({
-          id: makeId(
-            "kata-passage-2"
-          ),
+      noteMinRetiree: null,
+      noteMaxRetiree: null,
 
-          competitorId,
+      score: null,
 
-          numero: 2,
+      statut: "À noter",
+    });
+  });
 
-          notes: [
-            null,
-            null,
-            null,
-            null,
-            null,
-          ],
+  secondRound.forEach((competitorId) => {
+    passages.push({
+      id: makeId("kata-passage-2"),
 
-          noteMinRetiree: null,
-          noteMaxRetiree: null,
+      competitorId,
 
-          score: null,
+      numero: 2,
 
-          statut: "À noter",
-        });
-      }
-    );
+      notes: [
+        null,
+        null,
+        null,
+        null,
+        null,
+      ],
 
-    return passages;
-  }
+      noteMinRetiree: null,
+      noteMaxRetiree: null,
 
+      score: null,
+
+      statut: "À noter",
+    });
+  });
+
+  return passages;
+}
   function getKataPassage(
     pool,
     competitorId,
