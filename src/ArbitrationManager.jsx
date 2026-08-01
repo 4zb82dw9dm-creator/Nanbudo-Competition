@@ -2125,10 +2125,7 @@ function updateMatchStatus(
       
   )}
 
-</div>        {match.statut === "Terminé"
-          ? "Modifier"
-          : "Arbitrer"}
-      </button>
+</div>        
     </article>
   );
 }
