@@ -917,42 +917,8 @@ function ArbitrationManager({
    * COMBAT — ENREGISTREMENT
    * =========================================================
    */
-function updateMatchStatus(
-  match,
-  matchType,
-  newStatus
-) {
-  if (!selectedPool) return;
 
-  const updatedPools = pools.map((pool) => {
-    if (!sameId(pool.id, selectedPool.id)) {
-      return pool;
-    }
-
-    const key =
-      matchType === "final"
-        ? "finalMatches"
-        : "matches";
-
-    return {
-      ...pool,
-
-      [key]: pool[key].map((m) =>
-        sameId(m.id, match.id)
-          ? {
-              ...m,
-              statut: newStatus,
-            }
-          : m
-      ),
-    };
-  });
-
-  onUpdateCompetition({
-    ...competition,
-    pools: updatedPools,
-  });
-}  function saveOfficialMatch(result) {
+  function saveOfficialMatch(result) {
     if (!selectedPool || !selectedMatch) {
       return;
     }
@@ -2079,54 +2045,18 @@ function updateMatchStatus(
         )}
       </div>
 
-     <div className="competition-actions">
-
-  {match.statut === "À jouer" && (
-    <button
-      className="manage-button"
-      type="button"
-      onClick={() =>
-        updateMatchStatus(
-          match,
-          matchType,
-          "Appelé"
-        )
-      }
-    >
-      📢 Appeler
-    </button>
-  )}
-
-  {match.statut === "Appelé" && (
-    <button
-      className="primary"
-      type="button"
-      onClick={() =>
-        updateMatchStatus(
-          match,
-          matchType,
-          "En cours"
-        )
-      }
-    >
-      ▶ Démarrer
-    </button>
-  )}
-
-   {(match.statut === "En cours" ||
-  match.statut === "Terminé") && (
-  <button
-    className="manage-button"
-    type="button"
-    onClick={() =>
-      selectMatch(match, matchType)
-    }
-  >
-    {match.statut === "Terminé"
-      ? "Modifier"
-      : "Arbitrer"}
-  </button>
-)}    </article>
+      <button
+        className="manage-button"
+        type="button"
+        onClick={() =>
+          selectMatch(match, matchType)
+        }
+      >
+        {match.statut === "Terminé"
+          ? "Modifier"
+          : "Arbitrer"}
+      </button>
+    </article>
   );
 }
   /*
