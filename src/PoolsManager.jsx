@@ -381,23 +381,27 @@ function PoolsManager({
       const b = rotation[rotation.length - 1 - i];
 
       if (a !== ghost && b !== ghost) {
-       currentRound.push({
+      currentRound.push({
     id: makeId("match"),
 
-    numero: rounds.length + currentRound.length + 1,
+    numero:
+        rounds.length +
+        currentRound.length +
+        1,
 
     akaId: a,
-    shiroId: b,          akaScore: null,
-          shiroScore: null,
+    shiroId: b,
 
-          pointsNegatifsAka: 0,
-          pointsNegatifsShiro: 0,
+    akaScore: null,
+    shiroScore: null,
 
-          winnerId: null,
+    pointsNegatifsAka: 0,
+    pointsNegatifsShiro: 0,
 
-          statut: "À jouer",
-        });
-      }
+    winnerId: null,
+
+    statut: "À jouer",
+});      }
     }
 
     rounds.push(...currentRound);
