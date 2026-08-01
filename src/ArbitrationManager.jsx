@@ -2113,20 +2113,20 @@ function updateMatchStatus(
     </button>
   )}
 
-  {(match.statut === "En cours" ||
-    match.statut === "Terminé") && (
-    <button
-      className="manage-button"
-      type="button"
-      onClick={() =>
-        selectMatch(match, matchType)
-      }
-    >
-      
-  )}
-
-</div>        
-    </article>
+   {(match.statut === "En cours" ||
+  match.statut === "Terminé") && (
+  <button
+    className="manage-button"
+    type="button"
+    onClick={() =>
+      selectMatch(match, matchType)
+    }
+  >
+    {match.statut === "Terminé"
+      ? "Modifier"
+      : "Arbitrer"}
+  </button>
+)}    </article>
   );
 }
   /*
