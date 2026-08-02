@@ -1,5 +1,7 @@
 import { Component, useEffect, useRef, useState } from "react";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
+import { buildRankings, canShowRankings, generateTournament, normalizeCompetitionData, parseCompetitorFile, recordMatchResult } from "./competitionWorkflow";
+import { buildCompetitionTestCompetitors } from "./competitionTestCompetitors";
 
 const STORAGE_KEY = COMPETITIONS_STORAGE_KEY;
 const WIZARD_FILE = "src/CompetitionManager.jsx";
@@ -9,7 +11,7 @@ const GRADES = ["Blanche", "Jaune", "Orange", "Verte", "Bleue", "Marron", "Noire
 const SEXES = ["Fille", "Garçon", "Femme", "Homme"];
 
 const DEFAULT_SETTINGS = {
-  categoriesOuvertes: ["Enfant", "Benjamin", "Minime", "Junior", "Senior"],
+  categoriesOuvertes: [...CATEGORIES],
   gradesAutorises: [...GRADES],
   poids: "Catégories officielles Nanbudo",
   sexe: "Fille, Garçon, Femme, Homme",
@@ -94,25 +96,20 @@ export const CompetitionService = {
   },
   /** Garantit la présence des modèles nécessaires aux modules futurs sans casser les anciennes données. */
   normalizeCompetition(competition) {
-    return {
+    const normalized = normalizeCompetitionData({
       ...EMPTY_COMPETITION,
       ...competition,
       settings: { ...DEFAULT_SETTINGS, ...(competition.settings || {}) },
-      participants: Array.isArray(competition.participants) ? competition.participants : Array.isArray(competition.competitors) ? competition.competitors : [],
-      competitors: Array.isArray(competition.competitors) ? competition.competitors : Array.isArray(competition.participants) ? competition.participants : [],
       clubs: Array.isArray(competition.clubs) ? competition.clubs : [],
       categories: Array.isArray(competition.categories) ? competition.categories : [],
       errors: Array.isArray(competition.errors) ? competition.errors : [],
       inscriptionsOuvertes: competition.statut === "Inscriptions ouvertes" || competition.inscriptionsOuvertes === true,
-      futureModules: {
-        tirage: null,
-        tableaux: [],
-        notation: null,
-        chronometre: null,
-        classements: [],
-        affichagePublic: null,
-        ...(competition.futureModules || {}),
-      },
+    });
+    return {
+      ...normalized,
+      settings: { ...DEFAULT_SETTINGS, ...(normalized.settings || {}) },
+      clubs: Array.isArray(normalized.clubs) ? normalized.clubs : [],
+      errors: Array.isArray(normalized.errors) ? normalized.errors : [],
     };
   },
   /** Duplique une compétition en conservant ses paramètres mais sans reprendre les inscriptions. */
@@ -173,15 +170,9 @@ export const ValidationService = {
 
 /** Service léger d'import CSV pour préparer les inscriptions en masse. */
 export const CSVImportService = {
-  /** Transforme un CSV à en-têtes en compétiteurs compatibles avec le formulaire. */
+  /** Transforme un fichier CSV ou JSON en compétiteurs normalisés. */
   parse(text) {
-    const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean);
-    if (!headerLine) return [];
-    const headers = headerLine.split(";").map((h) => h.trim());
-    return lines.map((line) => {
-      const values = line.split(";");
-      return headers.reduce((acc, header, index) => ({ ...acc, [header]: values[index]?.trim() || "" }), { ...EMPTY_PARTICIPANT });
-    });
+    return parseCompetitorFile(text).competitors;
   },
 };
 
@@ -190,8 +181,8 @@ const WIZARD_STEPS = [
   "Créer la compétition",
   "Ajouter les compétiteurs",
   "Contrôler automatiquement les inscriptions",
-  "Générer le tirage au sort",
-  "Lancer les combats",
+  "Générer les tableaux",
+  "Arbitrer les combats",
   "Classement et résultats",
 ];
 
@@ -260,19 +251,30 @@ export function CompetitionStepTwo({ competition, onUpdate, onContinue }) {
   const [showForm, setShowForm] = useState(false);
   const csvRef = useRef(null);
   const stats = quickStats(safeCompetition);
+  function mergeParticipants(importedParticipants, report = {}) {
+    const existingLicences = new Set(safeCompetition.participants.map((item) => String(item.licence || "").toLowerCase()).filter(Boolean));
+    const uniqueParticipants = importedParticipants.filter((item) => !existingLicences.has(String(item.licence || "").toLowerCase()));
+    const updatedParticipants = [...safeCompetition.participants, ...uniqueParticipants];
+    onUpdate({ ...safeCompetition, participants: updatedParticipants, competitors: updatedParticipants, importReport: { imported: uniqueParticipants.length, rejected: report.rejected || [], skippedDuplicates: importedParticipants.length - uniqueParticipants.length } });
+  }
   function importCsv(event) {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const importedParticipants = CSVImportService.parse(String(reader.result || "")).map((row) => ({ ...row, id: CompetitionService.createId("participant") }));
-      const updatedParticipants = [...safeCompetition.participants, ...importedParticipants];
-      onUpdate({ ...safeCompetition, participants: updatedParticipants, competitors: updatedParticipants });
+      const result = parseCompetitorFile(String(reader.result || ""));
+      mergeParticipants(result.competitors.map((row) => ({ ...row, id: row.id || CompetitionService.createId("participant") })), result);
     };
     reader.readAsText(file, "UTF-8");
     event.target.value = "";
   }
-  return <WizardCard eyebrow="Étape 2" title="Ajouter les compétiteurs" action={{ label: "Continuer", onClick: onContinue }}><input ref={csvRef} type="file" accept=".csv,text/csv" onChange={importCsv} hidden /><div className="wizard-choice step-two-actions"><button className="wizard-card action-card" type="button" onClick={() => setShowForm((value) => !value)}>➕ Ajouter un compétiteur</button><span>OU</span><button className="wizard-card action-card" type="button" onClick={() => csvRef.current?.click()}>📄 Importer un CSV</button></div>{showForm && <CompetitorMiniForm competition={safeCompetition} onUpdate={onUpdate} />}<div className="wizard-stats"><CompetitionCard label="Clubs" value={stats.clubs} /><CompetitionCard label="Compétiteurs" value={stats.competitors} /><CompetitionCard label="Catégories" value={stats.categories} /></div></WizardCard>;
+  function createTestCompetition() {
+    const currentYear = new Date().getFullYear();
+    const testParticipants = buildCompetitionTestCompetitors(currentYear, CompetitionService.createId("test"))
+      .map((competitor, index) => ({ ...competitor, licence: competitor.licence || `TEST-${currentYear}-${index + 1}`, categorie: competitor.age < 18 ? "Junior" : competitor.age > 39 ? "Vétéran" : "Senior", grade: "Noire", certificatMedical: true, autorisationParentale: true }));
+    onUpdate({ ...safeCompetition, nom: safeCompetition.nom || "Coupe de test Nanbudo", statut: "Préparation", participants: testParticipants, competitors: testParticipants, testData: true, importReport: { imported: testParticipants.length, rejected: [], skippedDuplicates: 0 } });
+  }
+  return <WizardCard eyebrow="Étape 2" title="Ajouter les compétiteurs" action={{ label: "Continuer", onClick: onContinue }}><input ref={csvRef} type="file" accept=".csv,.json,text/csv,application/json" onChange={importCsv} hidden /><div className="wizard-choice step-two-actions"><button className="wizard-card action-card" type="button" onClick={() => setShowForm((value) => !value)}>➕ Ajouter un compétiteur</button><span>OU</span><button className="wizard-card action-card" type="button" onClick={() => csvRef.current?.click()}>📄 Importer CSV/JSON</button><span>OU</span><button className="wizard-card action-card" type="button" onClick={createTestCompetition}>🧪 Créer une compétition de test</button></div>{showForm && <CompetitorMiniForm competition={safeCompetition} onUpdate={onUpdate} />}{safeCompetition.importReport && <p className="info">Import : {safeCompetition.importReport.imported} ajouté(s), {safeCompetition.importReport.skippedDuplicates} doublon(s), {safeCompetition.importReport.rejected?.length || 0} rejet(s).</p>}<div className="wizard-stats"><CompetitionCard label="Clubs" value={stats.clubs} /><CompetitionCard label="Compétiteurs" value={stats.competitors} /><CompetitionCard label="Catégories" value={stats.categories} /></div></WizardCard>;
 }
 
 export function CompetitionStepThree({ competition, onUpdate, onContinue }) {
@@ -288,24 +290,51 @@ export function CompetitionStepFour({ competition, onUpdate, onContinue }) {
   const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
   const stats = drawStats(safeCompetition);
   function generate() {
-    onUpdate({ ...safeCompetition, futureModules: { ...(safeCompetition.futureModules || {}), tirage: { mode: "automatique", generatedAt: new Date().toISOString(), stats } } });
+    const generated = generateTournament(safeCompetition);
+    onUpdate(generated);
     onContinue();
   }
-  return <WizardCard eyebrow="Étape 4" title="Tirage au sort" action={{ label: "Générer automatiquement", onClick: generate }}><div className="wizard-stats"><CompetitionCard label="Catégories" value={stats.categories} /><CompetitionCard label="Poules" value={stats.pools} /><CompetitionCard label="Tableaux" value={stats.brackets} /></div><p className="wizard-helper">Le meilleur mode de tirage sera choisi automatiquement.</p></WizardCard>;
+  return <WizardCard eyebrow="Étape 4" title="Génération des tableaux" action={{ label: "Générer les tableaux et combats", onClick: generate }} disabled={safeCompetition.participants.length < 2}><div className="wizard-stats"><CompetitionCard label="Catégories" value={stats.categories} /><CompetitionCard label="Compétiteurs" value={stats.competitors} /><CompetitionCard label="Tableaux prévus" value={stats.categories} /></div><p className="wizard-helper">Cette étape crée les catégories, tableaux, tours, byes, demi-finales et finales avant toute navigation vers les résultats.</p></WizardCard>;
+}
+
+function getCompetitorLabel(competition, id) {
+  const competitor = (competition.competitors || []).find((item) => String(item.id) === String(id));
+  return competitor ? `${competitor.nom} ${competitor.prenom}` : "Bye";
 }
 
 export function CompetitionStepFive({ competition, onUpdate, onContinue }) {
   const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
+  const brackets = safeCompetition.brackets || [];
+  const playableMatches = brackets.flatMap((bracket) => bracket.rounds.flatMap((round) => round.matches.map((match) => ({ bracket, round, match })))).filter(({ match }) => match.statut !== "Terminé" && match.akaId && match.shiroId);
+  const completedMatches = (safeCompetition.matches || []).filter((match) => match.statut === "Terminé").length;
+  const totalMatches = (safeCompetition.matches || []).length;
+
   function launch() {
-    onUpdate({ ...safeCompetition, statut: "En cours" });
-    onContinue();
+    if (!brackets.length) {
+      onUpdate(generateTournament(safeCompetition));
+      return;
+    }
+    onUpdate({ ...safeCompetition, statut: "En cours", workflow: { phase: "En cours", currentScreen: "arbitrage" } });
   }
-  return <WizardCard eyebrow="Étape 5" title="Lancer la compétition"><button className="launch-button" type="button" onClick={launch}>Lancer la compétition</button><p className="wizard-helper">Les tatamis s'ouvrent directement après le lancement.</p></WizardCard>;
+
+  function saveWinner(match, winnerId) {
+    onUpdate(recordMatchResult(safeCompetition, match.id, winnerId));
+  }
+
+  function goToRankings() {
+    if (canShowRankings(safeCompetition)) onContinue();
+  }
+
+  return <WizardCard eyebrow="Étape 5" title="Arbitrage et saisie des vainqueurs"><div className="wizard-stats"><CompetitionCard label="Combats terminés" value={completedMatches} /><CompetitionCard label="Combats générés" value={totalMatches} /><CompetitionCard label="À arbitrer" value={playableMatches.length} /></div>{!brackets.length && <button className="launch-button" type="button" onClick={launch}>Générer avant lancement</button>}{brackets.length > 0 && safeCompetition.statut !== "En cours" && !canShowRankings(safeCompetition) && <button className="launch-button" type="button" onClick={launch}>Lancer la compétition</button>}<div className="control-list">{brackets.map((bracket) => <article key={bracket.id} className={bracket.status === "Terminée" ? "control-row ok" : "control-row"}><strong>{safeCompetition.categories.find((category) => category.id === bracket.categoryId)?.nom || bracket.categoryId}</strong><span>{bracket.status}</span>{bracket.rounds.map((round) => <div key={`${bracket.id}-${round.index}`}><small>{round.label}</small>{round.matches.map((match) => <p key={match.id}>{getCompetitorLabel(safeCompetition, match.akaId)} vs {getCompetitorLabel(safeCompetition, match.shiroId)} · {match.statut}{match.statut !== "Terminé" && <span> <button type="button" onClick={() => saveWinner(match, match.akaId)}>Vainqueur Aka</button> <button type="button" onClick={() => saveWinner(match, match.shiroId)}>Vainqueur Shiro</button></span>}</p>)}</div>)}</article>)}</div><button className="primary" type="button" onClick={goToRankings} disabled={!canShowRankings(safeCompetition)}>Accéder aux classements</button><p className="wizard-helper">Le classement reste bloqué tant que tous les combats générés ne sont pas terminés.</p></WizardCard>;
 }
 
 export function CompetitionStepSix({ competition }) {
   const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
-  return <WizardCard eyebrow="Étape 6" title="Classement et résultats"><div className="results-grid">{["Classements", "Podiums", "Médailles", "Classement des clubs", "Export PDF", "Export Excel"].map((item) => <button type="button" key={item}>{item}</button>)}</div><p className="wizard-helper">{safeCompetition.nom || "La compétition"} est prête pour la publication des résultats.</p></WizardCard>;
+  const rankings = buildRankings(safeCompetition);
+  if (!canShowRankings(safeCompetition)) {
+    return <WizardCard eyebrow="Étape 6" title="Classement verrouillé"><p className="validation-errors">Les classements ne sont pas disponibles : tous les combats doivent être terminés.</p></WizardCard>;
+  }
+  return <WizardCard eyebrow="Étape 6" title="Classement et résultats"><div className="control-list">{rankings.map((ranking) => <article key={ranking.categoryId} className="control-row ok"><strong>{safeCompetition.categories.find((category) => category.id === ranking.categoryId)?.nom || ranking.categoryId}</strong><span>1. {getCompetitorLabel(safeCompetition, ranking.firstId)}</span><small>2. {getCompetitorLabel(safeCompetition, ranking.secondId)}{ranking.thirdId ? ` · 3. ${getCompetitorLabel(safeCompetition, ranking.thirdId)}` : ""}</small></article>)}</div><p className="wizard-helper">{safeCompetition.nom || "La compétition"} est terminée et les résultats peuvent être publiés.</p></WizardCard>;
 }
 
 export const WIZARD_STEP_COMPONENTS = [
