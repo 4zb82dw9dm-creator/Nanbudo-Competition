@@ -3396,3 +3396,212 @@ footer span {
   border-left: 4px solid var(--color-horizon-gold);
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.06);
 }
+
+/* ========================================
+   MODULE GESTION DES COMPÉTITIONS
+======================================== */
+.competition-submenu,
+.table-actions,
+.competition-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.competition-submenu {
+  margin: 18px 0 24px;
+}
+
+.competition-submenu button,
+.status-pill {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: white;
+  color: var(--color-afdp-blue);
+  font-weight: 800;
+}
+
+.competition-submenu button.active,
+.status-pill {
+  background: var(--color-afdp-blue);
+  color: white;
+}
+
+.responsive-table {
+  width: 100%;
+  overflow-x: auto;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.06);
+}
+
+.responsive-table table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+}
+
+.responsive-table th,
+.responsive-table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.responsive-table th {
+  color: var(--color-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.competition-panel,
+.simple-chart {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.06);
+}
+
+.competition-stats-grid,
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.competition-stat-card {
+  background: linear-gradient(135deg, #ffffff, #f7f9fc);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-horizon-gold);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.competition-stat-card strong {
+  display: block;
+  color: var(--color-afdp-blue);
+  font-size: 30px;
+}
+
+.competition-stat-card span,
+.muted {
+  color: var(--color-muted);
+}
+
+.charts-grid {
+  margin-top: 18px;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 34px;
+  gap: 10px;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.chart-row div {
+  height: 12px;
+  border-radius: 999px;
+  background: #edf1f7;
+  overflow: hidden;
+}
+
+.chart-row b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-horizon-gold);
+}
+
+.competition-logo-preview {
+  max-width: 140px;
+  max-height: 90px;
+  object-fit: contain;
+  margin: 0 0 16px;
+}
+
+.competition-form fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  margin: 0 0 17px;
+  padding: 14px;
+}
+
+.inline-check,
+.participant-form label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 14px 6px 0;
+  font-weight: 700;
+}
+
+.competition-filters,
+.participant-form,
+.select-current {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 0 0 18px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.06);
+}
+
+.competition-filters input,
+.competition-filters select,
+.participant-form input,
+.participant-form select,
+.select-current select {
+  min-height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+
+.participant-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.validation-errors {
+  border-left: 4px solid var(--color-danger);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  padding: 14px;
+  border-radius: 10px;
+  margin: 14px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .competition-submenu button,
+  .responsive-table,
+  .competition-panel,
+  .simple-chart,
+  .competition-form,
+  .competition-filters,
+  .participant-form,
+  .select-current,
+  .competition-stat-card {
+    background: #172033;
+    color: #eef3ff;
+  }
+
+  .responsive-table th,
+  .responsive-table td,
+  .competition-submenu button,
+  .competition-form fieldset {
+    border-color: #344057;
+  }
+
+  .competition-stat-card {
+    background: linear-gradient(135deg, #172033, #101827);
+  }
+
+  .chart-row div {
+    background: #28344b;
+  }
+}
