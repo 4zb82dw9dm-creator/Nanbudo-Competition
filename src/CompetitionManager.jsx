@@ -1,4 +1,5 @@
 import { Component, useEffect, useRef, useState } from "react";
+import MatchManager from "./MatchManager";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
 import { buildRankings, canShowRankings, generateTournament, normalizeCompetitionData, parseCompetitorFile, recordMatchResult } from "./competitionWorkflow";
 import { buildCompetitionTestCompetitors } from "./competitionTestCompetitors";
@@ -308,6 +309,8 @@ export function CompetitionStepFive({ competition, onUpdate, onContinue }) {
   const playableMatches = brackets.flatMap((bracket) => bracket.rounds.flatMap((round) => round.matches.map((match) => ({ bracket, round, match })))).filter(({ match }) => match.statut !== "Terminé" && match.akaId && match.shiroId);
   const completedMatches = (safeCompetition.matches || []).filter((match) => match.statut === "Terminé").length;
   const totalMatches = (safeCompetition.matches || []).length;
+  const [selectedMatchId, setSelectedMatchId] = useState(null);
+  const selectedMatch = playableMatches.find(({ match }) => match.id === selectedMatchId) || playableMatches[0] || null;
 
   function launch() {
     if (!brackets.length) {
@@ -317,15 +320,18 @@ export function CompetitionStepFive({ competition, onUpdate, onContinue }) {
     onUpdate({ ...safeCompetition, statut: "En cours", workflow: { phase: "En cours", currentScreen: "arbitrage" } });
   }
 
-  function saveWinner(match, winnerId) {
-    onUpdate(recordMatchResult(safeCompetition, match.id, winnerId));
+  function saveArbitration(match, result) {
+    const winnerId = result.vainqueur === "aka" ? match.akaId : result.vainqueur === "shiro" ? match.shiroId : null;
+    if (!winnerId) return;
+    onUpdate(recordMatchResult(safeCompetition, match.id, winnerId, { akaScore: result.scoreAka, shiroScore: result.scoreShiro, scoreBrutAka: result.scoreBrutAka, scoreBrutShiro: result.scoreBrutShiro, assauts: result.assauts, penalitesAka: result.penalitesAka, penalitesShiro: result.penalitesShiro, pointsNegatifsAka: result.pointsNegatifsAka, pointsNegatifsShiro: result.pointsNegatifsShiro, akaDisqualifie: result.akaDisqualifie, shiroDisqualifie: result.shiroDisqualifie, departageActif: result.departageActif, assautsDepartage: result.assautsDepartage, scoreDepartageAka: result.scoreDepartageAka, scoreDepartageShiro: result.scoreDepartageShiro, decisionType: result.decisionType, decisionDrapeaux: result.decisionDrapeaux }));
+    setSelectedMatchId(null);
   }
 
   function goToRankings() {
     if (canShowRankings(safeCompetition)) onContinue();
   }
 
-  return <WizardCard eyebrow="Étape 5" title="Arbitrage et saisie des vainqueurs"><div className="wizard-stats"><CompetitionCard label="Combats terminés" value={completedMatches} /><CompetitionCard label="Combats générés" value={totalMatches} /><CompetitionCard label="À arbitrer" value={playableMatches.length} /></div>{!brackets.length && <button className="launch-button" type="button" onClick={launch}>Générer avant lancement</button>}{brackets.length > 0 && safeCompetition.statut !== "En cours" && !canShowRankings(safeCompetition) && <button className="launch-button" type="button" onClick={launch}>Lancer la compétition</button>}<div className="control-list">{brackets.map((bracket) => <article key={bracket.id} className={bracket.status === "Terminée" ? "control-row ok" : "control-row"}><strong>{safeCompetition.categories.find((category) => category.id === bracket.categoryId)?.nom || bracket.categoryId}</strong><span>{bracket.status}</span>{bracket.rounds.map((round) => <div key={`${bracket.id}-${round.index}`}><small>{round.label}</small>{round.matches.map((match) => <p key={match.id}>{getCompetitorLabel(safeCompetition, match.akaId)} vs {getCompetitorLabel(safeCompetition, match.shiroId)} · {match.statut}{match.statut !== "Terminé" && <span> <button type="button" onClick={() => saveWinner(match, match.akaId)}>Vainqueur Aka</button> <button type="button" onClick={() => saveWinner(match, match.shiroId)}>Vainqueur Shiro</button></span>}</p>)}</div>)}</article>)}</div><button className="primary" type="button" onClick={goToRankings} disabled={!canShowRankings(safeCompetition)}>Accéder aux classements</button><p className="wizard-helper">Le classement reste bloqué tant que tous les combats générés ne sont pas terminés.</p></WizardCard>;
+  return <WizardCard eyebrow="Étape 5" title="Arbitrage des combats"><div className="wizard-stats"><CompetitionCard label="Combats terminés" value={completedMatches} /><CompetitionCard label="Combats générés" value={totalMatches} /><CompetitionCard label="À arbitrer" value={playableMatches.length} /></div>{!brackets.length && <button className="launch-button" type="button" onClick={launch}>Générer avant lancement</button>}{brackets.length > 0 && safeCompetition.statut !== "En cours" && !canShowRankings(safeCompetition) && <button className="launch-button" type="button" onClick={launch}>Lancer la compétition</button>}<div className="control-list">{brackets.map((bracket) => <article key={bracket.id} className={bracket.status === "Terminée" ? "control-row ok" : "control-row"}><strong>{safeCompetition.categories.find((category) => category.id === bracket.categoryId)?.nom || bracket.categoryId}</strong><span>{bracket.status}</span>{bracket.rounds.map((round) => <div key={`${bracket.id}-${round.index}`}><small>{round.label}</small>{round.matches.map((match) => <p key={match.id}>{getCompetitorLabel(safeCompetition, match.akaId)} vs {getCompetitorLabel(safeCompetition, match.shiroId)} · {match.statut}{match.statut !== "Terminé" && match.akaId && match.shiroId && <span> <button type="button" onClick={() => setSelectedMatchId(match.id)}>Arbitrer</button></span>}{match.statut === "Terminé" && <span> · {match.akaScore ?? "-"} / {match.shiroScore ?? "-"}</span>}</p>)}</div>)}</article>)}</div>{selectedMatch && <MatchManager match={{ ...selectedMatch.match, aka: (safeCompetition.competitors || []).find((item) => String(item.id) === String(selectedMatch.match.akaId)), shiro: (safeCompetition.competitors || []).find((item) => String(item.id) === String(selectedMatch.match.shiroId)) }} mode="ju-randori" type="ju-randori" initialResult={selectedMatch.match} category={safeCompetition.categories.find((category) => category.id === selectedMatch.bracket.categoryId)} onSave={(result) => saveArbitration(selectedMatch.match, result)} />}{!selectedMatch && playableMatches.length === 0 && <p className="wizard-helper">Tous les combats jouables sont arbitrés. Les vainqueurs ont été qualifiés automatiquement jusqu'à la finale.</p>}<button className="primary" type="button" onClick={goToRankings} disabled={!canShowRankings(safeCompetition)}>Accéder aux classements</button><p className="wizard-helper">Le classement reste bloqué tant que tous les combats générés ne sont pas terminés.</p></WizardCard>;
 }
 
 export function CompetitionStepSix({ competition }) {
