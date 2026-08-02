@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
 
 const STORAGE_KEY = COMPETITIONS_STORAGE_KEY;
@@ -295,20 +295,122 @@ function CompetitionStepSix({ competition }) {
   return <WizardCard eyebrow="Étape 6" title="Classement et résultats"><div className="results-grid">{["Classements", "Podiums", "Médailles", "Classement des clubs", "Export PDF", "Export Excel"].map((item) => <button type="button" key={item}>{item}</button>)}</div><p className="wizard-helper">{competition.nom || "La compétition"} est prête pour la publication des résultats.</p></WizardCard>;
 }
 
+const WIZARD_STEP_COMPONENTS = [
+  CompetitionStepOne,
+  CompetitionStepTwo,
+  CompetitionStepThree,
+  CompetitionStepFour,
+  CompetitionStepFive,
+  CompetitionStepSix,
+];
+
+function WizardFallback({ message }) {
+  return (
+    <section className="wizard-card wizard-error" role="alert">
+      <div className="wizard-title">
+        <p className="surtitle">Assistant compétition</p>
+        <h2>Étape indisponible</h2>
+      </div>
+      <p>{message}</p>
+    </section>
+  );
+}
+
+class WizardErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error("Erreur de rendu dans l'assistant compétition", error, info);
+  }
+
+  componentDidUpdate(previousProps) {
+    if (previousProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return <WizardFallback message="Une erreur JavaScript a empêché l'affichage de cette étape. Le détail est disponible dans la console de développement." />;
+    }
+    return this.props.children;
+  }
+}
+
+function getStepComponent(step) {
+  const StepComponent = WIZARD_STEP_COMPONENTS[step];
+  if (!StepComponent) {
+    console.error(`Étape d'assistant absente ou invalide : ${step + 1}`, { step, total: WIZARD_STEP_COMPONENTS.length });
+    return null;
+  }
+  return StepComponent;
+}
+
 /** Module Compétition repensé comme assistant guidé en six étapes. */
 function CompetitionManager() {
   const [competitions, setCompetitions] = useState(CompetitionStore.load);
-  const [step, setStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
   const [selectedId, setSelectedId] = useState(null);
   const selected = competitions.find((c) => c.id === selectedId) || competitions[0] || CompetitionService.createCompetition(EMPTY_COMPETITION);
+  const StepComponent = getStepComponent(currentStep);
+
   useEffect(() => CompetitionStore.save(competitions), [competitions]);
+
   function upsert(competition) {
     const normalized = CompetitionService.normalizeCompetition({ ...competition, updatedAt: new Date().toISOString() });
     setCompetitions((current) => current.some((c) => c.id === normalized.id) ? current.map((c) => (c.id === normalized.id ? normalized : c)) : [...current, normalized]);
     setSelectedId(normalized.id);
   }
-  function next() { setStep((current) => Math.min(WIZARD_STEPS.length - 1, current + 1)); }
-  return <section className="competition-manager wizard-manager"><div className="manager-header"><div><p className="surtitle">ASSISTANT COMPÉTITION</p><h2>Créer une compétition en moins de 2 minutes</h2><p>Une seule action principale par écran, de la création aux résultats.</p></div>{competitions.length > 1 && <label className="select-current">Compétition<select value={selected.id} onChange={(event) => setSelectedId(event.target.value)}>{competitions.map((c) => <option key={c.id} value={c.id}>{c.nom || "Compétition sans nom"}</option>)}</select></label>}</div><WizardProgress step={step} />{step === 0 && <CompetitionStepOne competition={selected} onChange={upsert} onContinue={next} />}{step === 1 && <CompetitionStepTwo competition={selected} onUpdate={upsert} onContinue={next} />}{step === 2 && <CompetitionStepThree competition={selected} onUpdate={upsert} onContinue={next} />}{step === 3 && <CompetitionStepFour competition={selected} onUpdate={upsert} onContinue={next} />}{step === 4 && <CompetitionStepFive competition={selected} onUpdate={upsert} onContinue={next} />}{step === 5 && <CompetitionStepSix competition={selected} />}</section>;
+
+  function next(event) {
+    event?.preventDefault?.();
+    setCurrentStep((step) => {
+      const nextStep = Math.min(WIZARD_STEPS.length - 1, step + 1);
+      if (!WIZARD_STEP_COMPONENTS[nextStep]) {
+        console.error(`Impossible d'ouvrir l'étape ${nextStep + 1} : composant manquant.`);
+        return step;
+      }
+      return nextStep;
+    });
+  }
+
+  const stepProps = {
+    competition: selected,
+    onChange: upsert,
+    onUpdate: upsert,
+    onContinue: next,
+  };
+
+  return (
+    <section className="competition-manager wizard-manager">
+      <div className="manager-header">
+        <div>
+          <p className="surtitle">ASSISTANT COMPÉTITION</p>
+          <h2>Créer une compétition en moins de 2 minutes</h2>
+          <p>Une seule action principale par écran, de la création aux résultats.</p>
+        </div>
+        {competitions.length > 1 && (
+          <label className="select-current">
+            Compétition
+            <select value={selected.id} onChange={(event) => setSelectedId(event.target.value)}>
+              {competitions.map((c) => <option key={c.id} value={c.id}>{c.nom || "Compétition sans nom"}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+      <WizardProgress step={currentStep} />
+      <WizardErrorBoundary resetKey={currentStep}>
+        {StepComponent ? <StepComponent {...stepProps} /> : <WizardFallback message="Cette étape n'existe pas dans l'assistant. Vérifiez la configuration des étapes." />}
+      </WizardErrorBoundary>
+    </section>
+  );
 }
 
 export default CompetitionManager;
