@@ -3849,3 +3849,31 @@ footer span {
     text-align: center;
   }
 }
+
+.wizard-empty-competitors {
+  margin-bottom: 24px;
+}
+
+.wizard-empty-competitors .wizard-choice {
+  margin: 24px 0 0;
+}
+
+.competition-card {
+  border: 1px solid #dde5ef;
+  border-radius: 18px;
+  padding: 20px;
+  background: #f8fafc;
+  display: grid;
+  gap: 8px;
+}
+
+.competition-card span {
+  color: var(--color-afdp-blue);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 900;
+}
+
+.competition-card strong {
+  color: var(--color-text);
+  font-size: 16px;
+}
