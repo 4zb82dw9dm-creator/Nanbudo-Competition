@@ -3605,3 +3605,240 @@ footer span {
     background: #28344b;
   }
 }
+
+/* ========================================
+   ASSISTANT COMPÉTITION
+======================================== */
+
+.wizard-manager {
+  display: grid;
+  gap: 22px;
+}
+
+.wizard-progress {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 0;
+  margin: 0 0 8px;
+  list-style: none;
+}
+
+.wizard-progress li {
+  position: relative;
+  min-height: 86px;
+  padding: 14px;
+  border-radius: 16px;
+  background: white;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.05);
+}
+
+.wizard-progress li span {
+  display: block;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.wizard-progress li strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.wizard-progress li.active {
+  border-color: var(--color-horizon-gold);
+  box-shadow: 0 12px 30px rgba(201, 162, 39, 0.18);
+}
+
+.wizard-progress li.done {
+  background: var(--color-afdp-blue);
+}
+
+.wizard-progress li.done span,
+.wizard-progress li.done strong {
+  color: white;
+}
+
+.wizard-card {
+  background: white;
+  border-radius: 24px;
+  padding: clamp(24px, 4vw, 42px);
+  border-top: 5px solid var(--color-horizon-gold);
+  box-shadow: 0 18px 45px rgba(20, 33, 61, 0.08);
+}
+
+.wizard-title h2 {
+  margin: 8px 0 24px;
+  font-size: clamp(32px, 5vw, 54px);
+}
+
+.wizard-form {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.wizard-form.five-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wizard-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.wizard-form input:not([type="checkbox"]),
+.wizard-form select {
+  min-height: 56px;
+  border: 1px solid #cfd6df;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 18px;
+}
+
+.wizard-card > .primary,
+.wizard-card > .success-action {
+  min-width: 240px;
+  min-height: 58px;
+  font-size: 18px;
+}
+
+.success-action {
+  background: var(--color-success);
+  color: white;
+}
+
+.wizard-choice {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.wizard-choice button,
+.results-grid button {
+  border: 0;
+  border-radius: 20px;
+  min-height: 110px;
+  padding: 20px;
+  background: #eef3fb;
+  color: var(--color-afdp-blue);
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.wizard-choice span {
+  color: var(--color-muted);
+  font-weight: 900;
+}
+
+.wizard-stats,
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 22px 0;
+}
+
+.compact-competitor {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 18px;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.control-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.control-checks span {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #eef3fb;
+  color: var(--color-afdp-blue);
+  font-weight: 800;
+}
+
+.control-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.control-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+}
+
+.control-row.ok {
+  background: var(--color-success-bg);
+}
+
+.control-row.error {
+  background: var(--color-danger-bg);
+}
+
+.control-row small {
+  grid-column: 1 / -1;
+  color: var(--color-muted);
+}
+
+.control-row button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: white;
+  color: var(--color-danger);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.launch-button {
+  width: 100%;
+  min-height: 150px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--color-afdp-blue);
+  color: white;
+  font-size: clamp(30px, 6vw, 56px);
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 18px 45px rgba(39, 82, 150, 0.24);
+}
+
+.wizard-helper {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .wizard-progress,
+  .wizard-form.five-fields,
+  .wizard-stats,
+  .results-grid,
+  .compact-competitor,
+  .wizard-choice {
+    grid-template-columns: 1fr;
+  }
+
+  .wizard-choice span {
+    text-align: center;
+  }
+}
