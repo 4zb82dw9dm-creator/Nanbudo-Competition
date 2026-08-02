@@ -1,7 +1,8 @@
-import { Component, useEffect, useMemo, useRef, useState } from "react";
+import { Component, useEffect, useRef, useState } from "react";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
 
 const STORAGE_KEY = COMPETITIONS_STORAGE_KEY;
+const WIZARD_FILE = "src/CompetitionManager.jsx";
 
 const STATUSES = [
   "Brouillon",
@@ -93,6 +94,10 @@ export const CompetitionService = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       participants: [],
+      competitors: [],
+      clubs: [],
+      categories: [],
+      errors: [],
       inscriptionsOuvertes: values.statut === "Inscriptions ouvertes",
       futureModules: { tirage: null, tableaux: [], notation: null, chronometre: null, classements: [], affichagePublic: null },
     });
@@ -103,7 +108,11 @@ export const CompetitionService = {
       ...EMPTY_COMPETITION,
       ...competition,
       settings: { ...DEFAULT_SETTINGS, ...(competition.settings || {}) },
-      participants: competition.participants || competition.competitors || [],
+      participants: Array.isArray(competition.participants) ? competition.participants : Array.isArray(competition.competitors) ? competition.competitors : [],
+      competitors: Array.isArray(competition.competitors) ? competition.competitors : Array.isArray(competition.participants) ? competition.participants : [],
+      clubs: Array.isArray(competition.clubs) ? competition.clubs : [],
+      categories: Array.isArray(competition.categories) ? competition.categories : [],
+      errors: Array.isArray(competition.errors) ? competition.errors : [],
       inscriptionsOuvertes: competition.statut === "Inscriptions ouvertes" || competition.inscriptionsOuvertes === true,
       futureModules: {
         tirage: null,
@@ -204,6 +213,10 @@ function WizardCard({ eyebrow, title, children, action, actionClass = "primary",
   return <section className="wizard-card"><div className="wizard-title"><p className="surtitle">{eyebrow}</p><h2>{title}</h2></div>{children}{action && <button className={actionClass} type="button" onClick={action.onClick} disabled={disabled}>{action.label}</button>}</section>;
 }
 
+function CompetitionCard({ label, value }) {
+  return <article className="competition-card"><strong>{value ?? 0}</strong><span>{label}</span></article>;
+}
+
 function quickStats(competition) {
   const participants = competition?.participants || [];
   return {
@@ -252,47 +265,55 @@ function CompetitorMiniForm({ competition, onUpdate, initialValue = null, submit
 }
 
 function CompetitionStepTwo({ competition, onUpdate, onContinue }) {
+  const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
   const [showForm, setShowForm] = useState(false);
   const csvRef = useRef(null);
-  const stats = quickStats(competition);
+  const stats = quickStats(safeCompetition);
   function importCsv(event) {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => onUpdate({ ...competition, participants: [...(competition.participants || []), ...CSVImportService.parse(String(reader.result || "")).map((row) => ({ ...row, id: CompetitionService.createId("participant") }))] });
+    reader.onload = () => {
+      const importedParticipants = CSVImportService.parse(String(reader.result || "")).map((row) => ({ ...row, id: CompetitionService.createId("participant") }));
+      onUpdate({ ...safeCompetition, participants: [...safeCompetition.participants, ...importedParticipants] });
+    };
     reader.readAsText(file, "UTF-8");
     event.target.value = "";
   }
-  return <WizardCard eyebrow="Étape 2" title="Ajouter les compétiteurs" action={{ label: "Continuer", onClick: onContinue }}><input ref={csvRef} type="file" accept=".csv,text/csv" onChange={importCsv} hidden /><div className="wizard-choice"><button type="button" onClick={() => csvRef.current?.click()}>Importer un CSV</button><span>OU</span><button type="button" onClick={() => setShowForm((value) => !value)}>Ajouter un compétiteur</button></div>{showForm && <CompetitorMiniForm competition={competition} onUpdate={onUpdate} />}<div className="wizard-stats"><CompetitionCard label="Clubs" value={stats.clubs} /><CompetitionCard label="Compétiteurs" value={stats.competitors} /><CompetitionCard label="Catégories" value={stats.categories} /></div></WizardCard>;
+  return <WizardCard eyebrow="Étape 2" title="Ajouter les compétiteurs" action={{ label: "Continuer", onClick: onContinue }}><input ref={csvRef} type="file" accept=".csv,text/csv" onChange={importCsv} hidden /><div className="wizard-choice step-two-actions"><button className="wizard-card action-card" type="button" onClick={() => setShowForm((value) => !value)}>➕ Ajouter un compétiteur</button><span>OU</span><button className="wizard-card action-card" type="button" onClick={() => csvRef.current?.click()}>📄 Importer un CSV</button></div>{showForm && <CompetitorMiniForm competition={safeCompetition} onUpdate={onUpdate} />}<div className="wizard-stats"><CompetitionCard label="Clubs" value={stats.clubs} /><CompetitionCard label="Compétiteurs" value={stats.competitors} /><CompetitionCard label="Catégories" value={stats.categories} /></div></WizardCard>;
 }
 
 function CompetitionStepThree({ competition, onUpdate, onContinue }) {
-  const participants = competition.participants || [];
-  const rows = participants.map((p) => ({ participant: p, errors: ValidationService.validateParticipant(p, competition, p.id) }));
+  const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
+  const participants = safeCompetition.participants;
+  const rows = participants.map((p) => ({ participant: p, errors: ValidationService.validateParticipant(p, safeCompetition, p.id) }));
   const errorCount = rows.reduce((sum, row) => sum + row.errors.length, 0);
   const [editing, setEditing] = useState(null);
-  return <WizardCard eyebrow="Étape 3" title="Contrôle automatique" action={{ label: "Continuer", onClick: onContinue }} actionClass={errorCount ? "primary" : "primary success-action"} disabled={errorCount > 0 || participants.length === 0}><div className="control-checks"><span>âge</span><span>grade</span><span>catégorie</span><span>licence</span><span>doublons</span><span>poids</span></div><div className="control-list">{rows.length ? rows.map(({ participant, errors }) => <article key={participant.id} className={errors.length ? "control-row error" : "control-row ok"}><strong>{participant.nom} {participant.prenom}</strong><span>{errors.length ? "❌ erreur" : "✓ conforme"}</span>{errors.length > 0 && <button type="button" onClick={() => setEditing(participant)}>Corriger</button>}<small>{errors.join(" ")}</small></article>) : <p className="muted">Ajoutez des compétiteurs pour lancer le contrôle.</p>}</div>{editing && <CompetitorMiniForm initialValue={editing} submitLabel="Corriger" competition={competition} onUpdate={(updated) => { onUpdate(updated); setEditing(null); }} />}</WizardCard>;
+  return <WizardCard eyebrow="Étape 3" title="Contrôle automatique" action={{ label: "Continuer", onClick: onContinue }} actionClass={errorCount ? "primary" : "primary success-action"} disabled={errorCount > 0 || participants.length === 0}><div className="control-checks"><span>âge</span><span>grade</span><span>catégorie</span><span>licence</span><span>doublons</span><span>poids</span></div><div className="control-list">{rows.length ? rows.map(({ participant, errors }) => <article key={participant.id} className={errors.length ? "control-row error" : "control-row ok"}><strong>{participant.nom} {participant.prenom}</strong><span>{errors.length ? "❌ erreur" : "✓ conforme"}</span>{errors.length > 0 && <button type="button" onClick={() => setEditing(participant)}>Corriger</button>}<small>{errors.join(" ")}</small></article>) : <p className="muted">Ajoutez des compétiteurs pour lancer le contrôle.</p>}</div>{editing && <CompetitorMiniForm initialValue={editing} submitLabel="Corriger" competition={safeCompetition} onUpdate={(updated) => { onUpdate(updated); setEditing(null); }} />}</WizardCard>;
 }
 
 function CompetitionStepFour({ competition, onUpdate, onContinue }) {
-  const stats = drawStats(competition);
+  const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
+  const stats = drawStats(safeCompetition);
   function generate() {
-    onUpdate({ ...competition, futureModules: { ...(competition.futureModules || {}), tirage: { mode: "automatique", generatedAt: new Date().toISOString(), stats } } });
+    onUpdate({ ...safeCompetition, futureModules: { ...(safeCompetition.futureModules || {}), tirage: { mode: "automatique", generatedAt: new Date().toISOString(), stats } } });
     onContinue();
   }
   return <WizardCard eyebrow="Étape 4" title="Tirage au sort" action={{ label: "Générer automatiquement", onClick: generate }}><div className="wizard-stats"><CompetitionCard label="Catégories" value={stats.categories} /><CompetitionCard label="Poules" value={stats.pools} /><CompetitionCard label="Tableaux" value={stats.brackets} /></div><p className="wizard-helper">Le meilleur mode de tirage sera choisi automatiquement.</p></WizardCard>;
 }
 
 function CompetitionStepFive({ competition, onUpdate, onContinue }) {
+  const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
   function launch() {
-    onUpdate({ ...competition, statut: "En cours" });
+    onUpdate({ ...safeCompetition, statut: "En cours" });
     onContinue();
   }
   return <WizardCard eyebrow="Étape 5" title="Lancer la compétition"><button className="launch-button" type="button" onClick={launch}>Lancer la compétition</button><p className="wizard-helper">Les tatamis s'ouvrent directement après le lancement.</p></WizardCard>;
 }
 
 function CompetitionStepSix({ competition }) {
-  return <WizardCard eyebrow="Étape 6" title="Classement et résultats"><div className="results-grid">{["Classements", "Podiums", "Médailles", "Classement des clubs", "Export PDF", "Export Excel"].map((item) => <button type="button" key={item}>{item}</button>)}</div><p className="wizard-helper">{competition.nom || "La compétition"} est prête pour la publication des résultats.</p></WizardCard>;
+  const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
+  return <WizardCard eyebrow="Étape 6" title="Classement et résultats"><div className="results-grid">{["Classements", "Podiums", "Médailles", "Classement des clubs", "Export PDF", "Export Excel"].map((item) => <button type="button" key={item}>{item}</button>)}</div><p className="wizard-helper">{safeCompetition.nom || "La compétition"} est prête pour la publication des résultats.</p></WizardCard>;
 }
 
 const WIZARD_STEP_COMPONENTS = [
@@ -327,7 +348,18 @@ class WizardErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error("Erreur de rendu dans l'assistant compétition", error, info);
+    const stack = error?.stack || "Stack indisponible";
+    const componentStack = info?.componentStack || "Composant indisponible";
+    const stackLocation = stack.match(/(src\/[^:)]+):(\d+):(\d+)/) || stack.match(/([^@()\s]+):(\d+):(\d+)/);
+    console.error("Erreur React détaillée dans l'assistant compétition", {
+      file: stackLocation?.[1] || WIZARD_FILE,
+      line: stackLocation?.[2] || "ligne inconnue",
+      column: stackLocation?.[3] || "colonne inconnue",
+      component: componentStack.split("\n").map((line) => line.trim()).filter(Boolean)[0] || "composant inconnu",
+      stack,
+      componentStack,
+      error,
+    });
   }
 
   componentDidUpdate(previousProps) {
@@ -360,6 +392,7 @@ function CompetitionManager() {
   const [selectedId, setSelectedId] = useState(null);
   const selected = competitions.find((c) => c.id === selectedId) || competitions[0] || CompetitionService.createCompetition(EMPTY_COMPETITION);
   const StepComponent = getStepComponent(currentStep);
+  const stepTwoWithoutBoundary = currentStep === 1;
 
   useEffect(() => CompetitionStore.save(competitions), [competitions]);
 
@@ -406,9 +439,13 @@ function CompetitionManager() {
         )}
       </div>
       <WizardProgress step={currentStep} />
-      <WizardErrorBoundary resetKey={currentStep}>
-        {StepComponent ? <StepComponent {...stepProps} /> : <WizardFallback message="Cette étape n'existe pas dans l'assistant. Vérifiez la configuration des étapes." />}
-      </WizardErrorBoundary>
+      {stepTwoWithoutBoundary ? (
+        StepComponent ? <StepComponent {...stepProps} /> : <CompetitionStepTwo {...stepProps} />
+      ) : (
+        <WizardErrorBoundary resetKey={currentStep}>
+          {StepComponent ? <StepComponent {...stepProps} /> : <WizardFallback message="Cette étape n'existe pas dans l'assistant. Vérifiez la configuration des étapes." />}
+        </WizardErrorBoundary>
+      )}
     </section>
   );
 }
