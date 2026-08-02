@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { demoCompetitors } from "./demoCompetitors";
 import { GRADES, WEIGHT_CATEGORIES, validateCompetitor } from "./competitorRules";
 
-const STORAGE_KEY = "nanbudo-competitors-afdp-v1";
+export const COMPETITORS_STORAGE_KEY = "nanbudo-competitors-afdp-v1";
+const STORAGE_KEY = COMPETITORS_STORAGE_KEY;
 const CSV_COLUMNS = [
   "id",
   "nom",

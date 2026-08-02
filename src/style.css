@@ -3849,3 +3849,62 @@ footer span {
     text-align: center;
   }
 }
+
+/* ========================================
+   MAINTENANCE
+======================================== */
+
+.maintenance-module .validation-panel {
+  margin-bottom: 20px;
+}
+
+.maintenance-grid .action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.maintenance-grid .action-card p {
+  flex: 1;
+}
+
+.danger-zone {
+  margin-top: 24px;
+  background: var(--color-danger-bg);
+  border: 1px solid rgba(138, 31, 31, 0.25);
+  border-left: 5px solid var(--color-danger);
+  border-radius: var(--radius);
+  padding: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.danger-zone h3 {
+  margin: 8px 0;
+  color: var(--color-danger);
+}
+
+.danger-zone p:last-child {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.reset-button {
+  white-space: nowrap;
+  background: var(--color-danger) !important;
+  color: white !important;
+}
+
+@media (max-width: 760px) {
+  .danger-zone {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reset-button {
+    white-space: normal;
+  }
+}
