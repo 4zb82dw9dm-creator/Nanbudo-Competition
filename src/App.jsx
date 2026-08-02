@@ -4,11 +4,13 @@ import "./home.css";
 import CompetitionManager from "./CompetitionManager";
 import RegistrationManager from "./RegistrationManager";
 import CompetitorManager from "./CompetitorManager";
+import MaintenanceManager from "./MaintenanceManager";
 import logoAfdp from "./assets/logo-afdp.png";
 
 function App() {
   const [section, setSection] = useState("accueil");
   const [commissionMode, setCommissionMode] = useState(false);
+  const [contentVersion, setContentVersion] = useState(0);
 
   const publicSections = ["accueil", "inscriptions", "organisateurs", "documents"];
   const isPublic = publicSections.includes(section) && !commissionMode;
@@ -31,12 +33,18 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function handleMaintenanceResetComplete() {
+    setContentVersion((version) => version + 1);
+    leaveCommission();
+  }
+
   const commissionNav = [
     ["competitions", "🏆", "Compétitions"],
     ["inscriptions", "✍", "Inscriptions"],
     ["competiteurs", "🥋", "Compétiteurs"],
     ["organisateurs", "♙", "Organisateurs"],
     ["documents", "▤", "Documents"],
+    ["maintenance", "⚙", "Paramètres"],
   ];
 
   return (
@@ -126,12 +134,13 @@ function App() {
           <nav className="navigation commission-navigation">
             {commissionNav.map(([id, icon, label]) => <button key={id} className={section === id ? "active" : ""} onClick={() => setSection(id)}>{icon} {label}</button>)}
           </nav>
-          <main className="content">
+          <main className="content" key={contentVersion}>
             {section === "competitions" && <CompetitionManager />}
             {section === "inscriptions" && <RegistrationManager />}
             {section === "competiteurs" && <CompetitorManager />}
             {section === "organisateurs" && <OrganizerSection />}
             {section === "documents" && <DocumentsSection />}
+            {section === "maintenance" && <MaintenanceManager onResetComplete={handleMaintenanceResetComplete} />}
           </main>
         </>
       )}
