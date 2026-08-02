@@ -49,11 +49,6 @@ function getPoolLabel(pool, categories) {
   return pool?.nom || category?.nom || pool?.epreuveLabel || pool?.epreuve || "Poule";
 }
 
-function getCompetitorCount(pool, categories) {
-  if (Array.isArray(pool?.competitorIds)) return pool.competitorIds.length;
-  const category = categories.find((item) => String(item.id) === String(pool?.categoryId));
-  return category?.competitorIds?.length || 0;
-}
 
 function getCurrentMinutes() {
   const now = new Date();
