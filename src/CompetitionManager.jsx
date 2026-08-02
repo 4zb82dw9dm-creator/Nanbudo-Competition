@@ -186,172 +186,129 @@ export const CSVImportService = {
   },
 };
 
-/** Barre de navigation interne du module Compétitions. */
-function CompetitionToolbar({ view, setView }) {
-  return <nav className="competition-submenu" aria-label="Menu compétitions">{[["list", "Liste des compétitions"], ["new", "Nouvelle compétition"], ["edit", "Modifier une compétition"], ["settings", "Paramètres"]].map(([id, label]) => <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>{label}</button>)}</nav>;
+/** Étapes courtes du nouvel assistant de création de compétition. */
+const WIZARD_STEPS = [
+  "Créer la compétition",
+  "Ajouter les compétiteurs",
+  "Contrôler automatiquement les inscriptions",
+  "Générer le tirage au sort",
+  "Lancer les combats",
+  "Classement et résultats",
+];
+
+function WizardProgress({ step }) {
+  return <ol className="wizard-progress" aria-label="Progression de l'assistant compétition">{WIZARD_STEPS.map((label, index) => <li key={label} className={index === step ? "active" : index < step ? "done" : ""}><span>Étape {index + 1}</span><strong>{label}</strong></li>)}</ol>;
 }
 
-/** Carte synthétique utilisée sur le tableau de bord. */
-function CompetitionCard({ label, value }) {
-  return <article className="competition-stat-card"><strong>{value}</strong><span>{label}</span></article>;
+function WizardCard({ eyebrow, title, children, action, actionClass = "primary", disabled = false }) {
+  return <section className="wizard-card"><div className="wizard-title"><p className="surtitle">{eyebrow}</p><h2>{title}</h2></div>{children}{action && <button className={actionClass} type="button" onClick={action.onClick} disabled={disabled}>{action.label}</button>}</section>;
 }
 
-/** Cartes statistiques et graphiques simples compatibles responsive. */
-function CompetitionStats({ competition }) {
-  const participants = competition.participants || [];
-  const clubs = new Set(participants.map((p) => p.club).filter(Boolean)).size;
-  const categories = new Set(participants.map((p) => p.categorie).filter(Boolean));
-  const errors = participants.reduce((sum, p) => sum + ValidationService.validateParticipant(p, competition, p.id).length, 0);
-  const byCategory = [...categories].map((cat) => ({ cat, count: participants.filter((p) => p.categorie === cat).length }));
-  const byGrade = GRADES.map((grade) => ({ grade, count: participants.filter((p) => p.grade === grade).length })).filter((x) => x.count);
-  const max = Math.max(1, ...byCategory.map((x) => x.count), ...byGrade.map((x) => x.count));
-  return <><div className="competition-stats-grid"><CompetitionCard label="Compétiteurs" value={participants.length} /><CompetitionCard label="Clubs" value={clubs} /><CompetitionCard label="Catégories" value={categories.size} /><CompetitionCard label="Filles" value={participants.filter((p) => ["Fille", "Femme"].includes(p.sexe)).length} /><CompetitionCard label="Garçons" value={participants.filter((p) => ["Garçon", "Homme"].includes(p.sexe)).length} /><CompetitionCard label="Erreurs" value={errors} /></div><div className="charts-grid"><SimpleChart title="Combattants par catégorie" data={byCategory} max={max} labelKey="cat" /><SimpleChart title="Répartition des grades" data={byGrade} max={max} labelKey="grade" /></div></>;
+function quickStats(competition) {
+  const participants = competition?.participants || [];
+  return {
+    clubs: new Set(participants.map((p) => p.club).filter(Boolean)).size,
+    competitors: participants.length,
+    categories: new Set(participants.map((p) => p.categorie).filter(Boolean)).size,
+  };
 }
 
-/** Graphique horizontal minimaliste sans dépendance externe pour GitHub Pages. */
-function SimpleChart({ title, data, max, labelKey }) {
-  return <section className="simple-chart"><h3>{title}</h3>{data.length ? data.map((item) => <div className="chart-row" key={item[labelKey]}><span>{item[labelKey]}</span><div><b style={{ width: `${(item.count / max) * 100}%` }} /></div><em>{item.count}</em></div>) : <p className="muted">Aucune donnée.</p>}</section>;
+function drawStats(competition) {
+  const stats = quickStats(competition);
+  return {
+    categories: stats.categories,
+    pools: Math.ceil(stats.competitors / 4),
+    brackets: Math.max(0, stats.categories - Math.ceil(stats.competitors / 4)),
+  };
 }
 
-/** Tableau de bord temps réel d'une compétition sélectionnée. */
-function CompetitionDashboard({ competition }) {
-  return <section className="competition-panel"><div className="section-title"><p className="surtitle">TABLEAU DE BORD</p><h2>{competition.nom || "Compétition sans nom"}</h2><p>{competition.ville || "Ville à définir"} · {competition.date || "Date à définir"} · {competition.statut}</p></div><CompetitionStats competition={competition} /></section>;
-}
-
-/** Formulaire réutilisable pour créer ou modifier une compétition. */
-function CompetitionForm({ initialValue, onSubmit, submitLabel }) {
-  const [form, setForm] = useState({ ...EMPTY_COMPETITION, ...initialValue });
-  const logoRef = useRef(null);
-  /** Met à jour un champ simple du formulaire de compétition. */
+function CompetitionStepOne({ competition, onChange, onContinue }) {
+  const form = competition || EMPTY_COMPETITION;
   function change(event) {
     const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
+    onChange({ ...form, [name]: value });
   }
-  /** Convertit un logo en data URL pour une sauvegarde autonome locale. */
-  function changeLogo(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm((current) => ({ ...current, logo: String(reader.result || "") }));
-    reader.readAsDataURL(file);
-  }
-  /** Valide les champs minimaux puis transmet les données au store global. */
-  function submit(event) {
-    event.preventDefault();
-    if (!form.nom.trim()) return alert("Le nom de la compétition est obligatoire.");
-    onSubmit(form);
-  }
-  return <form className="competition-form" onSubmit={submit}><h3>{submitLabel}</h3><label>Nom de la compétition<input name="nom" value={form.nom} onChange={change} required /></label><div className="form-row"><label>Type<select name="type" value={form.type} onChange={change}>{TYPES.map((type) => <option key={type}>{type}</option>)}</select></label><label>Date<input name="date" type="date" value={form.date} onChange={change} /></label></div><div className="form-row"><label>Statut<select name="statut" value={form.statut} onChange={change}>{STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label><label>Lieu<input name="lieu" value={form.lieu} onChange={change} /></label></div><label>Adresse<input name="adresse" value={form.adresse} onChange={change} /></label><div className="form-row"><label>Ville<input name="ville" value={form.ville} onChange={change} /></label><label>Département<input name="departement" value={form.departement} onChange={change} /></label></div><div className="form-row"><label>Pays<input name="pays" value={form.pays} onChange={change} /></label><label>Organisateur<input name="organisateur" value={form.organisateur} onChange={change} /></label></div><div className="form-row"><label>Directeur de compétition<input name="directeurCompetition" value={form.directeurCompetition} onChange={change} /></label><label>Responsable arbitrage<input name="responsableArbitrage" value={form.responsableArbitrage} onChange={change} /></label></div><div className="form-row"><label>Médecin<input name="medecin" value={form.medecin} onChange={change} /></label><label>Nombre de tatamis<input name="nombreTatamis" type="number" min="1" value={form.nombreTatamis} onChange={change} /></label></div><label>Description<textarea name="description" rows="4" value={form.description} onChange={change} /></label><label>Logo<input ref={logoRef} type="file" accept="image/*" onChange={changeLogo} /></label>{form.logo && <img className="competition-logo-preview" src={form.logo} alt="Logo de la compétition" />}<button className="primary" type="submit">{submitLabel}</button></form>;
+  return <WizardCard eyebrow="Étape 1" title="Créer la compétition" action={{ label: "Continuer", onClick: onContinue }} disabled={!form.nom.trim()}><div className="wizard-form five-fields"><label>Nom<input name="nom" value={form.nom} onChange={change} required /></label><label>Date<input name="date" type="date" value={form.date} onChange={change} /></label><label>Ville<input name="ville" value={form.ville} onChange={change} /></label><label>Club organisateur<input name="organisateur" value={form.organisateur} onChange={change} /></label><label>Nombre de tatamis<input name="nombreTatamis" type="number" min="1" max="8" value={form.nombreTatamis} onChange={change} /></label></div></WizardCard>;
 }
 
-/** Panneau de paramètres sportifs et administratifs de la compétition. */
-function CompetitionSettings({ competition, onUpdate }) {
-  const settings = competition.settings || DEFAULT_SETTINGS;
-  /** Active ou désactive une option multisélection dans les paramètres. */
-  function toggleList(key, value) {
-    const list = settings[key] || [];
-    onUpdate({ ...competition, settings: { ...settings, [key]: list.includes(value) ? list.filter((x) => x !== value) : [...list, value] } });
-  }
-  /** Met à jour un paramètre scalaire. */
-  function change(event) {
-    const { name, value, type, checked } = event.target;
-    onUpdate({ ...competition, settings: { ...settings, [name]: type === "checkbox" ? checked : value } });
-  }
-  return <section className="competition-form"><h3>Paramètres</h3><fieldset><legend>Catégories ouvertes</legend>{CATEGORIES.map((cat) => <label className="inline-check" key={cat}><input type="checkbox" checked={settings.categoriesOuvertes.includes(cat)} onChange={() => toggleList("categoriesOuvertes", cat)} />{cat}</label>)}</fieldset><fieldset><legend>Grades autorisés</legend>{GRADES.map((grade) => <label className="inline-check" key={grade}><input type="checkbox" checked={settings.gradesAutorises.includes(grade)} onChange={() => toggleList("gradesAutorises", grade)} />{grade}</label>)}</fieldset><div className="form-row"><label>Poids<input name="poids" value={settings.poids} onChange={change} /></label><label>Sexe<input name="sexe" value={settings.sexe} onChange={change} /></label></div><label className="inline-check"><input type="checkbox" name="mixteAutorise" checked={settings.mixteAutorise} onChange={change} />Mixte autorisé</label><div className="form-row"><label>Temps des combats<input name="tempsCombats" value={settings.tempsCombats} onChange={change} /></label><label>Temps des prolongations<input name="tempsProlongations" value={settings.tempsProlongations} onChange={change} /></label></div><label>Nombre d'arbitres<input name="nombreArbitres" type="number" min="1" value={settings.nombreArbitres} onChange={change} /></label></section>;
-}
-
-/** Filtres de recherche rapide des inscriptions. */
-function CompetitionFilters({ filters, setFilters }) {
-  /** Met à jour un filtre de la liste des compétiteurs. */
-  function change(event) {
-    const { name, value } = event.target;
-    setFilters((current) => ({ ...current, [name]: value }));
-  }
-  return <div className="competition-filters"><input name="q" placeholder="Recherche rapide" value={filters.q} onChange={change} /><input name="club" placeholder="Club" value={filters.club} onChange={change} /><select name="categorie" value={filters.categorie} onChange={change}><option value="">Catégorie</option>{CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select><input name="poids" placeholder="Poids" value={filters.poids} onChange={change} /><select name="grade" value={filters.grade} onChange={change}><option value="">Grade</option>{GRADES.map((grade) => <option key={grade}>{grade}</option>)}</select><select name="sexe" value={filters.sexe} onChange={change}><option value="">Sexe</option>{SEXES.map((sexe) => <option key={sexe}>{sexe}</option>)}</select></div>;
-}
-
-/** Onglet inscriptions avec ajout, modification, suppression, CSV et validations bloquantes. */
-function CompetitionParticipants({ competition, onUpdate }) {
-  const [form, setForm] = useState({ ...EMPTY_PARTICIPANT });
-  const [editingId, setEditingId] = useState(null);
+function CompetitorMiniForm({ competition, onUpdate, initialValue = null, submitLabel = "Ajouter" }) {
+  const [form, setForm] = useState({ ...EMPTY_PARTICIPANT, ...(initialValue || {}) });
   const [errors, setErrors] = useState([]);
-  const [filters, setFilters] = useState({ q: "", club: "", categorie: "", poids: "", grade: "", sexe: "" });
-  const csvRef = useRef(null);
-  const participants = competition.participants || [];
-  const filtered = participants.filter((p) => Object.entries(filters).every(([key, value]) => !value || String(key === "q" ? `${p.nom} ${p.prenom} ${p.licence}` : p[key] || "").toLowerCase().includes(value.toLowerCase())));
-  /** Met à jour le formulaire d'inscription. */
   function change(event) {
     const { name, value, type, checked } = event.target;
     setForm((current) => ({ ...current, [name]: type === "checkbox" ? checked : value }));
   }
-  /** Enregistre un compétiteur uniquement si tous les contrôles automatiques passent. */
   function submit(event) {
     event.preventDefault();
-    const validation = ValidationService.validateParticipant(form, competition, editingId);
+    const validation = ValidationService.validateParticipant(form, competition);
     setErrors(validation);
     if (validation.length) return;
-    const participant = { ...form, id: editingId || CompetitionService.createId("participant") };
-    onUpdate({ ...competition, participants: editingId ? participants.map((p) => (p.id === editingId ? participant : p)) : [...participants, participant] });
+    const participant = { ...form, id: form.id || CompetitionService.createId("participant") };
+    const participants = competition.participants || [];
+    onUpdate({ ...competition, participants: participants.some((p) => p.id === participant.id) ? participants.map((p) => (p.id === participant.id ? participant : p)) : [...participants, participant] });
     setForm({ ...EMPTY_PARTICIPANT });
-    setEditingId(null);
   }
-  /** Place un compétiteur existant dans le formulaire de modification. */
-  function edit(participant) {
-    setForm({ ...EMPTY_PARTICIPANT, ...participant });
-    setEditingId(participant.id);
-    setErrors([]);
-  }
-  /** Supprime définitivement un compétiteur de la compétition. */
-  function remove(id) {
-    onUpdate({ ...competition, participants: participants.filter((p) => p.id !== id) });
-  }
-  /** Importe un fichier CSV et rejette les lignes qui ne passent pas la validation. */
+  return <form className="wizard-form compact-competitor" onSubmit={submit}><input name="nom" placeholder="Nom" value={form.nom} onChange={change} /><input name="prenom" placeholder="Prénom" value={form.prenom} onChange={change} /><input name="licence" placeholder="Licence" value={form.licence} onChange={change} /><input name="club" placeholder="Club" value={form.club} onChange={change} /><select name="categorie" value={form.categorie} onChange={change}>{CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select><input name="poids" placeholder="Poids" value={form.poids} onChange={change} /><select name="grade" value={form.grade} onChange={change}>{GRADES.map((grade) => <option key={grade}>{grade}</option>)}</select><select name="sexe" value={form.sexe} onChange={change}>{SEXES.map((sexe) => <option key={sexe}>{sexe}</option>)}</select><input name="dateNaissance" type="date" value={form.dateNaissance} onChange={change} /><label className="inline-check"><input type="checkbox" name="certificatMedical" checked={form.certificatMedical} onChange={change} />Licence valide</label><label className="inline-check"><input type="checkbox" name="autorisationParentale" checked={form.autorisationParentale} onChange={change} />Autorisation mineur</label><button className="primary" type="submit">{submitLabel}</button>{errors.length > 0 && <div className="validation-errors">{errors.map((error) => <p key={error}>{error}</p>)}</div>}</form>;
+}
+
+function CompetitionStepTwo({ competition, onUpdate, onContinue }) {
+  const [showForm, setShowForm] = useState(false);
+  const csvRef = useRef(null);
+  const stats = quickStats(competition);
   function importCsv(event) {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      const rows = CSVImportService.parse(String(reader.result || ""));
-      const accepted = [];
-      rows.forEach((row) => {
-        const participant = { ...row, id: CompetitionService.createId("participant") };
-        const validation = ValidationService.validateParticipant(participant, { ...competition, participants: [...participants, ...accepted] });
-        if (!validation.length) accepted.push(participant);
-      });
-      onUpdate({ ...competition, participants: [...participants, ...accepted] });
-    };
+    reader.onload = () => onUpdate({ ...competition, participants: [...(competition.participants || []), ...CSVImportService.parse(String(reader.result || "")).map((row) => ({ ...row, id: CompetitionService.createId("participant") }))] });
     reader.readAsText(file, "UTF-8");
     event.target.value = "";
   }
-  return <section className="competition-panel"><div className="manager-header"><div><p className="surtitle">INSCRIPTIONS</p><h3>Compétiteurs</h3></div><div><input ref={csvRef} type="file" accept=".csv,text/csv" onChange={importCsv} hidden /><button className="manage-button" onClick={() => csvRef.current?.click()}>Importer un CSV</button></div></div><CompetitionFilters filters={filters} setFilters={setFilters} /><form className="participant-form" onSubmit={submit}><input name="nom" placeholder="Nom" value={form.nom} onChange={change} /><input name="prenom" placeholder="Prénom" value={form.prenom} onChange={change} /><input name="licence" placeholder="Licence" value={form.licence} onChange={change} /><input name="club" placeholder="Club" value={form.club} onChange={change} /><select name="categorie" value={form.categorie} onChange={change}>{CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select><input name="poids" placeholder="Poids" value={form.poids} onChange={change} /><select name="grade" value={form.grade} onChange={change}>{GRADES.map((grade) => <option key={grade}>{grade}</option>)}</select><select name="sexe" value={form.sexe} onChange={change}>{SEXES.map((sexe) => <option key={sexe}>{sexe}</option>)}</select><input name="dateNaissance" type="date" value={form.dateNaissance} onChange={change} /><label><input type="checkbox" name="certificatMedical" checked={form.certificatMedical} onChange={change} /> Certificat médical</label><label><input type="checkbox" name="autorisationParentale" checked={form.autorisationParentale} onChange={change} /> Autorisation parentale</label><button className="primary" type="submit">{editingId ? "Modifier" : "Ajouter"}</button></form>{errors.length > 0 && <div className="validation-errors"><strong>🔴 Validation impossible</strong>{errors.map((error) => <p key={error}>{error}</p>)}</div>}<div className="responsive-table"><table><thead><tr><th>État</th><th>Nom</th><th>Club</th><th>Catégorie</th><th>Poids</th><th>Grade</th><th>Sexe</th><th>Actions</th></tr></thead><tbody>{filtered.map((p) => { const rowErrors = ValidationService.validateParticipant(p, competition, p.id); return <tr key={p.id}><td>{rowErrors.length ? <span title={rowErrors.join(" ")}>🔴</span> : "✅"}</td><td>{p.nom} {p.prenom}<br /><small>{p.licence}</small></td><td>{p.club}</td><td>{p.categorie}</td><td>{p.poids}</td><td>{p.grade}</td><td>{p.sexe}</td><td><button className="manage-button" onClick={() => edit(p)}>Modifier</button><button className="delete-button" onClick={() => remove(p.id)}>Supprimer</button></td></tr>; })}</tbody></table></div></section>;
+  return <WizardCard eyebrow="Étape 2" title="Ajouter les compétiteurs" action={{ label: "Continuer", onClick: onContinue }}><input ref={csvRef} type="file" accept=".csv,text/csv" onChange={importCsv} hidden /><div className="wizard-choice"><button type="button" onClick={() => csvRef.current?.click()}>Importer un CSV</button><span>OU</span><button type="button" onClick={() => setShowForm((value) => !value)}>Ajouter un compétiteur</button></div>{showForm && <CompetitorMiniForm competition={competition} onUpdate={onUpdate} />}<div className="wizard-stats"><CompetitionCard label="Clubs" value={stats.clubs} /><CompetitionCard label="Compétiteurs" value={stats.competitors} /><CompetitionCard label="Catégories" value={stats.categories} /></div></WizardCard>;
 }
 
-/** Tableau principal de la liste des compétitions et de ses actions. */
-function CompetitionList({ competitions, onOpen, onEdit, onClone, onDelete, onExport }) {
-  return <div className="responsive-table"><table className="competition-table"><thead><tr><th>Nom</th><th>Date</th><th>Ville</th><th>Organisateur</th><th>Nombre de clubs</th><th>Nombre de compétiteurs</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{competitions.map((c) => <tr key={c.id}><td><strong>{c.nom}</strong></td><td>{c.date || "—"}</td><td>{c.ville || c.lieu || "—"}</td><td>{c.organisateur || "—"}</td><td>{new Set((c.participants || []).map((p) => p.club).filter(Boolean)).size}</td><td>{(c.participants || []).length}</td><td><span className="status-pill">{c.statut}</span></td><td><div className="table-actions"><button className="manage-button" onClick={() => onOpen(c.id)}>Ouvrir</button><button className="manage-button" onClick={() => onEdit(c.id)}>Modifier</button><button className="manage-button" onClick={() => onClone(c)}>Cloner</button><button className="delete-button" onClick={() => onDelete(c.id)}>Supprimer</button><button className="manage-button" onClick={() => onExport(c)}>Exporter</button></div></td></tr>)}</tbody></table></div>;
+function CompetitionStepThree({ competition, onUpdate, onContinue }) {
+  const participants = competition.participants || [];
+  const rows = participants.map((p) => ({ participant: p, errors: ValidationService.validateParticipant(p, competition, p.id) }));
+  const errorCount = rows.reduce((sum, row) => sum + row.errors.length, 0);
+  const [editing, setEditing] = useState(null);
+  return <WizardCard eyebrow="Étape 3" title="Contrôle automatique" action={{ label: "Continuer", onClick: onContinue }} actionClass={errorCount ? "primary" : "primary success-action"} disabled={errorCount > 0 || participants.length === 0}><div className="control-checks"><span>âge</span><span>grade</span><span>catégorie</span><span>licence</span><span>doublons</span><span>poids</span></div><div className="control-list">{rows.length ? rows.map(({ participant, errors }) => <article key={participant.id} className={errors.length ? "control-row error" : "control-row ok"}><strong>{participant.nom} {participant.prenom}</strong><span>{errors.length ? "❌ erreur" : "✓ conforme"}</span>{errors.length > 0 && <button type="button" onClick={() => setEditing(participant)}>Corriger</button>}<small>{errors.join(" ")}</small></article>) : <p className="muted">Ajoutez des compétiteurs pour lancer le contrôle.</p>}</div>{editing && <CompetitorMiniForm initialValue={editing} submitLabel="Corriger" competition={competition} onUpdate={(updated) => { onUpdate(updated); setEditing(null); }} />}</WizardCard>;
 }
 
-/** Module complet de gestion des compétitions avant tirage au sort. */
+function CompetitionStepFour({ competition, onUpdate, onContinue }) {
+  const stats = drawStats(competition);
+  function generate() {
+    onUpdate({ ...competition, futureModules: { ...(competition.futureModules || {}), tirage: { mode: "automatique", generatedAt: new Date().toISOString(), stats } } });
+    onContinue();
+  }
+  return <WizardCard eyebrow="Étape 4" title="Tirage au sort" action={{ label: "Générer automatiquement", onClick: generate }}><div className="wizard-stats"><CompetitionCard label="Catégories" value={stats.categories} /><CompetitionCard label="Poules" value={stats.pools} /><CompetitionCard label="Tableaux" value={stats.brackets} /></div><p className="wizard-helper">Le meilleur mode de tirage sera choisi automatiquement.</p></WizardCard>;
+}
+
+function CompetitionStepFive({ competition, onUpdate, onContinue }) {
+  function launch() {
+    onUpdate({ ...competition, statut: "En cours" });
+    onContinue();
+  }
+  return <WizardCard eyebrow="Étape 5" title="Lancer la compétition"><button className="launch-button" type="button" onClick={launch}>Lancer la compétition</button><p className="wizard-helper">Les tatamis s'ouvrent directement après le lancement.</p></WizardCard>;
+}
+
+function CompetitionStepSix({ competition }) {
+  return <WizardCard eyebrow="Étape 6" title="Classement et résultats"><div className="results-grid">{["Classements", "Podiums", "Médailles", "Classement des clubs", "Export PDF", "Export Excel"].map((item) => <button type="button" key={item}>{item}</button>)}</div><p className="wizard-helper">{competition.nom || "La compétition"} est prête pour la publication des résultats.</p></WizardCard>;
+}
+
+/** Module Compétition repensé comme assistant guidé en six étapes. */
 function CompetitionManager() {
   const [competitions, setCompetitions] = useState(CompetitionStore.load);
-  const [view, setView] = useState("list");
+  const [step, setStep] = useState(0);
   const [selectedId, setSelectedId] = useState(null);
-  const selected = competitions.find((c) => c.id === selectedId) || competitions[0];
+  const selected = competitions.find((c) => c.id === selectedId) || competitions[0] || CompetitionService.createCompetition(EMPTY_COMPETITION);
   useEffect(() => CompetitionStore.save(competitions), [competitions]);
-  /** Met à jour ou ajoute une compétition dans le store global. */
   function upsert(competition) {
-    const normalized = CompetitionService.normalizeCompetition({ ...competition, inscriptionsOuvertes: competition.statut === "Inscriptions ouvertes", updatedAt: new Date().toISOString() });
+    const normalized = CompetitionService.normalizeCompetition({ ...competition, updatedAt: new Date().toISOString() });
     setCompetitions((current) => current.some((c) => c.id === normalized.id) ? current.map((c) => (c.id === normalized.id ? normalized : c)) : [...current, normalized]);
     setSelectedId(normalized.id);
-    setView("edit");
   }
-  /** Supprime une compétition après confirmation utilisateur. */
-  function remove(id) {
-    if (window.confirm("Supprimer cette compétition ?")) setCompetitions((current) => current.filter((c) => c.id !== id));
-  }
-  /** Calcule la compétition à éditer selon la sélection courante. */
-  const editInitial = useMemo(() => selected || EMPTY_COMPETITION, [selected]);
-  return <section className="competition-manager"><div className="manager-header"><div><p className="surtitle">BÊTA STABLE</p><h2>Gestion des compétitions</h2><p>Créer, modifier et contrôler une compétition avant le tirage au sort.</p></div><button className="primary" onClick={() => setView("new")}>+ Nouvelle compétition</button></div><CompetitionToolbar view={view} setView={setView} />{view === "list" && <CompetitionList competitions={competitions} onOpen={(id) => { setSelectedId(id); setView("dashboard"); }} onEdit={(id) => { setSelectedId(id); setView("edit"); }} onClone={(c) => setCompetitions((current) => [...current, CompetitionService.cloneCompetition(c)])} onDelete={remove} onExport={CompetitionService.exportCompetition} />}{view === "new" && <CompetitionForm submitLabel="Créer la compétition" onSubmit={(values) => upsert(CompetitionService.createCompetition(values))} />}{view === "edit" && selected && <><label className="select-current">Compétition à modifier<select value={selectedId || selected.id} onChange={(e) => setSelectedId(e.target.value)}>{competitions.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}</select></label><CompetitionForm key={selected.id} initialValue={editInitial} submitLabel="Enregistrer les modifications" onSubmit={upsert} /><CompetitionParticipants competition={selected} onUpdate={upsert} /></>}{view === "settings" && selected && <CompetitionSettings competition={selected} onUpdate={upsert} />}{view === "dashboard" && selected && <CompetitionDashboard competition={selected} />}{competitions.length === 0 && view === "list" && <div className="empty-state"><span className="empty-number">0</span><h3>Aucune compétition</h3><p>Créez une compétition pour démarrer la préparation.</p></div>}</section>;
+  function next() { setStep((current) => Math.min(WIZARD_STEPS.length - 1, current + 1)); }
+  return <section className="competition-manager wizard-manager"><div className="manager-header"><div><p className="surtitle">ASSISTANT COMPÉTITION</p><h2>Créer une compétition en moins de 2 minutes</h2><p>Une seule action principale par écran, de la création aux résultats.</p></div>{competitions.length > 1 && <label className="select-current">Compétition<select value={selected.id} onChange={(event) => setSelectedId(event.target.value)}>{competitions.map((c) => <option key={c.id} value={c.id}>{c.nom || "Compétition sans nom"}</option>)}</select></label>}</div><WizardProgress step={step} />{step === 0 && <CompetitionStepOne competition={selected} onChange={upsert} onContinue={next} />}{step === 1 && <CompetitionStepTwo competition={selected} onUpdate={upsert} onContinue={next} />}{step === 2 && <CompetitionStepThree competition={selected} onUpdate={upsert} onContinue={next} />}{step === 3 && <CompetitionStepFour competition={selected} onUpdate={upsert} onContinue={next} />}{step === 4 && <CompetitionStepFive competition={selected} onUpdate={upsert} onContinue={next} />}{step === 5 && <CompetitionStepSix competition={selected} />}</section>;
 }
 
 export default CompetitionManager;
