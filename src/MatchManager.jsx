@@ -152,12 +152,6 @@ function MatchManager({
       ) / notesKata.length
     : 0;
 
-  const competitorDisplayName = competitor
-    ? `${competitor.nom || ""} ${
-        competitor.prenom || ""
-      }`.trim()
-    : "Compétiteur";
-
   const kataCategoryLabel =
     category?.nom || category?.name || pool?.nom || "—";
 

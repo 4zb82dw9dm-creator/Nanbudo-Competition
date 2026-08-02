@@ -93,7 +93,6 @@ function getPoolCompetitorIds(pool) {
 
 function buildDiagnostics(competition) {
   const competitors = competition.competitors || [];
-  const categories = competition.categories || [];
   const pools = competition.pools || [];
   const planning = competition.planning || [];
   const tatamis = new Set(planning.map((item) => item.tatami).filter(Boolean));
