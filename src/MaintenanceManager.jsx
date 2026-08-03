@@ -6,9 +6,16 @@ import {
   createBackupFilename,
   downloadJsonFile,
 } from "./backupUtils";
-import { COMPETITORS_STORAGE_KEY } from "./CompetitorManager";
+import { buildDemoCompetition2027, DEMO_COMPETITION_NAME } from "./demoCompetition2027";
+import { generateCategories } from "./competitionWorkflow";
+import {
+  COMPETITORS_CHANGED_EVENT,
+  COMPETITORS_STORAGE_KEY,
+  writeCompetitorsToStorage,
+} from "./competitorRepository";
 
 const REGISTRATIONS_STORAGE_KEY = "nanbudo-online-registrations-v2";
+const REGISTRATIONS_CHANGED_EVENT = "nanbudo-registrations-changed";
 const MAINTENANCE_BACKUP_KIND = "full-application";
 const NANBUDO_KEY_PREFIXES = ["nanbudo", "Nanbudo"];
 
@@ -105,6 +112,71 @@ function restoreLocalStorage(localStorageData) {
   });
 }
 
+
+function buildDemoRegistrations(competition) {
+  return (competition.participants || []).map((competitor, index) => ({
+    id: `${competition.id}-registration-${String(index + 1).padStart(3, "0")}`,
+    competitionId: competition.id,
+    competitionName: competition.nom,
+    nom: competitor.nom,
+    prenom: competitor.prenom,
+    club: competitor.club,
+    region: competitor.region || "",
+    licence: competitor.licence || competitor.numeroLicence,
+    numeroLicence: competitor.numeroLicence || competitor.licence,
+    dateNaissance: competitor.dateNaissance,
+    sexe: competitor.sexe,
+    grade: competitor.grade,
+    poids: competitor.poids,
+    categorie: competitor.categorie,
+    categorieAge: competitor.categorieAge,
+    categoriePoids: competitor.categoriePoids,
+    email: competitor.email,
+    telephone: competitor.telephone,
+    certificatMedical: competitor.certificatMedical,
+    autorisationParentale: competitor.autorisationParentale,
+    epreuves: Object.entries(competitor.epreuves || {})
+      .filter(([, selected]) => selected)
+      .map(([eventType]) => eventType),
+    statut: "Validé",
+    badgeVert: true,
+    validationErrors: [],
+    createdAt: competition.createdAt,
+    demoData: true,
+  }));
+}
+
+function removeDemoCompetitors(competitors) {
+  return competitors.filter((competitor) => competitor?.demoData !== true && competitor?.isTest !== true);
+}
+
+function removeDemoCompetitionData(competitions, registrations) {
+  const removedIds = new Set(
+    competitions
+      .filter((competition) => competition.nom === DEMO_COMPETITION_NAME)
+      .map((competition) => String(competition.id)),
+  );
+
+  return {
+    competitions: competitions.filter((competition) => competition.nom !== DEMO_COMPETITION_NAME),
+    registrations: registrations.filter((registration) => !removedIds.has(String(registration.competitionId))),
+  };
+}
+
+function createDemoCompetition(existingCount = 0) {
+  const idPrefix = existingCount ? `demo-2027-${existingCount + 1}` : "demo-2027";
+  const competition = buildDemoCompetition2027(idPrefix);
+  const now = new Date().toISOString();
+
+  return {
+    ...competition,
+    id: `${idPrefix}-competition`,
+    nom: existingCount ? `${DEMO_COMPETITION_NAME} #${existingCount + 1}` : DEMO_COMPETITION_NAME,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 function createMinimalData() {
   writeJsonToStorage(COMPETITORS_STORAGE_KEY, []);
   writeJsonToStorage(COMPETITIONS_STORAGE_KEY, []);
@@ -162,6 +234,57 @@ function MaintenanceManager({ onResetComplete }) {
     });
   }
 
+
+  function generateDemoData() {
+    const confirmed = window.confirm("Cette opération va créer une compétition de démonstration ainsi que 100 compétiteurs et leurs inscriptions. Continuer ?");
+    if (!confirmed) return;
+
+    runAction("demo", async () => {
+      const competitions = readJsonFromStorage(COMPETITIONS_STORAGE_KEY, []);
+      const registrations = readJsonFromStorage(REGISTRATIONS_STORAGE_KEY, []);
+      const competitors = readJsonFromStorage(COMPETITORS_STORAGE_KEY, []);
+      if (!Array.isArray(competitions)) throw new Error("La liste des compétitions est illisible.");
+      if (!Array.isArray(registrations)) throw new Error("La liste des inscriptions est illisible.");
+      if (!Array.isArray(competitors)) throw new Error("La liste des compétiteurs est illisible.");
+
+      const existingDemoCount = competitions.filter((competition) => competition.nom === DEMO_COMPETITION_NAME).length;
+      let baseCompetitions = competitions;
+      let baseRegistrations = registrations;
+      let baseCompetitors = competitors;
+      let creationIndex = existingDemoCount;
+
+      if (existingDemoCount > 0) {
+        const choice = window.prompt(
+          `Une compétition “${DEMO_COMPETITION_NAME}” existe déjà. Tapez 1 pour Supprimer et régénérer, 2 pour Créer une nouvelle compétition, ou laissez vide pour Annuler.`,
+          "1",
+        );
+
+        if (choice === null || choice.trim() === "") return "Génération annulée.";
+        if (choice.trim() === "1") {
+          const cleaned = removeDemoCompetitionData(competitions, registrations);
+          baseCompetitions = cleaned.competitions;
+          baseRegistrations = cleaned.registrations;
+          baseCompetitors = removeDemoCompetitors(competitors);
+          creationIndex = 0;
+        } else if (choice.trim() !== "2") {
+          return "Génération annulée.";
+        }
+      }
+
+      const competition = createDemoCompetition(creationIndex);
+      const demoRegistrations = buildDemoRegistrations(competition);
+      writeJsonToStorage(COMPETITIONS_STORAGE_KEY, [...baseCompetitions, competition]);
+      writeCompetitorsToStorage([...baseCompetitors, ...(competition.participants || [])]);
+      writeJsonToStorage(REGISTRATIONS_STORAGE_KEY, [...baseRegistrations, ...demoRegistrations]);
+      window.dispatchEvent(new Event("nanbudo-competitions-changed"));
+      window.dispatchEvent(new Event(REGISTRATIONS_CHANGED_EVENT));
+      window.dispatchEvent(new Event(COMPETITORS_CHANGED_EVENT));
+
+      const categoryCount = generateCategories(competition).length;
+      return `✅ 1 compétition créée\n✅ ${competition.participants.length} compétiteurs créés\n✅ ${demoRegistrations.length} inscriptions créées\n✅ ${categoryCount} catégories générées\n✅ Contrôles validés`;
+    });
+  }
+
   function resetApplication() {
     const firstConfirmation = window.confirm("Réinitialiser complètement l'application ? Toutes les données seront supprimées.");
     if (!firstConfirmation) return;
@@ -213,9 +336,10 @@ function MaintenanceManager({ onResetComplete }) {
         <div className="category-total"><strong>{stats.competitors + stats.competitions}</strong><span>éléments</span></div>
       </div>
 
-      {status && <div className={`validation-panel ${status.type === "error" ? "invalid" : "valid"}`}><strong>{status.type === "error" ? "Erreur" : "Confirmation"}</strong><span>{status.message}</span></div>}
+      {status && <div className={`validation-panel ${status.type === "error" ? "invalid" : "valid"}`}><strong>{status.type === "error" ? "Erreur" : "Confirmation"}</strong><span style={{ whiteSpace: "pre-line" }}>{status.message}</span></div>}
 
       <div className="action-grid maintenance-grid">
+        <div className="action-card"><h3>Données de démonstration</h3><p>Crée une compétition complète avec 100 compétiteurs, inscriptions, catégories et tableaux de test.</p><button className="manage-button primary" type="button" disabled={isBusy} onClick={generateDemoData}>🎯 Générer des données de démonstration</button></div>
         <div className="action-card"><h3>Compétiteurs de test</h3><p>{stats.testCompetitors} détecté(s) sur {stats.competitors} compétiteur(s).</p><button className="manage-button" type="button" disabled={isBusy} onClick={deleteTestCompetitors}>Supprimer les compétiteurs de test</button></div>
         <div className="action-card"><h3>Compétitions de test</h3><p>{stats.testCompetitions} détectée(s) sur {stats.competitions} compétition(s).</p><button className="manage-button" type="button" disabled={isBusy} onClick={deleteTestCompetitions}>Supprimer les compétitions de test</button></div>
         <div className="action-card"><h3>Export des données</h3><p>Génère un fichier JSON contenant toute la base locale.</p><button className="manage-button" type="button" disabled={isBusy} onClick={exportData}>Exporter les données</button></div>
