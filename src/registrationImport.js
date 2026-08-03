@@ -1,3 +1,4 @@
+import { KATA0_RANDORI0_RULE, sanitizeRestrictedEventsForCompetitor } from "./competitorRules.js";
 const EVENT_KEYS = [
   "kata0",
   "kata1",
@@ -77,7 +78,15 @@ export function parseRegistrationExport(text, existingCompetitors = []) {
     const prenom = String(registration?.prenom || "").trim();
     const club = String(registration?.club || "").trim();
     const dateNaissance = String(registration?.dateNaissance || "").trim();
-    const epreuves = normalizeEvents(registration?.epreuves);
+    const rawEpreuves = normalizeEvents(registration?.epreuves);
+    const epreuves = sanitizeRestrictedEventsForCompetitor(
+      {
+        dateNaissance,
+        age: calculateAge(dateNaissance),
+        grade: String(registration?.grade || "").trim(),
+        epreuves: rawEpreuves,
+      },
+    ).epreuves;
     const selectedEvents = EVENT_KEYS.filter((key) => epreuves[key]);
 
     if (!nom || !prenom) {
@@ -86,7 +95,7 @@ export function parseRegistrationExport(text, existingCompetitors = []) {
     }
 
     if (selectedEvents.length === 0) {
-      rejected.push(`Inscription ${line} : aucune épreuve sélectionnée pour ${nom} ${prenom}.`);
+      rejected.push(`Inscription ${line} : aucune épreuve sélectionnée pour ${nom} ${prenom}. ${KATA0_RANDORI0_RULE.rejectionMessage}`);
       return;
     }
 

@@ -61,6 +61,81 @@ export function calculateAge(dateNaissance, referenceDate = new Date()) {
   return age;
 }
 
+export const KATA0_RANDORI0_RULE = {
+  maxAge: 10,
+  allowedGrades: [
+    "blanc",
+    "blanche",
+    "blanc jaune",
+    "blanche jaune",
+    "jaune",
+    "jaune orange",
+    "orange",
+    "orange verte",
+    "verte",
+  ],
+  restrictedEvents: ["kata0", "randori"],
+  rejectionMessage:
+    "Ce compétiteur n’est pas autorisé à participer en Kata 0 ou Randori 0. Ces disciplines sont réservées aux enfants de 10 ans maximum et de grade Orange-Verte maximum.",
+};
+
+export function normalizeGradeForRules(grade) {
+  return String(grade || "")
+    .trim()
+    .toLocaleLowerCase("fr")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\/\-]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+export function isKata0Randori0Event(eventType) {
+  return KATA0_RANDORI0_RULE.restrictedEvents.includes(eventType);
+}
+
+export function getCompetitorAgeForRules(competitor, referenceDate = new Date()) {
+  if (competitor?.age !== "" && competitor?.age !== undefined && competitor?.age !== null) {
+    const age = Number(competitor.age);
+    if (Number.isFinite(age)) return age;
+  }
+  return calculateAge(competitor?.dateNaissance, referenceDate);
+}
+
+export function canParticipateInKata0Randori0(competitor, referenceDate = new Date()) {
+  const age = getCompetitorAgeForRules(competitor, referenceDate);
+  return (
+    age !== null &&
+    age <= KATA0_RANDORI0_RULE.maxAge &&
+    KATA0_RANDORI0_RULE.allowedGrades.includes(normalizeGradeForRules(competitor?.grade))
+  );
+}
+
+export function canParticipateInEvent(competitor, eventType, referenceDate = new Date()) {
+  if (!isKata0Randori0Event(eventType)) return true;
+  return canParticipateInKata0Randori0(competitor, referenceDate);
+}
+
+export function sanitizeRestrictedEventsForCompetitor(competitor, referenceDate = new Date()) {
+  if (canParticipateInKata0Randori0(competitor, referenceDate)) {
+    return competitor;
+  }
+
+  const epreuves = Array.isArray(competitor?.epreuves)
+    ? competitor.epreuves.filter((eventType) => !isKata0Randori0Event(eventType))
+    : {
+        ...(competitor?.epreuves || {}),
+        kata0: false,
+        randori: false,
+      };
+
+  return {
+    ...competitor,
+    kata0: false,
+    randori: false,
+    epreuves,
+  };
+}
+
 export function getAgeCategory(age) {
   if (age >= 7 && age <= 10) return "Enfants";
   if (age >= 11 && age <= 15) return "Benjamins / Minimes";
