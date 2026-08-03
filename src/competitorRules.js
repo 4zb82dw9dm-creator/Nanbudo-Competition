@@ -35,11 +35,9 @@ export const REQUIRED_COMPETITOR_COLUMNS = [
   "sexe",
   "dateNaissance",
   "club",
-  "region",
   "numeroLicence",
   "grade",
   "categoriePoids",
-  "coach",
   "certificatMedical",
   "autorisationParentale",
 ];
