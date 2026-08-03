@@ -175,6 +175,16 @@ function MatchManager({
    * =========================================================
    */
 
+  const nomsAssautsOfficiels = [
+    "Tsuki 1",
+    "Tsuki 2",
+    "Mae Geri 1",
+    "Mae Geri 2",
+    "Mawashi 1",
+    "Mawashi 2",
+    "Dernier Tsuki",
+  ];
+
   const [assauts, setAssauts] = useState(() => {
     if (
       match?.assauts &&
@@ -1087,13 +1097,13 @@ function MatchManager({
   let decisionProvisoire = "Égalité";
 
   if (akaDisqualifie && !shiroDisqualifie) {
-    decisionProvisoire = "Blanc";
+    decisionProvisoire = "SHIRO";
   } else if (shiroDisqualifie && !akaDisqualifie) {
-    decisionProvisoire = "Rouge";
+    decisionProvisoire = "AKA";
   } else if (scoreFinalAka > scoreFinalShiro) {
-    decisionProvisoire = "Rouge";
+    decisionProvisoire = "AKA";
   } else if (scoreFinalShiro > scoreFinalAka) {
-    decisionProvisoire = "Blanc";
+    decisionProvisoire = "SHIRO";
   }
 
   /*
@@ -1144,7 +1154,7 @@ function MatchManager({
             </h2>
 
             <p>
-              Rouge / Blanc
+              AKA / SHIRO
             </p>
           </div>
 
@@ -1650,7 +1660,7 @@ function MatchManager({
                       </p>
 
                       <h3>
-                        Assaut {index + 1}
+                        {nomsAssautsOfficiels[index]}
                       </h3>
                     </div>
 
