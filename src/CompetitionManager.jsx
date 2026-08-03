@@ -42,7 +42,9 @@ const EMPTY_COMPETITION = {
   description: "",
   logo: "",
   statut: "Brouillon",
-  inscriptionsOuvertes: false,
+  status: "draft",
+  registrationOpen: true,
+  inscriptionsOuvertes: true,
 };
 
 const EMPTY_PARTICIPANT = {
@@ -73,6 +75,7 @@ export const CompetitionStore = {
   /** Sauvegarde automatiquement toutes les compétitions dans le stockage local. */
   save(competitions) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(competitions));
+    window.dispatchEvent(new Event("nanbudo-competitions-changed"));
   },
 };
 
@@ -94,12 +97,19 @@ export const CompetitionService = {
       clubs: [],
       categories: [],
       errors: [],
-      inscriptionsOuvertes: values.statut === "Inscriptions ouvertes",
+      status: "open",
+      registrationOpen: true,
+      inscriptionsOuvertes: true,
       futureModules: { tirage: null, tableaux: [], notation: null, chronometre: null, classements: [], affichagePublic: null },
     });
   },
   /** Garantit la présence des modèles nécessaires aux modules futurs sans casser les anciennes données. */
   normalizeCompetition(competition) {
+    const registrationOpen =
+      competition.registrationOpen === true ||
+      competition.status === "open" ||
+      competition.statut === "Inscriptions ouvertes" ||
+      competition.inscriptionsOuvertes === true;
     const normalized = normalizeCompetitionData({
       ...EMPTY_COMPETITION,
       ...competition,
@@ -107,7 +117,9 @@ export const CompetitionService = {
       clubs: Array.isArray(competition.clubs) ? competition.clubs : [],
       categories: Array.isArray(competition.categories) ? competition.categories : [],
       errors: Array.isArray(competition.errors) ? competition.errors : [],
-      inscriptionsOuvertes: competition.statut === "Inscriptions ouvertes" || competition.inscriptionsOuvertes === true,
+      registrationOpen,
+      status: registrationOpen ? "open" : competition.status || "draft",
+      inscriptionsOuvertes: registrationOpen,
     });
     return {
       ...normalized,
@@ -123,6 +135,8 @@ export const CompetitionService = {
       id: this.createId("competition"),
       nom: `${competition.nom} (copie)`,
       statut: "Brouillon",
+      status: "draft",
+      registrationOpen: false,
       inscriptionsOuvertes: false,
       participants: [],
       createdAt: new Date().toISOString(),
