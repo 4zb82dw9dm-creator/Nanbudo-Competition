@@ -179,7 +179,7 @@ function DocumentsSection() {
     setSelectedDocumentId(document.id);
     const popup = window.open("", "_blank");
     if (!popup) return;
-    popup.document.write(`<!doctype html><html><head><title>${escapeDocumentHtml(document.title)}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}</style></head><body><pre>${escapeDocumentHtml(document.content)}</pre></body></html>`);
+    popup.document.write(document.htmlContent || `<!doctype html><html><head><title>${escapeDocumentHtml(document.title)}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}</style></head><body><pre>${escapeDocumentHtml(document.content)}</pre></body></html>`);
     popup.document.close();
   }
 

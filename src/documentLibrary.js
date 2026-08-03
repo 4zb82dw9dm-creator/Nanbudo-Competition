@@ -5,7 +5,7 @@ export const DOCUMENT_TYPES = {
 export const DOCUMENT_REGISTRY = {
   [DOCUMENT_TYPES.OFFICIAL_PLANNING]: {
     type: DOCUMENT_TYPES.OFFICIAL_PLANNING,
-    title: "Planning officiel de la compétition",
+    title: "Planning officiel",
     emptyMessage: "Aucun planning généré pour cette compétition.",
     isPrimary: true,
     canPrint: true,
@@ -44,7 +44,7 @@ export function buildDocumentCardMeta(document) {
   const definition = getDocumentDefinition(document.type);
   return {
     title: document.title || definition.title,
-    description: document.description || (document.printable ? "Consultable et imprimable" : "Consultable"),
+    description: document.description || document.folder || (document.printable ? "Consultable et imprimable" : "Consultable"),
     generatedAt: document.generatedAt || null,
   };
 }
