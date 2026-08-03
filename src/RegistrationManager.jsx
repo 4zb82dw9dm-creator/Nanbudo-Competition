@@ -14,6 +14,21 @@ const EVENTS = [
   ["juRandori2", "Ju Randori 2"],
 ];
 
+function normalizeCompetitionForRegistration(competition) {
+  const registrationOpen =
+    competition?.registrationOpen === true ||
+    competition?.status === "open" ||
+    competition?.statut === "Inscriptions ouvertes" ||
+    competition?.inscriptionsOuvertes === true;
+
+  return {
+    ...competition,
+    registrationOpen,
+    status: registrationOpen ? "open" : competition?.status || "draft",
+    inscriptionsOuvertes: registrationOpen,
+  };
+}
+
 const initialForm = {
   competitionId: "",
   nom: "",
@@ -32,7 +47,8 @@ const initialForm = {
 
 function readJsonFromStorage(key, fallback) {
   try {
-    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+    const parsed = JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+    return Array.isArray(parsed) ? parsed : fallback;
   } catch {
     return fallback;
   }
@@ -43,8 +59,8 @@ function RegistrationManager() {
   const [registrations, setRegistrations] = useState(() =>
     readJsonFromStorage(STORAGE_KEY, []),
   );
-  const [competitions] = useState(() =>
-    readJsonFromStorage(COMPETITIONS_STORAGE_KEY, []),
+  const [competitions, setCompetitions] = useState(() =>
+    readJsonFromStorage(COMPETITIONS_STORAGE_KEY, []).map(normalizeCompetitionForRegistration),
   );
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
@@ -55,8 +71,24 @@ function RegistrationManager() {
     window.dispatchEvent(new Event(REGISTRATIONS_CHANGED_EVENT));
   }, [registrations]);
 
+  useEffect(() => {
+    function refreshCompetitions() {
+      setCompetitions(
+        readJsonFromStorage(COMPETITIONS_STORAGE_KEY, []).map(normalizeCompetitionForRegistration),
+      );
+    }
+
+    window.addEventListener("storage", refreshCompetitions);
+    window.addEventListener("nanbudo-competitions-changed", refreshCompetitions);
+
+    return () => {
+      window.removeEventListener("storage", refreshCompetitions);
+      window.removeEventListener("nanbudo-competitions-changed", refreshCompetitions);
+    };
+  }, []);
+
   const openCompetitions = useMemo(
-    () => competitions.filter((competition) => competition.inscriptionsOuvertes === true),
+    () => competitions.filter((competition) => competition.registrationOpen === true || competition.status === "open"),
     [competitions],
   );
 
