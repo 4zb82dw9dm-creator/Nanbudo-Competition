@@ -1350,7 +1350,7 @@ function CompetitionDocuments({ competition = {} }) {
     if (!selectedDocument) return;
     const popup = window.open("", "_blank");
     if (!popup) return;
-    popup.document.write(`<!doctype html><html><head><title>${escapeDocumentHtml(selectedDocument.title)}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Imprimer</button><pre>${escapeDocumentHtml(selectedDocument.content)}</pre></body></html>`);
+    popup.document.write(selectedDocument.htmlContent || `<!doctype html><html><head><title>${escapeDocumentHtml(selectedDocument.title)}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Imprimer</button><pre>${escapeDocumentHtml(selectedDocument.content)}</pre></body></html>`);
     popup.document.close();
   }
 
@@ -1387,7 +1387,7 @@ function CompetitionDocuments({ competition = {} }) {
               <p>Généré le {new Date(selectedDocument.generatedAt).toLocaleString("fr-FR")}</p>
               <button className="primary" type="button" onClick={printDocument}>Ouvrir / imprimer</button>
               <pre style={{ whiteSpace: "pre-wrap", textAlign: "left" }}>{selectedDocument.content}</pre>
-              {!selectedDocument.exportPdfReady && <p className="info">Export PDF prévu dans une future version.</p>}
+              {selectedDocument.exportPdfReady ? <p className="info">Document prêt pour impression A4 paysage et export PDF / Excel.</p> : <p className="info">Export PDF prévu dans une future version.</p>}
             </article>
           )}
         </div>
