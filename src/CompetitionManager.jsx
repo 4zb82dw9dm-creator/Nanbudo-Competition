@@ -303,6 +303,12 @@ function getCompetitorLabel(competition, id) {
   return competitor ? `${competitor.nom} ${competitor.prenom}` : "Bye";
 }
 
+function getMatchStatusMeta(status) {
+  if (status === "Terminé") return { className: "finished", label: "🟢 Terminé" };
+  if (status === "En cours") return { className: "active", label: "🔵 En cours" };
+  return { className: "pending", label: "🟡 À jouer" };
+}
+
 export function CompetitionStepFive({ competition, onUpdate, onContinue }) {
   const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
   const brackets = safeCompetition.brackets || [];
@@ -331,7 +337,64 @@ export function CompetitionStepFive({ competition, onUpdate, onContinue }) {
     if (canShowRankings(safeCompetition)) onContinue();
   }
 
-  return <WizardCard eyebrow="Étape 5" title="Arbitrage des combats"><div className="wizard-stats"><CompetitionCard label="Combats terminés" value={completedMatches} /><CompetitionCard label="Combats générés" value={totalMatches} /><CompetitionCard label="À arbitrer" value={playableMatches.length} /></div>{!brackets.length && <button className="launch-button" type="button" onClick={launch}>Générer avant lancement</button>}{brackets.length > 0 && safeCompetition.statut !== "En cours" && !canShowRankings(safeCompetition) && <button className="launch-button" type="button" onClick={launch}>Lancer la compétition</button>}<div className="control-list">{brackets.map((bracket) => <article key={bracket.id} className={bracket.status === "Terminée" ? "control-row ok" : "control-row"}><strong>{safeCompetition.categories.find((category) => category.id === bracket.categoryId)?.nom || bracket.categoryId}</strong><span>{bracket.status}</span>{bracket.rounds.map((round) => <div key={`${bracket.id}-${round.index}`}><small>{round.label}</small>{round.matches.map((match) => <p key={match.id}>{getCompetitorLabel(safeCompetition, match.akaId)} vs {getCompetitorLabel(safeCompetition, match.shiroId)} · {match.statut}{match.statut !== "Terminé" && match.akaId && match.shiroId && <span> <button type="button" onClick={() => setSelectedMatchId(match.id)}>Arbitrer</button></span>}{match.statut === "Terminé" && <span> · {match.akaScore ?? "-"} / {match.shiroScore ?? "-"}</span>}</p>)}</div>)}</article>)}</div>{selectedMatch && <MatchManager match={{ ...selectedMatch.match, aka: (safeCompetition.competitors || []).find((item) => String(item.id) === String(selectedMatch.match.akaId)), shiro: (safeCompetition.competitors || []).find((item) => String(item.id) === String(selectedMatch.match.shiroId)) }} mode="ju-randori" type="ju-randori" initialResult={selectedMatch.match} category={safeCompetition.categories.find((category) => category.id === selectedMatch.bracket.categoryId)} onSave={(result) => saveArbitration(selectedMatch.match, result)} />}{!selectedMatch && playableMatches.length === 0 && <p className="wizard-helper">Tous les combats jouables sont arbitrés. Les vainqueurs ont été qualifiés automatiquement jusqu'à la finale.</p>}<button className="primary" type="button" onClick={goToRankings} disabled={!canShowRankings(safeCompetition)}>Accéder aux classements</button><p className="wizard-helper">Le classement reste bloqué tant que tous les combats générés ne sont pas terminés.</p></WizardCard>;
+  return (
+    <WizardCard eyebrow="Étape 5" title="Arbitrage des combats">
+      <div className="wizard-stats">
+        <CompetitionCard label="Combats terminés" value={completedMatches} />
+        <CompetitionCard label="Combats générés" value={totalMatches} />
+        <CompetitionCard label="À arbitrer" value={playableMatches.length} />
+      </div>
+      {!brackets.length && <button className="launch-button" type="button" onClick={launch}>Générer avant lancement</button>}
+      {brackets.length > 0 && safeCompetition.statut !== "En cours" && !canShowRankings(safeCompetition) && <button className="launch-button" type="button" onClick={launch}>Lancer la compétition</button>}
+      <div className="competition-board" aria-label="Liste des combats par catégorie et par tour">
+        {brackets.map((bracket) => {
+          const categoryLabel = safeCompetition.categories.find((category) => category.id === bracket.categoryId)?.nom || bracket.categoryId;
+          return (
+            <section key={bracket.id} className="competition-category-section">
+              <header className="competition-category-header">
+                <div>
+                  <p className="competition-category-kicker">Catégorie</p>
+                  <h3>{categoryLabel}</h3>
+                </div>
+                <span className={bracket.status === "Terminée" ? "category-status finished" : "category-status"}>{bracket.status}</span>
+              </header>
+              <div className="competition-rounds">
+                {bracket.rounds.map((round) => (
+                  <section key={`${bracket.id}-${round.index}`} className="competition-round-section">
+                    <h4>{round.label}</h4>
+                    <div className="match-card-list">
+                      {round.matches.map((match) => {
+                        const status = getMatchStatusMeta(match.statut);
+                        const canReferee = match.statut !== "Terminé" && match.akaId && match.shiroId;
+                        return (
+                          <article key={match.id} className="match-card">
+                            <div className="match-card-main">
+                              <strong className="fighter-name">{getCompetitorLabel(safeCompetition, match.akaId)}</strong>
+                              <span className="match-versus">VS</span>
+                              <strong className="fighter-name">{getCompetitorLabel(safeCompetition, match.shiroId)}</strong>
+                            </div>
+                            <div className="match-card-footer">
+                              <span className={`match-status-badge ${status.className}`}>{status.label}</span>
+                              {match.statut === "Terminé" && <span className="match-score">Score {match.akaScore ?? "-"} / {match.shiroScore ?? "-"}</span>}
+                              {canReferee && <button className="referee-button" type="button" onClick={() => setSelectedMatchId(match.id)}>⚖️ Arbitrer</button>}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+      {selectedMatch && <MatchManager match={{ ...selectedMatch.match, aka: (safeCompetition.competitors || []).find((item) => String(item.id) === String(selectedMatch.match.akaId)), shiro: (safeCompetition.competitors || []).find((item) => String(item.id) === String(selectedMatch.match.shiroId)) }} mode="ju-randori" type="ju-randori" initialResult={selectedMatch.match} category={safeCompetition.categories.find((category) => category.id === selectedMatch.bracket.categoryId)} onSave={(result) => saveArbitration(selectedMatch.match, result)} />}
+      {!selectedMatch && playableMatches.length === 0 && <p className="wizard-helper">Tous les combats jouables sont arbitrés. Les vainqueurs ont été qualifiés automatiquement jusqu'à la finale.</p>}
+      <button className="primary" type="button" onClick={goToRankings} disabled={!canShowRankings(safeCompetition)}>Accéder aux classements</button>
+      <p className="wizard-helper">Le classement reste bloqué tant que tous les combats générés ne sont pas terminés.</p>
+    </WizardCard>
+  );
 }
 
 export function CompetitionStepSix({ competition }) {
