@@ -10,6 +10,7 @@ import SimulationManager from "./SimulationManager";
 import CompetitionHealthManager from "./CompetitionHealthManager";
 import { KATA0_RANDORI0_RULE, canParticipateInKata0Randori0, sanitizeRestrictedEventsForCompetitor } from "./competitorRules";
 import { buildDocumentCardMeta, escapeDocumentHtml, getCompetitionDocuments, getDocumentDefinition, getOfficialPlanningDocument } from "./documentLibrary";
+import { getOfficialPlanningStyles } from "./officialPlanning";
 import {
   buildCompetitionTestCompetitors,
   COMPETITION_TEST_COMPETITORS,
@@ -1350,7 +1351,7 @@ function CompetitionDocuments({ competition = {} }) {
     if (!selectedDocument) return;
     const popup = window.open("", "_blank");
     if (!popup) return;
-    popup.document.write(`<!doctype html><html><head><title>${escapeDocumentHtml(selectedDocument.title)}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Imprimer</button><pre>${escapeDocumentHtml(selectedDocument.content)}</pre></body></html>`);
+    popup.document.write(`<!doctype html><html><head><title>${escapeDocumentHtml(selectedDocument.title)}</title><style>${getOfficialPlanningStyles()}body{margin:10mm}</style></head><body><button onclick="window.print()">Imprimer / exporter PDF</button>${selectedDocument.htmlContent || `<pre>${escapeDocumentHtml(selectedDocument.content)}</pre>`}</body></html>`);
     popup.document.close();
   }
 
@@ -1386,8 +1387,12 @@ function CompetitionDocuments({ competition = {} }) {
               <h3>{selectedDocument.title}</h3>
               <p>Généré le {new Date(selectedDocument.generatedAt).toLocaleString("fr-FR")}</p>
               <button className="primary" type="button" onClick={printDocument}>Ouvrir / imprimer</button>
-              <pre style={{ whiteSpace: "pre-wrap", textAlign: "left" }}>{selectedDocument.content}</pre>
-              {!selectedDocument.exportPdfReady && <p className="info">Export PDF prévu dans une future version.</p>}
+              {selectedDocument.htmlContent ? (
+                <div className="official-planning-preview" dangerouslySetInnerHTML={{ __html: selectedDocument.htmlContent }} />
+              ) : (
+                <pre style={{ whiteSpace: "pre-wrap", textAlign: "left" }}>{selectedDocument.content}</pre>
+              )}
+              {selectedDocument.exportPdfReady && <p className="info">Utilise le bouton d’impression pour enregistrer le planning en PDF.</p>}
             </article>
           )}
         </div>
