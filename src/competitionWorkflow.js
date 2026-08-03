@@ -1,3 +1,5 @@
+import { upsertOfficialPlanningDocument } from "./officialPlanning.js";
+
 const CATEGORY_MIN_SIZE = 2;
 const FINAL_STATUSES = ["Terminé", "Terminée"];
 
@@ -139,21 +141,38 @@ export function normalizeCompetitionData(competition = {}) {
     categories: Array.isArray(competition.categories) ? competition.categories : [],
     settings: competition.settings || {},
     futureModules: { tirage: null, tableaux: [], notation: null, chronometre: null, classements: [], affichagePublic: null, ...(competition.futureModules || {}) },
+    documents: Array.isArray(competition.documents) ? competition.documents : [],
     workflow: competition.workflow || { phase: competition.statut || COMPETITION_PHASES.DRAFT, currentScreen: "preparation" },
   };
+}
+
+const COMPETITOR_EVENT_FIELDS = [
+  ["kata0", "Kata 0"],
+  ["kata1", "Kata 1"],
+  ["kata2", "Kata 2"],
+  ["randori", "Randori"],
+  ["juRandori1", "Ju Randori 1"],
+  ["juRandori2", "Ju Randori 2"],
+];
+
+function getCompetitorEvents(competitor) {
+  const selected = COMPETITOR_EVENT_FIELDS.filter(([field]) => competitor[field] || competitor.epreuves?.[field]).map(([field, label]) => ({ field, label }));
+  return selected.length ? selected : [{ field: "kata2", label: "Kata 2" }];
 }
 
 export function generateCategories(competition) {
   const normalized = normalizeCompetitionData(competition);
   const groups = new Map();
   normalized.competitors.forEach((competitor) => {
-    const key = `${competitor.categorie}|${competitor.sexe}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(competitor);
+    getCompetitorEvents(competitor).forEach((event) => {
+      const key = `${event.field}|${competitor.categorie}|${competitor.sexe}`;
+      if (!groups.has(key)) groups.set(key, { event, competitors: [] });
+      groups.get(key).competitors.push(competitor);
+    });
   });
-  return [...groups.entries()].map(([key, competitors], index) => {
-    const [categorie, sexe] = key.split("|");
-    return { id: `category-${index}-${key.replace(/[^a-z0-9]+/gi, "-")}`, nom: `${categorie} ${sexe}`, categorie, sexe, competitorIds: competitors.map((item) => item.id), status: competitors.length >= CATEGORY_MIN_SIZE ? "Valide" : "Insuffisant" };
+  return [...groups.entries()].map(([key, group], index) => {
+    const [epreuve, categorie, sexe] = key.split("|");
+    return { id: `category-${index}-${key.replace(/[^a-z0-9]+/gi, "-")}`, nom: `${categorie} ${sexe}`, categorie, sexe, epreuve, epreuveLabel: group.event.label, competitorIds: group.competitors.map((item) => item.id), status: group.competitors.length >= CATEGORY_MIN_SIZE ? "Valide" : "Insuffisant" };
   });
 }
 
@@ -182,10 +201,11 @@ export function generateTournament(competition) {
     while (seeded.length < size) seeded.push(null);
     const firstMatches = buildRound(category, seeded, 1, size <= 2 ? "Finale" : size === 4 ? "Demi-finales" : "Tour 1");
     const rounds = [{ index: 1, label: firstMatches[0]?.roundLabel || "Tour 1", matches: firstMatches }];
-    return { id: `bracket-${category.id}`, categoryId: category.id, status: category.status === "Valide" ? "À jouer" : "Insuffisant", rounds, podium: null };
+    return { id: `bracket-${category.id}`, categoryId: category.id, epreuve: category.epreuve, epreuveLabel: category.epreuveLabel, competitorIds: category.competitorIds, ageClass: category.categorie, sexe: category.sexe, status: category.status === "Valide" ? "À jouer" : "Insuffisant", rounds, podium: null };
   });
   const matches = brackets.flatMap((bracket) => bracket.rounds.flatMap((round) => round.matches));
-  return { ...normalized, categories, brackets, matches, pools: brackets, statut: COMPETITION_PHASES.READY, workflow: { phase: COMPETITION_PHASES.READY, currentScreen: "arbitrage" }, futureModules: { ...normalized.futureModules, tableaux: brackets, tirage: { generatedAt: new Date().toISOString(), categoryCount: categories.length, matchCount: matches.length } } };
+  const readyCompetition = { ...normalized, categories, brackets, matches, pools: brackets, statut: COMPETITION_PHASES.READY, workflow: { phase: COMPETITION_PHASES.READY, currentScreen: "arbitrage" }, futureModules: { ...normalized.futureModules, tableaux: brackets, tirage: { generatedAt: new Date().toISOString(), categoryCount: categories.length, matchCount: matches.length } } };
+  return upsertOfficialPlanningDocument(readyCompetition);
 }
 
 function categoryFinished(bracket) {

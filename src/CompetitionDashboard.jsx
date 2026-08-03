@@ -794,6 +794,13 @@ function CompetitionDashboard({
         </button>
 
         <button
+          className={view === "documents" ? "active" : ""}
+          onClick={() => setView("documents")}
+        >
+          Documents
+        </button>
+
+        <button
           className={view === "live" ? "active" : ""}
           onClick={() => setView("live")}
         >
@@ -1282,6 +1289,10 @@ function CompetitionDashboard({
         <PlanningManager competition={competition} />
       )}
 
+      {view === "documents" && (
+        <CompetitionDocuments documents={competition.documents || []} />
+      )}
+
       {view === "live" && (
         <LiveCompetitionManager
           competition={competition}
@@ -1302,6 +1313,53 @@ function CompetitionDashboard({
           competition={competition}
           onUpdateCompetition={onUpdateCompetition}
         />
+      )}
+    </section>
+  );
+}
+
+function CompetitionDocuments({ documents = [] }) {
+  const [selectedId, setSelectedId] = useState(documents[0]?.id || null);
+  const selectedDocument = documents.find((document) => document.id === selectedId) || documents[0];
+
+  function printDocument() {
+    if (!selectedDocument) return;
+    const popup = window.open("", "_blank");
+    if (!popup) return;
+    popup.document.write(`<!doctype html><html><head><title>${selectedDocument.title}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Imprimer</button><pre>${String(selectedDocument.content || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></body></html>`);
+    popup.document.close();
+  }
+
+  return (
+    <section className="competition-documents">
+      <div className="section-title">
+        <p className="surtitle">Documents</p>
+        <h2>Rubrique Documents</h2>
+        <p>Documents officiels générés automatiquement pour l'organisation de la compétition.</p>
+      </div>
+      {documents.length === 0 ? (
+        <article className="competition-card"><h3>Aucun document généré</h3><p>Le planning officiel sera créé automatiquement après la génération des tableaux.</p></article>
+      ) : (
+        <div className="competition-list">
+          <aside className="competition-card">
+            <h3>Documents disponibles</h3>
+            {documents.map((document) => (
+              <button className="action-card" type="button" key={document.id} onClick={() => setSelectedId(document.id)}>
+                <strong>{document.title}</strong>
+                <small>{document.printable ? "Consultable et imprimable" : "Consultable"}</small>
+              </button>
+            ))}
+          </aside>
+          {selectedDocument && (
+            <article className="competition-card">
+              <h3>{selectedDocument.title}</h3>
+              <p>Généré le {new Date(selectedDocument.generatedAt).toLocaleString("fr-FR")}</p>
+              <button className="primary" type="button" onClick={printDocument}>Imprimer</button>
+              <pre style={{ whiteSpace: "pre-wrap", textAlign: "left" }}>{selectedDocument.content}</pre>
+              {!selectedDocument.exportPdfReady && <p className="info">Export PDF prévu dans une future version.</p>}
+            </article>
+          )}
+        </div>
       )}
     </section>
   );
