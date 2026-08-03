@@ -1,3 +1,6 @@
+import { generateTournament } from "./competitionWorkflow.js";
+
+export const DEMO_COMPETITION_NAME = "Coupe de France Test 2027";
 const DEMO_COMPETITION_DATE = "2027-03-15";
 
 const CLUBS = [
@@ -14,14 +17,14 @@ const CLUBS = [
 ];
 
 const AGE_BANDS = [
-  { label: "7 à 9 ans", ages: [7, 8, 9], count: 12, grades: ["6ème Kyu", "5ème Kyu", "4ème Kyu"], weights: [22, 25, 28, 31, 35], categorie: "Enfant", events: ["kata0", "randori"] },
-  { label: "10 à 11 ans", ages: [10, 11], count: 12, grades: ["5ème Kyu", "4ème Kyu", "3ème Kyu"], weights: [28, 31, 35, 40, 45], categorie: "Benjamin", events: ["kata0", "kata1", "randori"] },
-  { label: "12 à 13 ans", ages: [12, 13], count: 12, grades: ["4ème Kyu", "3ème Kyu", "2ème Kyu"], weights: [35, 40, 45, 50, 55], categorie: "Minime", events: ["kata1", "kata2", "randori"] },
-  { label: "14 à 15 ans", ages: [14, 15], count: 12, grades: ["3ème Kyu", "2ème Kyu", "1er Kyu"], weights: [45, 50, 55, 60, 65], categorie: "Minime", events: ["kata1", "kata2", "juRandori1"] },
-  { label: "16 à 17 ans", ages: [16, 17], count: 13, grades: ["2ème Kyu", "1er Kyu", "1er Dan"], weights: [50, 55, 60, 65, 70, 75], categorie: "Junior", events: ["kata2", "juRandori1", "juRandori2"] },
-  { label: "18 à 20 ans", ages: [18, 19, 20], count: 13, grades: ["1er Kyu", "1er Dan", "2ème Dan"], weights: [55, 60, 65, 70, 75, 80], categorie: "Senior", events: ["kata2", "randori", "juRandori1"] },
-  { label: "Seniors", ages: [21, 24, 28, 32, 36], count: 13, grades: ["1er Dan", "2ème Dan", "3ème Dan", "4ème Dan"], weights: [55, 60, 65, 70, 75, 80, 85, 90], categorie: "Senior", events: ["kata1", "kata2", "randori", "juRandori2"] },
-  { label: "Vétérans jusqu’à 50 ans", ages: [40, 43, 46, 50], count: 13, grades: ["2ème Dan", "3ème Dan", "4ème Dan", "5ème Dan", "6ème Dan"], weights: [60, 65, 70, 75, 80, 85, 90, 95], categorie: "Vétéran", events: ["kata2", "juRandori1", "juRandori2"] },
+  { label: "7 à 9 ans", ages: [7, 8, 9], count: 12, grades: ["Blanche", "Jaune", "Orange"], weights: [22, 25, 28, 31, 35], categorie: "Enfant", events: ["kata0", "randori"] },
+  { label: "10 à 11 ans", ages: [10, 11], count: 12, grades: ["Jaune", "Orange", "Verte"], weights: [28, 31, 35, 40, 45], categorie: "Benjamin", events: ["kata0", "kata1", "randori"] },
+  { label: "12 à 13 ans", ages: [12, 13], count: 12, grades: ["Orange", "Verte", "Bleue"], weights: [35, 40, 45, 50, 55], categorie: "Minime", events: ["kata1", "kata2", "randori"] },
+  { label: "14 à 15 ans", ages: [14, 15], count: 12, grades: ["Verte", "Bleue", "Marron"], weights: [45, 50, 55, 60, 65], categorie: "Minime", events: ["kata1", "kata2", "juRandori1"] },
+  { label: "16 à 17 ans", ages: [16, 17], count: 13, grades: ["Bleue", "Marron", "Noire 1er Dan"], weights: [50, 55, 60, 65, 70, 75], categorie: "Junior", events: ["kata2", "juRandori1", "juRandori2"] },
+  { label: "18 à 20 ans", ages: [18, 19, 20], count: 13, grades: ["Marron", "Noire 1er Dan", "Noire 2e Dan"], weights: [55, 60, 65, 70, 75, 80], categorie: "Senior", events: ["kata2", "randori", "juRandori1"] },
+  { label: "Seniors", ages: [21, 24, 28, 32, 36], count: 13, grades: ["Noire 1er Dan", "Noire 2e Dan", "Noire 3e Dan", "Noire 4e Dan"], weights: [55, 60, 65, 70, 75, 80, 85, 90], categorie: "Senior", events: ["kata1", "kata2", "randori", "juRandori2"] },
+  { label: "Vétérans jusqu’à 50 ans", ages: [40, 43, 46, 50], count: 13, grades: ["Noire 2e Dan", "Noire 3e Dan", "Noire 4e Dan", "Noire 5e Dan", "Noire 6e Dan"], weights: [60, 65, 70, 75, 80, 85, 90, 95], categorie: "Vétéran", events: ["kata2", "juRandori1", "juRandori2"] },
 ];
 
 const MEN = ["Lucas", "Hugo", "Enzo", "Nathan", "Louis", "Gabriel", "Noah", "Maël", "Tom", "Sacha", "Nolan", "Paul", "Alexis", "Antoine", "Maxime", "Baptiste", "Mathis", "Romain", "Victor", "Yanis", "Karim", "Adrien", "Théo", "Eliott", "Raphaël", "Jules", "Léo", "Arthur", "Noé", "Ilyes", "Martin", "Clément", "Malo", "Nicolas", "Samuel", "Quentin", "Alexandre", "Laurent", "Philippe", "Stéphane", "Olivier", "Julien", "Mathieu", "Benoît", "Damien", "Cédric", "Félix", "Gabin", "Naël", "Timéo"];
@@ -29,14 +32,14 @@ const WOMEN = ["Emma", "Lina", "Chloé", "Inès", "Manon", "Camille", "Sarah", "
 const NAMES = ["MARTIN", "BERNARD", "DUBOIS", "THOMAS", "ROBERT", "RICHARD", "PETIT", "DURAND", "LEROY", "MOREAU", "SIMON", "LAURENT", "LEFEBVRE", "MICHEL", "GARCIA", "DAVID", "BERTRAND", "ROUX", "VINCENT", "FOURNIER", "MOREL", "GIRARD", "ANDRE", "LEFEVRE", "MERCIER", "DUPONT", "LAMBERT", "BONNET", "FRANCOIS", "MARTINEZ", "LEGRAND", "GARNIER", "FAURE", "ROUSSEAU", "BLANC", "GUERIN", "MULLER", "HENRY", "ROUSSEL", "NICOLAS", "PERRIN", "MORIN", "MATHIEU", "CLEMENT", "GAUTHIER", "DUMONT", "LOPEZ", "FONTAINE", "CHEVALIER", "ROBIN"];
 
 function birthDateForAge(age, index) {
-  const month = String((index % 12) + 1).padStart(2, "0");
-  const day = String(((index * 3) % 24) + 1).padStart(2, "0");
-  return `${2027 - age}-${month}-${day}`;
+  const month = String((index % 6) + 1).padStart(2, "0");
+  const day = String(((index * 3) % 20) + 1).padStart(2, "0");
+  return `${2026 - age}-${month}-${day}`;
 }
 
 function weightCategory(weight) {
-  if (weight > 90) return "+90 kg";
-  return `-${Math.ceil(weight / 5) * 5} kg`;
+  if (weight > 80) return "+80 kg";
+  return `-${Math.max(30, Math.ceil(weight / 5) * 5)} kg`;
 }
 
 function eventObject(events) {
@@ -52,6 +55,7 @@ function eventObject(events) {
 
 export function buildDemoCompetition2027(idPrefix = "demo-2027") {
   let globalIndex = 0;
+  const licenseBatch = idPrefix === "demo-2027" ? "" : `${idPrefix.replace(/[^0-9]+/g, "")}-`;
   const participants = AGE_BANDS.flatMap((band, bandIndex) => Array.from({ length: band.count }, (_, indexInBand) => {
     const index = globalIndex++;
     const isFemale = indexInBand % 2 === 1;
@@ -65,13 +69,14 @@ export function buildDemoCompetition2027(idPrefix = "demo-2027") {
       id: `${idPrefix}-competitor-${String(index + 1).padStart(3, "0")}`,
       nom,
       prenom,
-      sexe: isFemale ? "Femme" : "Homme",
+      sexe: isFemale ? "F" : "M",
+      genreCompetition: isFemale ? "Femme" : "Homme",
       dateNaissance: birthDateForAge(age, index),
       age,
       club,
       region,
-      licence: `AFDP-2027-${String(index + 1).padStart(4, "0")}`,
-      numeroLicence: `AFDP-2027-${String(index + 1).padStart(4, "0")}`,
+      licence: `AFDP-2027-${licenseBatch}${String(index + 1).padStart(4, "0")}`,
+      numeroLicence: `AFDP-2027-${licenseBatch}${String(index + 1).padStart(4, "0")}`,
       grade: band.grades[(indexInBand + bandIndex) % band.grades.length],
       poids,
       categoriePoids: weightCategory(poids),
@@ -79,9 +84,11 @@ export function buildDemoCompetition2027(idPrefix = "demo-2027") {
       categorieAge: band.label,
       email: `${prenom}.${nom}.${index + 1}@example.test`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
       telephone: `06 ${String(10 + (index % 80)).padStart(2, "0")} ${String(20 + (index % 70)).padStart(2, "0")} ${String(30 + (index % 60)).padStart(2, "0")} ${String(40 + (index % 50)).padStart(2, "0")}`,
-      certificatMedical: true,
-      autorisationParentale: age < 18,
+      certificatMedical: "Oui",
+      autorisationParentale: age < 18 ? "Oui" : "Non",
       badgeVert: true,
+      demoData: true,
+      isTest: true,
       epreuves,
       ...epreuves,
       statut: "Validé",
@@ -89,8 +96,8 @@ export function buildDemoCompetition2027(idPrefix = "demo-2027") {
     };
   }));
 
-  return {
-    nom: "Coupe de France Test 2027",
+  const competition = {
+    nom: DEMO_COMPETITION_NAME,
     organisateur: "AFDP Nanbudo France",
     lieu: "Marseille",
     ville: "Marseille",
@@ -105,6 +112,9 @@ export function buildDemoCompetition2027(idPrefix = "demo-2027") {
     competitors: participants,
     clubs: CLUBS.map(([nom, region]) => ({ nom, region })),
     demoData: true,
+    isTest: true,
     importReport: { imported: participants.length, rejected: [], skippedDuplicates: 0 },
   };
+
+  return generateTournament(competition);
 }

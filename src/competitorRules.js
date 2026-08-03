@@ -194,7 +194,7 @@ export function validateCompetitor(rawCompetitor, existingLicences = new Set()) 
   if (!WEIGHT_CATEGORIES.includes(competitor.categoriePoids)) {
     errors.push(`Catégorie de poids invalide : ${competitor.categoriePoids || "non renseignée"}.`);
   }
-  if (!['F', 'M'].includes(competitor.sexe)) errors.push("Sexe invalide : utilisez F ou M.");
+  if (!['F', 'M', 'FEMME', 'HOMME', 'FILLE', 'GARÇON', 'GARCON'].includes(competitor.sexe)) errors.push("Sexe invalide : utilisez F, M, Femme ou Homme.");
   if (competitor.age < 18 && competitor.autorisationParentale !== "Oui") {
     errors.push("Autorisation parentale obligatoire pour les mineurs.");
   }
