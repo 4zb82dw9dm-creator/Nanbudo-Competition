@@ -14,6 +14,31 @@ const EVENTS = [
   ["juRandori2", "Ju Randori 2"],
 ];
 
+const REGISTRATION_GRADES = [
+  "6ème Kyu",
+  "5ème Kyu",
+  "4ème Kyu",
+  "3ème Kyu",
+  "2ème Kyu",
+  "1er Kyu",
+  "1er Dan",
+  "2ème Dan",
+  "3ème Dan",
+  "4ème Dan",
+  "5ème Dan",
+  "6ème Dan",
+];
+
+function formatDateForDisplay(value) {
+  const [year, month, day] = String(value || "").split("-");
+
+  if (!year || !month || !day) {
+    return "";
+  }
+
+  return `${day}/${month}/${year}`;
+}
+
 function normalizeCompetitionForRegistration(competition) {
   const registrationOpen =
     competition?.registrationOpen === true ||
@@ -391,6 +416,12 @@ function RegistrationManager() {
               name="dateNaissance"
               value={form.dateNaissance}
               onChange={updateField}
+              lang="fr-FR"
+              aria-label={
+                form.dateNaissance
+                  ? `Date de naissance : ${formatDateForDisplay(form.dateNaissance)}`
+                  : "Date de naissance"
+              }
               required
             />
           </label>
@@ -407,7 +438,14 @@ function RegistrationManager() {
         <div className="form-row">
           <label>
             Grade
-            <input name="grade" value={form.grade} onChange={updateField} />
+            <select name="grade" value={form.grade} onChange={updateField}>
+              <option value="">Sélectionner</option>
+              {REGISTRATION_GRADES.map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Poids (kg)
