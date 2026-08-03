@@ -576,16 +576,24 @@ function MatchManager({
       return null;
     }
 
+    if (score.aka > score.shiro) {
+      return "aka";
+    }
+
+    if (score.shiro > score.aka) {
+      return "shiro";
+    }
+
     if (
-      scoreFinalAka >
-      scoreFinalShiro
+      pointsNegatifsAka <
+      pointsNegatifsShiro
     ) {
       return "aka";
     }
 
     if (
-      scoreFinalShiro >
-      scoreFinalAka
+      pointsNegatifsShiro <
+      pointsNegatifsAka
     ) {
       return "shiro";
     }
@@ -606,7 +614,9 @@ function MatchManager({
     assautsComplets &&
     !akaDisqualifie &&
     !shiroDisqualifie &&
-    scoreFinalAka === scoreFinalShiro;
+    score.aka === score.shiro &&
+    pointsNegatifsAka ===
+      pointsNegatifsShiro;
 
   function determinerVainqueurDepartage() {
     if (!departageActif) {
