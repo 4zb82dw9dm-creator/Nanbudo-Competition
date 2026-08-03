@@ -8,6 +8,7 @@ import MaintenanceManager from "./MaintenanceManager";
 import logoAfdp from "./assets/logo-afdp.png";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
 import { buildDocumentCardMeta, escapeDocumentHtml, getCompetitionDocuments, getDocumentDefinition, getOfficialPlanningDocument } from "./documentLibrary";
+import { getOfficialPlanningStyles } from "./officialPlanning";
 
 function App() {
   const [section, setSection] = useState("accueil");
@@ -179,7 +180,7 @@ function DocumentsSection() {
     setSelectedDocumentId(document.id);
     const popup = window.open("", "_blank");
     if (!popup) return;
-    popup.document.write(`<!doctype html><html><head><title>${escapeDocumentHtml(document.title)}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}</style></head><body><pre>${escapeDocumentHtml(document.content)}</pre></body></html>`);
+    popup.document.write(`<!doctype html><html><head><title>${escapeDocumentHtml(document.title)}</title><style>${getOfficialPlanningStyles()}body{margin:10mm}</style></head><body>${document.htmlContent || `<pre>${escapeDocumentHtml(document.content)}</pre>`}</body></html>`);
     popup.document.close();
   }
 
@@ -203,7 +204,15 @@ function DocumentsSection() {
           })}
         </div>
       )}
-      {selectedDocument && <pre className="competition-card" style={{ whiteSpace: "pre-wrap", textAlign: "left" }}>{selectedDocument.content}</pre>}
+      {selectedDocument && (
+        <article className="competition-card document-preview">
+          {selectedDocument.htmlContent ? (
+            <div className="official-planning-preview" dangerouslySetInnerHTML={{ __html: selectedDocument.htmlContent }} />
+          ) : (
+            <pre style={{ whiteSpace: "pre-wrap", textAlign: "left" }}>{selectedDocument.content}</pre>
+          )}
+        </article>
+      )}
     </section>
   );
 }
