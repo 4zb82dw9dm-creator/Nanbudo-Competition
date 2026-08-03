@@ -191,9 +191,32 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+function getScheduledCompetitors(item, competitors) {
+  const ids = item.pool.competitorIds || [];
+  return ids.map((id) => competitors.find((competitor) => String(competitor.id) === String(id))).filter(Boolean);
+}
+
+function renderCompetitorRows(competitors) {
+  if (!competitors.length) {
+    return '<tr><td colspan="3">Aucun compétiteur renseigné</td></tr>';
+  }
+
+  return competitors
+    .map(
+      (competitor) =>
+        `<tr><td>${escapeHtml(competitor.club || "—")}</td><td>${escapeHtml(competitor.nom || "—")}</td><td>${escapeHtml(competitor.prenom || "—")}</td></tr>`
+    )
+    .join("");
+}
+
+function renderPlanningBlock(item, competitors) {
+  return `<section class="planning-pool"><div class="planning-time">${formatTime(item.start)}</div><div class="planning-table"><h3>${escapeHtml(item.epreuveLabel || item.label)}</h3><table><thead><tr><th>CLUB</th><th>NOM</th><th>Prénom</th></tr></thead><tbody>${renderCompetitorRows(getScheduledCompetitors(item, competitors))}</tbody></table></div></section>`;
+}
+
 function PlanningManager({ competition = {} }) {
   const pools = competition.pools || [];
   const categories = competition.categories || [];
+  const competitors = competition.competitors || [];
   const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
   const [lunchStartTime, setLunchStartTime] = useState(DEFAULT_LUNCH_START_TIME);
   const [lunchEndTime, setLunchEndTime] = useState(DEFAULT_LUNCH_END_TIME);
@@ -236,15 +259,14 @@ function PlanningManager({ competition = {} }) {
   }
 
   function exportPdf() {
-    const rows = scheduled
-      .map(
-        (item) => `<tr><td>${item.passageOrder}</td><td>${formatTime(item.start)}</td><td>${formatTime(item.end)}</td><td>Tatami ${item.tatami}</td><td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.epreuveLabel)}</td><td>${item.competitorCount}</td></tr>`
-      )
-      .join("");
+    const tatamiColumns = Array.from({ length: settings.tatamiCount }, (_, index) => {
+      const tatamiItems = scheduled.filter((item) => item.tatami === index + 1);
+      return `<article class="planning-area"><h2>AIRE ${index + 1}</h2>${tatamiItems.map((item) => renderPlanningBlock(item, competitors)).join("")}</article>`;
+    }).join("");
     const popup = window.open("", "_blank");
     if (!popup) return;
 
-    popup.document.write(`<!doctype html><html><head><title>Planning compétition</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033}header{display:flex;gap:16px;align-items:center;border-bottom:2px solid #d71920;padding-bottom:16px}img{width:90px;object-fit:contain}.meta{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:8px;margin:24px 0}.card{border:1px solid #ddd;border-radius:10px;padding:10px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f4f5f7}.pause{background:#fff3cd;border:1px solid #f3d27a;border-radius:10px;padding:12px;margin:16px 0;text-align:center}@media print{button{display:none}}</style></head><body><header><img src="${logoAfdp}" alt="Logo AFDP"><div><h1>${escapeHtml(competition.nom || "Planning compétition")}</h1><p>${escapeHtml(competition.lieu || "Lieu à définir")} · ${escapeHtml(competition.date || "Date à définir")}</p></div></header><section class="meta"><div class="card"><strong>Heure de début</strong><br>${formatTime(parseTime(settings.startTime))}</div><div class="card"><strong>Heure de fin estimée</strong><br>${formatTime(stats.endTime)}</div><div class="card"><strong>Nombre de tatamis</strong><br>${settings.tatamiCount}</div><div class="card"><strong>Pause déjeuner</strong><br>${formatTime(lunchWindow.lunchStart)} → ${formatTime(lunchWindow.lunchEnd)}</div></section><div class="pause"><strong>PAUSE MÉRIDIENNE</strong><br>${formatTime(lunchWindow.lunchStart)} → ${formatTime(lunchWindow.lunchEnd)}</div><table><thead><tr><th>Ordre</th><th>Début</th><th>Fin</th><th>Tatami</th><th>Poule</th><th>Épreuve</th><th>Compétiteurs</th></tr></thead><tbody>${rows}</tbody></table><script>window.print();</script></body></html>`);
+    popup.document.write(`<!doctype html><html><head><title>Planning compétition</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;margin:0;color:#111;background:white;font-size:11px}header{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px}img{width:42px;object-fit:contain}h1{font-size:18px;margin:0;text-transform:uppercase}.planning-sheet{display:grid;grid-template-columns:repeat(${settings.tatamiCount},1fr);gap:10px;align-items:start}.planning-area h2{border:2px solid #777;margin:0 0 4px;text-align:center;font-size:18px;line-height:1.15}.planning-pool{display:grid;grid-template-columns:38px 1fr;gap:4px;break-inside:avoid;margin-bottom:5px}.planning-time{font-weight:800;text-align:right;padding-top:16px}.planning-table h3{margin:0;text-align:center;font-size:10px;line-height:1.2}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #555;padding:2px 4px;text-align:center;font-size:10px;line-height:1.15;overflow:hidden;text-overflow:ellipsis}th{background:#2f75b5;color:white;font-weight:800}.pause,.ceremony{border:2px solid #777;font-weight:900;text-align:center;font-size:16px;margin:8px 0;padding:4px;grid-column:1/-1}.meta{text-align:center;margin-bottom:8px;color:#333}@media print{button{display:none}}</style></head><body><header><img src="${logoAfdp}" alt="Logo AFDP"><div><h1>${escapeHtml(competition.nom || "Planning compétition")}</h1><div class="meta">${escapeHtml(competition.lieu || "Lieu à définir")} · ${escapeHtml(competition.date || "Date à définir")} · Fin estimée ${formatTime(stats.endTime)}</div></div></header><main class="planning-sheet">${tatamiColumns}<div class="pause">PAUSE — ${formatTime(lunchWindow.lunchStart)} → ${formatTime(lunchWindow.lunchEnd)}</div><div class="ceremony">REMISE DE MÉDAILLE - CÉRÉMONIE</div></main><script>window.print();</script></body></html>`);
     popup.document.close();
   }
 
@@ -298,19 +320,45 @@ function PlanningManager({ competition = {} }) {
             <p>Crée des poules pour générer automatiquement le planning.</p>
           </article>
         ) : (
-          groupedByTatami.map((tatamiItems, index) => (
-            <article className="competition-card" key={`tatami-${index + 1}`}>
-              <h3>Tatami {index + 1}</h3>
-              <p>{tatamiItems.length} passage(s) — zone prête pour le futur glisser-déposer</p>
-              {tatamiItems.map((item) => (
-                <div className="action-card" key={item.id} draggable>
-                  <strong>#{item.passageOrder} · {formatTime(item.start)} → {formatTime(item.end)}</strong>
-                  <p>{item.label}</p>
-                  <small>{item.epreuveLabel} · {item.competitorCount} compétiteur(s) · {item.duration} min</small>
-                </div>
-              ))}
-            </article>
-          ))
+          <div className="planning-sheet-preview">
+            {groupedByTatami.map((tatamiItems, index) => (
+              <article className="planning-area-preview" key={`tatami-${index + 1}`}>
+                <h3>AIRE {index + 1}</h3>
+                {tatamiItems.map((item) => {
+                  const itemCompetitors = getScheduledCompetitors(item, competitors);
+
+                  return (
+                    <section className="planning-pool-preview" key={item.id} draggable>
+                      <div className="planning-time-preview">{formatTime(item.start)}</div>
+                      <div className="planning-table-preview">
+                        <h4>{item.epreuveLabel || item.label}</h4>
+                        <table>
+                          <thead>
+                            <tr><th>CLUB</th><th>NOM</th><th>Prénom</th></tr>
+                          </thead>
+                          <tbody>
+                            {itemCompetitors.length ? (
+                              itemCompetitors.map((competitor) => (
+                                <tr key={competitor.id}>
+                                  <td>{competitor.club || "—"}</td>
+                                  <td>{competitor.nom || "—"}</td>
+                                  <td>{competitor.prenom || "—"}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr><td colSpan="3">Aucun compétiteur renseigné</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  );
+                })}
+              </article>
+            ))}
+            <div className="planning-wide-banner">PAUSE — {formatTime(lunchWindow.lunchStart)} → {formatTime(lunchWindow.lunchEnd)}</div>
+            <div className="planning-wide-banner">REMISE DE MÉDAILLE - CÉRÉMONIE</div>
+          </div>
         )}
       </div>
     </section>
