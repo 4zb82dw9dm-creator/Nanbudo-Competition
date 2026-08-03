@@ -1154,24 +1154,16 @@ function MatchManager({
             {combatCategoryLabel}
           </span>
 
-          <span>
+          <span className="randori-fighter-detail randori-fighter-aka-detail">
             <strong>Rouge</strong>
-            {akaDisplayName}
+            <span className="randori-fighter-name">{akaDisplayName}</span>
+            <span className="randori-fighter-club">{match?.aka?.club || "—"}</span>
           </span>
 
-          <span>
-            <strong>Club rouge</strong>
-            {match?.aka?.club || "—"}
-          </span>
-
-          <span>
+          <span className="randori-fighter-detail randori-fighter-shiro-detail">
             <strong>Blanc</strong>
-            {shiroDisplayName}
-          </span>
-
-          <span>
-            <strong>Club blanc</strong>
-            {match?.shiro?.club || "—"}
+            <span className="randori-fighter-name">{shiroDisplayName}</span>
+            <span className="randori-fighter-club">{match?.shiro?.club || "—"}</span>
           </span>
         </div>
 
