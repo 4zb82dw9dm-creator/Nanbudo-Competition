@@ -4164,3 +4164,14 @@ footer span {
     min-height: 70px;
   }
 }
+
+.wizard-progress li button {
+  width: 100%;
+  min-height: 58px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}

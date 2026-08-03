@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function MatchManager({
   match,
@@ -12,6 +12,7 @@ function MatchManager({
   kataStage = "",
   category,
   pool,
+  onDirtyChange,
 }) {
   /*
    * =========================================================
@@ -381,6 +382,18 @@ function MatchManager({
   }
 
   const score = calculerScore();
+
+  useEffect(() => {
+    onDirtyChange?.({
+      validated: false,
+      assauts,
+      penalitesAka,
+      penalitesShiro,
+      assautsDepartage,
+      decisionDrapeaux,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [assauts, penalitesAka, penalitesShiro, assautsDepartage, decisionDrapeaux, onDirtyChange]);
 
   /*
    * =========================================================
