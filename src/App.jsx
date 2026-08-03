@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import "./style.css";
 import "./home.css";
 import CompetitionManager from "./CompetitionManager";
@@ -6,6 +6,8 @@ import RegistrationManager from "./RegistrationManager";
 import CompetitorManager from "./CompetitorManager";
 import MaintenanceManager from "./MaintenanceManager";
 import logoAfdp from "./assets/logo-afdp.png";
+import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
+import { buildDocumentCardMeta, escapeDocumentHtml, getCompetitionDocuments, getDocumentDefinition, getOfficialPlanningDocument } from "./documentLibrary";
 
 function App() {
   const [section, setSection] = useState("accueil");
@@ -154,8 +156,56 @@ function OrganizerSection() {
   return <section><div className="section-title"><p className="surtitle">CLUBS ORGANISATEURS</p><h2>Organisation d'une compétition</h2></div><div className="action-grid"><div className="action-card"><h3>Candidature</h3><p>Centraliser les candidatures des clubs souhaitant accueillir une compétition.</p></div><div className="action-card"><h3>Préparation</h3><p>Suivre les besoins humains, matériels et administratifs.</p></div><div className="action-card"><h3>Jour J</h3><p>Retrouver les contrôles essentiels pour le déroulement de la compétition.</p></div><div className="action-card"><h3>Bilan</h3><p>Regrouper les résultats, retours et documents après l'événement.</p></div></div></section>;
 }
 
+function readCompetitionsForDocuments() {
+  try {
+    const competitions = JSON.parse(localStorage.getItem(COMPETITIONS_STORAGE_KEY) || "[]");
+    return Array.isArray(competitions) ? competitions : [];
+  } catch {
+    return [];
+  }
+}
+
 function DocumentsSection() {
-  return <section><div className="section-title"><p className="surtitle">RESSOURCES</p><h2>Documents</h2></div><div className="documents"><button type="button">Guide de l'organisateur</button><button type="button">Checklist compétition</button><button type="button">Communication</button><button type="button">Documents administratifs</button></div><p className="info">Les documents pourront être ajoutés progressivement à cette application.</p></section>;
+  const competitions = useMemo(readCompetitionsForDocuments, []);
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState(() => localStorage.getItem("nanbudo-selected-competition-id") || competitions[0]?.id || "");
+  const selectedCompetition = competitions.find((competition) => String(competition.id) === String(selectedCompetitionId)) || competitions[0] || null;
+  const documents = getCompetitionDocuments(selectedCompetition || {});
+  const officialPlanning = getOfficialPlanningDocument(selectedCompetition || {});
+  const [selectedDocumentId, setSelectedDocumentId] = useState(officialPlanning?.id || documents[0]?.id || null);
+  const selectedDocument = documents.find((document) => document.id === selectedDocumentId) || officialPlanning || documents[0] || null;
+  const missingPlanningMessage = getDocumentDefinition("official-planning").emptyMessage;
+
+  function openDocument(document) {
+    setSelectedDocumentId(document.id);
+    const popup = window.open("", "_blank");
+    if (!popup) return;
+    popup.document.write(`<!doctype html><html><head><title>${escapeDocumentHtml(document.title)}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}</style></head><body><pre>${escapeDocumentHtml(document.content)}</pre></body></html>`);
+    popup.document.close();
+  }
+
+  return (
+    <section>
+      <div className="section-title"><p className="surtitle">RESSOURCES</p><h2>Documents</h2><p>Bibliothèque des documents générés par compétition.</p></div>
+      {competitions.length > 1 && (
+        <label className="action-card">Compétition
+          <select value={selectedCompetition?.id || ""} onChange={(event) => { setSelectedCompetitionId(event.target.value); setSelectedDocumentId(null); }}>
+            {competitions.map((competition) => <option key={competition.id} value={competition.id}>{competition.nom || "Compétition sans nom"}</option>)}
+          </select>
+        </label>
+      )}
+      {!selectedCompetition || !officialPlanning ? (
+        <article className="competition-card"><h3>Planning officiel</h3><p>{missingPlanningMessage}</p></article>
+      ) : (
+        <div className="documents">
+          {documents.map((document) => {
+            const meta = buildDocumentCardMeta(document);
+            return <button type="button" key={document.id} onClick={() => openDocument(document)}><strong>{meta.title}</strong><small>{meta.description}</small></button>;
+          })}
+        </div>
+      )}
+      {selectedDocument && <pre className="competition-card" style={{ whiteSpace: "pre-wrap", textAlign: "left" }}>{selectedDocument.content}</pre>}
+    </section>
+  );
 }
 
 export default App;

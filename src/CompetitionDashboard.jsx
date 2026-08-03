@@ -8,6 +8,7 @@ import ControlCenter from "./ControlCenter";
 import LiveCompetitionManager from "./LiveCompetitionManager";
 import SimulationManager from "./SimulationManager";
 import CompetitionHealthManager from "./CompetitionHealthManager";
+import { buildDocumentCardMeta, escapeDocumentHtml, getCompetitionDocuments, getDocumentDefinition, getOfficialPlanningDocument } from "./documentLibrary";
 import {
   buildCompetitionTestCompetitors,
   COMPETITION_TEST_COMPETITORS,
@@ -1290,7 +1291,7 @@ function CompetitionDashboard({
       )}
 
       {view === "documents" && (
-        <CompetitionDocuments documents={competition.documents || []} />
+        <CompetitionDocuments competition={competition} />
       )}
 
       {view === "live" && (
@@ -1318,15 +1319,22 @@ function CompetitionDashboard({
   );
 }
 
-function CompetitionDocuments({ documents = [] }) {
-  const [selectedId, setSelectedId] = useState(documents[0]?.id || null);
-  const selectedDocument = documents.find((document) => document.id === selectedId) || documents[0];
+function CompetitionDocuments({ competition = {} }) {
+  const documents = getCompetitionDocuments(competition);
+  const officialPlanning = getOfficialPlanningDocument(competition);
+  const [selectedId, setSelectedId] = useState(officialPlanning?.id || documents[0]?.id || null);
+  const selectedDocument = documents.find((document) => document.id === selectedId) || officialPlanning || documents[0];
+  const missingPlanningMessage = getDocumentDefinition("official-planning").emptyMessage;
+
+  function openDocument(document) {
+    setSelectedId(document.id);
+  }
 
   function printDocument() {
     if (!selectedDocument) return;
     const popup = window.open("", "_blank");
     if (!popup) return;
-    popup.document.write(`<!doctype html><html><head><title>${selectedDocument.title}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Imprimer</button><pre>${String(selectedDocument.content || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></body></html>`);
+    popup.document.write(`<!doctype html><html><head><title>${escapeDocumentHtml(selectedDocument.title)}</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#172033;white-space:pre-wrap;line-height:1.5}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Imprimer</button><pre>${escapeDocumentHtml(selectedDocument.content)}</pre></body></html>`);
     popup.document.close();
   }
 
@@ -1335,26 +1343,33 @@ function CompetitionDocuments({ documents = [] }) {
       <div className="section-title">
         <p className="surtitle">Documents</p>
         <h2>Rubrique Documents</h2>
-        <p>Documents officiels générés automatiquement pour l'organisation de la compétition.</p>
+        <p>Bibliothèque des documents générés automatiquement pour cette compétition.</p>
       </div>
-      {documents.length === 0 ? (
-        <article className="competition-card"><h3>Aucun document généré</h3><p>Le planning officiel sera créé automatiquement après la génération des tableaux.</p></article>
-      ) : (
+      {!officialPlanning && (
+        <article className="competition-card">
+          <h3>Planning officiel</h3>
+          <p>{missingPlanningMessage}</p>
+        </article>
+      )}
+      {documents.length === 0 ? null : (
         <div className="competition-list">
           <aside className="competition-card">
             <h3>Documents disponibles</h3>
-            {documents.map((document) => (
-              <button className="action-card" type="button" key={document.id} onClick={() => setSelectedId(document.id)}>
-                <strong>{document.title}</strong>
-                <small>{document.printable ? "Consultable et imprimable" : "Consultable"}</small>
-              </button>
-            ))}
+            {documents.map((document) => {
+              const meta = buildDocumentCardMeta(document);
+              return (
+                <button className="action-card" type="button" key={document.id} onClick={() => openDocument(document)}>
+                  <strong>{meta.title}</strong>
+                  <small>{meta.description}</small>
+                </button>
+              );
+            })}
           </aside>
           {selectedDocument && (
             <article className="competition-card">
               <h3>{selectedDocument.title}</h3>
               <p>Généré le {new Date(selectedDocument.generatedAt).toLocaleString("fr-FR")}</p>
-              <button className="primary" type="button" onClick={printDocument}>Imprimer</button>
+              <button className="primary" type="button" onClick={printDocument}>Ouvrir / imprimer</button>
               <pre style={{ whiteSpace: "pre-wrap", textAlign: "left" }}>{selectedDocument.content}</pre>
               {!selectedDocument.exportPdfReady && <p className="info">Export PDF prévu dans une future version.</p>}
             </article>

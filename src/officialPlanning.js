@@ -1,3 +1,5 @@
+import { DOCUMENT_TYPES } from "./documentLibrary.js";
+
 const DEFAULT_DISCIPLINE_ORDER = ["kata", "randori", "juRandori"];
 const DISCIPLINE_LABELS = {
   kata: "KATA",
@@ -104,7 +106,7 @@ export function buildOfficialPlanning(competition = {}, options = {}) {
   return {
     id: createPlanningId(),
     title: OFFICIAL_PLANNING_DOCUMENT_TITLE,
-    type: "official-planning",
+    type: DOCUMENT_TYPES.OFFICIAL_PLANNING,
     generatedAt: new Date().toISOString(),
     disciplineOrder,
     tatamiCount,
@@ -135,8 +137,9 @@ export function createOfficialPlanningDocument(competition, options) {
   return {
     id: planning.id,
     title: OFFICIAL_PLANNING_DOCUMENT_TITLE,
-    type: "official-planning",
+    type: DOCUMENT_TYPES.OFFICIAL_PLANNING,
     generatedAt: planning.generatedAt,
+    competitionId: competition.id || null,
     printable: true,
     exportPdfReady: false,
     planning,
@@ -146,6 +149,6 @@ export function createOfficialPlanningDocument(competition, options) {
 
 export function upsertOfficialPlanningDocument(competition, options) {
   const document = createOfficialPlanningDocument(competition, options);
-  const documents = (competition.documents || []).filter((item) => item.type !== "official-planning" && item.title !== OFFICIAL_PLANNING_DOCUMENT_TITLE);
+  const documents = (competition.documents || []).filter((item) => item.type !== DOCUMENT_TYPES.OFFICIAL_PLANNING && item.title !== OFFICIAL_PLANNING_DOCUMENT_TITLE);
   return { ...competition, documents: [...documents, document], planning: document.planning };
 }
