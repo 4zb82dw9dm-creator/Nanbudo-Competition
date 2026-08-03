@@ -418,7 +418,7 @@ export function CompetitionStepFive({ competition, onUpdate, onContinue }) {
   function goToRankings() { if (canShowRankings(safeCompetition) && requestCloseScoreSheet()) onContinue(); }
 
   if (sheetContext) {
-    return <WizardCard eyebrow="Étape 5" title="Feuille de notation du combat"><button className="public-back" type="button" onClick={requestCloseScoreSheet}>← Retour au tableau</button><div className="kata-live-details randori-live-details"><span><strong>Catégorie</strong>{sheetContext.category?.nom || "—"}</span><span><strong>Tour</strong>{sheetContext.round?.label || "—"}</span><span><strong>Combat</strong>{sheetContext.match.id}</span><span><strong>Tatami</strong>{sheetContext.pool.tatami}</span><span><strong>Épreuve</strong>{sheetContext.eventType}</span><span><strong>Identifiant unique</strong>{sheetContext.match.id}</span></div><MatchManager key={sheetContext.match.id} match={sheetContext.match} mode="ju-randori" type="ju-randori" initialResult={sheetContext.match} category={sheetContext.category} pool={sheetContext.pool} eventType={sheetContext.eventType} onDirtyChange={setSheetState} onSave={(result) => saveArbitration(sheetContext.match, result)} /></WizardCard>;
+    return <WizardCard eyebrow="Étape 5" title="Feuille de notation du combat"><button className="public-back" type="button" onClick={requestCloseScoreSheet}>← Retour au tableau</button><MatchManager key={sheetContext.match.id} match={sheetContext.match} mode="ju-randori" type="ju-randori" initialResult={sheetContext.match} category={sheetContext.category} pool={sheetContext.pool} eventType={sheetContext.eventType} onDirtyChange={setSheetState} onSave={(result) => saveArbitration(sheetContext.match, result)} /></WizardCard>;
   }
 
   return (
