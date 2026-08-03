@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
+import { upsertCompetitorFromRegistration } from "./competitorRepository";
 import { KATA0_RANDORI0_RULE, calculateAge, canParticipateInKata0Randori0 } from "./competitorRules";
 
 const STORAGE_KEY = "nanbudo-online-registrations-v2";
@@ -219,8 +220,12 @@ function RegistrationManager() {
     }
 
     const now = new Date().toISOString();
+    const competitor = upsertCompetitorFromRegistration(form);
+
     const registration = {
       id: editingId || `inscription-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      competiteurId: competitor.id,
+      competitorId: competitor.id,
       ...form,
       competitionId: String(form.competitionId),
       competitionNom: competitionName(form.competitionId),
@@ -246,7 +251,7 @@ function RegistrationManager() {
       return [...currentRegistrations, { ...registration, createdAt: now }];
     });
 
-    setMessage(editingId ? "Inscription modifiée et enregistrée." : "Inscription enregistrée.");
+    setMessage(editingId ? "Inscription modifiée et fiche compétiteur synchronisée." : "Inscription enregistrée et fiche compétiteur créée ou mise à jour.");
     resetForm();
   }
 
@@ -326,13 +331,17 @@ function RegistrationManager() {
           throw new Error("Invalid registrations file");
         }
 
-        const cleanRegistrations = incomingRegistrations.map((registration, index) => ({
-          ...initialForm,
-          ...registration,
-          id: registration.id || `import-${Date.now()}-${index}`,
-          competitionId: String(registration.competitionId || ""),
-          epreuves: Array.isArray(registration.epreuves) ? registration.epreuves : [],
-        }));
+        const cleanRegistrations = incomingRegistrations.map((registration, index) => {
+          const normalized = {
+            ...initialForm,
+            ...registration,
+            id: registration.id || `import-${Date.now()}-${index}`,
+            competitionId: String(registration.competitionId || ""),
+            epreuves: Array.isArray(registration.epreuves) ? registration.epreuves : [],
+          };
+          const competitor = upsertCompetitorFromRegistration(normalized);
+          return { ...normalized, competiteurId: competitor.id, competitorId: competitor.id };
+        });
 
         setRegistrations(cleanRegistrations);
         setMessage(`${cleanRegistrations.length} inscription(s) importée(s).`);
@@ -352,7 +361,7 @@ function RegistrationManager() {
         <div>
           <p className="surtitle">INSCRIPTIONS</p>
           <h2>Inscriptions en ligne</h2>
-          <p>Choisissez la compétition puis inscrivez le compétiteur.</p>
+          <p>Choisissez la compétition puis inscrivez le compétiteur. Une fiche unique est automatiquement créée ou mise à jour dans l’espace Commission.</p>
         </div>
         <div className="category-total">
           <strong>{registrations.length}</strong>
@@ -561,6 +570,7 @@ function RegistrationManager() {
 
               <div className="competitor-details">
                 {registration.licence && <span>Licence {registration.licence}</span>}
+                {registration.competiteurId && <span>Fiche {registration.competiteurId}</span>}
                 <span>{registration.dateNaissance}</span>
                 <span>{registration.sexe === "F" ? "Féminin" : "Masculin"}</span>
                 {registration.grade && <span>{registration.grade}</span>}
