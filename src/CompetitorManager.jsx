@@ -71,7 +71,7 @@ function CompetitorManager() {
     const query = search.trim().toLowerCase();
     if (!query) return validatedCompetitors;
     return validatedCompetitors.filter((competitor) =>
-      [competitor.nom, competitor.prenom, competitor.club, competitor.region, competitor.numeroLicence, competitor.email]
+      [competitor.nom, competitor.prenom, competitor.club, competitor.numeroLicence, competitor.email]
         .some((value) => String(value || "").toLowerCase().includes(query)),
     );
   }, [search, validatedCompetitors]);
@@ -187,9 +187,8 @@ function CompetitorManager() {
         <div className="form-row"><label>Id<input name="id" value={form.id} onChange={updateField} placeholder="Auto si vide" /></label><label>Nom<input name="nom" value={form.nom} onChange={updateField} required /></label></div>
         <div className="form-row"><label>Prénom<input name="prenom" value={form.prenom} onChange={updateField} required /></label><label>Statut<input value={validatedForm.statut} readOnly /></label></div>
         <div className="form-row"><label>Sexe<select name="sexe" value={form.sexe} onChange={updateField} required><option value="">Choisir</option><option value="F">F</option><option value="M">M</option></select></label><label>Date de naissance<input type="date" name="dateNaissance" value={form.dateNaissance} onChange={updateField} required /></label></div>
-        <div className="form-row"><label>Club<input name="club" value={form.club} onChange={updateField} required /></label><label>Région<input name="region" value={form.region} onChange={updateField} required /></label></div>
-        <div className="form-row"><label>N° licence<input name="numeroLicence" value={form.numeroLicence} onChange={updateField} required /></label><label>Grade<select name="grade" value={form.grade} onChange={updateField} required><option value="">Choisir</option>{GRADES.map((grade) => <option key={grade}>{grade}</option>)}</select></label></div>
-        <div className="form-row"><label>Catégorie poids<select name="categoriePoids" value={form.categoriePoids} onChange={updateField} required><option value="">Choisir</option>{WEIGHT_CATEGORIES.map((weight) => <option key={weight}>{weight}</option>)}</select></label><label>Coach<input name="coach" value={form.coach} onChange={updateField} required /></label></div>
+        <div className="form-row"><label>Club<input name="club" value={form.club} onChange={updateField} required /></label><label>N° licence<input name="numeroLicence" value={form.numeroLicence} onChange={updateField} required /></label></div>
+        <div className="form-row"><label>Grade<select name="grade" value={form.grade} onChange={updateField} required><option value="">Choisir</option>{GRADES.map((grade) => <option key={grade}>{grade}</option>)}</select></label><label>Poids<select name="categoriePoids" value={form.categoriePoids} onChange={updateField} required><option value="">Choisir</option>{WEIGHT_CATEGORIES.map((weight) => <option key={weight}>{weight}</option>)}</select></label></div>
         <div className="form-row"><label>Certificat médical<select name="certificatMedical" value={form.certificatMedical} onChange={updateField} required><option>Non</option><option>Oui</option></select></label><label>Autorisation parentale<select name="autorisationParentale" value={form.autorisationParentale} onChange={updateField} required><option>Non</option><option>Oui</option></select></label></div>
         <div className={validatedForm.errors.length ? "validation-panel invalid" : "validation-panel valid"}>
           <strong>{validatedForm.errors.length ? "Badge rouge Invalide" : "Badge vert Valide"}</strong>
@@ -206,8 +205,8 @@ function CompetitorManager() {
 
       <div className="competitor-list">
         {filteredCompetitors.map((competitor) => <article key={competitor.id} className={`competitor-card ${competitor.errors.length ? "invalid-card" : "valid-card"} ${highlightedIds.includes(competitor.id) ? "highlight-card" : ""}`}>
-          <div><h3>{competitor.nom} {competitor.prenom}</h3><p>{competitor.club} · {competitor.region}</p><span className={competitor.errors.length ? "status-badge invalid" : "status-badge valid"}>{competitor.errors.length ? "Invalide" : "Valide"}</span></div>
-          <div className="competitor-details"><span>{competitor.age} ans</span><span>{competitor.categorieAge}</span><span>{competitor.categoriePoids}</span><span>{competitor.grade}</span><span>Licence {competitor.numeroLicence}</span><span>Coach {competitor.coach || "—"}</span>{competitor.email && <span>{competitor.email}</span>}{competitor.telephone && <span>{competitor.telephone}</span>}</div>
+          <div><h3>{competitor.nom} {competitor.prenom}</h3><p>{competitor.club}</p><span className={competitor.errors.length ? "status-badge invalid" : "status-badge valid"}>{competitor.errors.length ? "Invalide" : "Valide"}</span></div>
+          <div className="competitor-details"><span>{competitor.age} ans</span><span>{competitor.categorieAge}</span><span>{competitor.categoriePoids}</span><span>{competitor.grade}</span><span>Licence {competitor.numeroLicence}</span>{competitor.email && <span>{competitor.email}</span>}{competitor.telephone && <span>{competitor.telephone}</span>}</div>
           {competitor.errors.length > 0 && <p className="info">{competitor.errors.join(" ")}</p>}
           <div className="competition-actions"><button className="manage-button" onClick={() => editCompetitor(competitor)}>Consulter / modifier</button><button className="delete-button" type="button" onClick={() => deleteCompetitor(competitor.id)}>Supprimer</button></div>
         </article>)}
