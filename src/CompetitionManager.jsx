@@ -2,7 +2,7 @@ import { Component, useEffect, useRef, useState } from "react";
 import MatchManager from "./MatchManager";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
 import { buildRankings, canShowRankings, generateTournament, normalizeCompetitionData, parseCompetitorFile, recordMatchResult } from "./competitionWorkflow";
-import { buildCompetitionTestCompetitors } from "./competitionTestCompetitors";
+import { buildDemoCompetition2027 } from "./demoCompetition2027";
 
 const STORAGE_KEY = COMPETITIONS_STORAGE_KEY;
 const ACTIVE_SHEET_KEY = "nanbudo-active-score-sheet";
@@ -11,7 +11,7 @@ const UNSAVED_MATCH_MESSAGE = "Le combat en cours n'a pas encore été validé.\
 const WIZARD_FILE = "src/CompetitionManager.jsx";
 
 const CATEGORIES = ["Enfant", "Benjamin", "Minime", "Junior", "Senior", "Vétéran"];
-const GRADES = ["Blanche", "Jaune", "Orange", "Verte", "Bleue", "Marron", "Noire"];
+const GRADES = ["6ème Kyu", "5ème Kyu", "4ème Kyu", "3ème Kyu", "2ème Kyu", "1er Kyu", "1er Dan", "2ème Dan", "3ème Dan", "4ème Dan", "5ème Dan", "6ème Dan"];
 const SEXES = ["Fille", "Garçon", "Femme", "Homme"];
 
 const DEFAULT_SETTINGS = {
@@ -287,12 +287,22 @@ export function CompetitionStepTwo({ competition, onUpdate, onContinue }) {
     event.target.value = "";
   }
   function createTestCompetition() {
-    const currentYear = new Date().getFullYear();
-    const testParticipants = buildCompetitionTestCompetitors(currentYear, CompetitionService.createId("test"))
-      .map((competitor, index) => ({ ...competitor, licence: competitor.licence || `TEST-${currentYear}-${index + 1}`, categorie: competitor.age < 18 ? "Junior" : competitor.age > 39 ? "Vétéran" : "Senior", grade: "Noire", certificatMedical: true, autorisationParentale: true }));
-    onUpdate({ ...safeCompetition, nom: safeCompetition.nom || "Coupe de test Nanbudo", statut: "Préparation", participants: testParticipants, competitors: testParticipants, testData: true, importReport: { imported: testParticipants.length, rejected: [], skippedDuplicates: 0 } });
+    const demoCompetition = buildDemoCompetition2027(CompetitionService.createId("coupe-france-test-2027"));
+    onUpdate(CompetitionService.normalizeCompetition({
+      ...safeCompetition,
+      ...demoCompetition,
+      id: safeCompetition.id,
+      createdAt: safeCompetition.createdAt,
+      updatedAt: new Date().toISOString(),
+      settings: {
+        ...DEFAULT_SETTINGS,
+        ...(safeCompetition.settings || {}),
+        categoriesOuvertes: [...CATEGORIES],
+        gradesAutorises: [...GRADES],
+      },
+    }));
   }
-  return <WizardCard eyebrow="Étape 2" title="Ajouter les compétiteurs" action={{ label: "Continuer", onClick: onContinue }}><input ref={csvRef} type="file" accept=".csv,.json,text/csv,application/json" onChange={importCsv} hidden /><div className="wizard-choice step-two-actions"><button className="wizard-card action-card" type="button" onClick={() => setShowForm((value) => !value)}>➕ Ajouter un compétiteur</button><span>OU</span><button className="wizard-card action-card" type="button" onClick={() => csvRef.current?.click()}>📄 Importer CSV/JSON</button><span>OU</span><button className="wizard-card action-card" type="button" onClick={createTestCompetition}>🧪 Créer une compétition de test</button></div>{showForm && <CompetitorMiniForm competition={safeCompetition} onUpdate={onUpdate} />}{safeCompetition.importReport && <p className="info">Import : {safeCompetition.importReport.imported} ajouté(s), {safeCompetition.importReport.skippedDuplicates} doublon(s), {safeCompetition.importReport.rejected?.length || 0} rejet(s).</p>}<div className="wizard-stats"><CompetitionCard label="Clubs" value={stats.clubs} /><CompetitionCard label="Compétiteurs" value={stats.competitors} /><CompetitionCard label="Catégories" value={stats.categories} /></div></WizardCard>;
+  return <WizardCard eyebrow="Étape 2" title="Ajouter les compétiteurs" action={{ label: "Continuer", onClick: onContinue }}><input ref={csvRef} type="file" accept=".csv,.json,text/csv,application/json" onChange={importCsv} hidden /><div className="wizard-choice step-two-actions"><button className="wizard-card action-card" type="button" onClick={() => setShowForm((value) => !value)}>➕ Ajouter un compétiteur</button><span>OU</span><button className="wizard-card action-card" type="button" onClick={() => csvRef.current?.click()}>📄 Importer CSV/JSON</button><span>OU</span><button className="wizard-card action-card" type="button" onClick={createTestCompetition}>🧪 Générer la Coupe de France Test 2027 (100)</button></div>{showForm && <CompetitorMiniForm competition={safeCompetition} onUpdate={onUpdate} />}{safeCompetition.importReport && <p className="info">Import : {safeCompetition.importReport.imported} ajouté(s), {safeCompetition.importReport.skippedDuplicates} doublon(s), {safeCompetition.importReport.rejected?.length || 0} rejet(s).</p>}<div className="wizard-stats"><CompetitionCard label="Clubs" value={stats.clubs} /><CompetitionCard label="Compétiteurs" value={stats.competitors} /><CompetitionCard label="Catégories" value={stats.categories} /></div></WizardCard>;
 }
 
 export function CompetitionStepThree({ competition, onUpdate, onContinue }) {
