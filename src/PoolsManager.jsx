@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { KATA0_RANDORI0_RULE, canParticipateInEvent } from "./competitorRules";
 import {
   buildPoolQualityReport,
   distributeCompetitorsIntoPools,
@@ -294,27 +295,15 @@ function PoolsManager({
       };
     }
 
-    if (
-      category.epreuve === "randori"
-    ) {
+    if (["kata0", "randori"].includes(category.epreuve)) {
       const invalid = categoryCompetitors.some(
-        (competitor) => {
-          const age =
-            getAge(competitor);
-
-          return (
-            age === null ||
-            getCombatFamily(age) !==
-              "randori"
-          );
-        }
+        (competitor) => !canParticipateInEvent(competitor, category.epreuve, competition.date ? new Date(competition.date) : new Date())
       );
 
       if (invalid) {
         return {
           valid: false,
-          message:
-            "Randori est réservé aux compétiteurs de moins de 10 ans. Vérifie l'âge des participants.",
+          message: KATA0_RANDORI0_RULE.rejectionMessage,
         };
       }
     }

@@ -1,3 +1,4 @@
+import { sanitizeRestrictedEventsForCompetitor } from "./competitorRules.js";
 import { upsertOfficialPlanningDocument } from "./officialPlanning.js";
 
 const CATEGORY_MIN_SIZE = 2;
@@ -155,8 +156,9 @@ const COMPETITOR_EVENT_FIELDS = [
   ["juRandori2", "Ju Randori 2"],
 ];
 
-function getCompetitorEvents(competitor) {
-  const selected = COMPETITOR_EVENT_FIELDS.filter(([field]) => competitor[field] || competitor.epreuves?.[field]).map(([field, label]) => ({ field, label }));
+function getCompetitorEvents(competitor, referenceDate = new Date()) {
+  const allowedCompetitor = sanitizeRestrictedEventsForCompetitor(competitor, referenceDate);
+  const selected = COMPETITOR_EVENT_FIELDS.filter(([field]) => allowedCompetitor[field] || allowedCompetitor.epreuves?.[field]).map(([field, label]) => ({ field, label }));
   return selected.length ? selected : [{ field: "kata2", label: "Kata 2" }];
 }
 
@@ -164,7 +166,7 @@ export function generateCategories(competition) {
   const normalized = normalizeCompetitionData(competition);
   const groups = new Map();
   normalized.competitors.forEach((competitor) => {
-    getCompetitorEvents(competitor).forEach((event) => {
+    getCompetitorEvents(competitor, normalized.date ? new Date(normalized.date) : new Date()).forEach((event) => {
       const key = `${event.field}|${competitor.categorie}|${competitor.sexe}`;
       if (!groups.has(key)) groups.set(key, { event, competitors: [] });
       groups.get(key).competitors.push(competitor);

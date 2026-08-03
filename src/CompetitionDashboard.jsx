@@ -8,6 +8,7 @@ import ControlCenter from "./ControlCenter";
 import LiveCompetitionManager from "./LiveCompetitionManager";
 import SimulationManager from "./SimulationManager";
 import CompetitionHealthManager from "./CompetitionHealthManager";
+import { KATA0_RANDORI0_RULE, canParticipateInKata0Randori0, sanitizeRestrictedEventsForCompetitor } from "./competitorRules";
 import { buildDocumentCardMeta, escapeDocumentHtml, getCompetitionDocuments, getDocumentDefinition, getOfficialPlanningDocument } from "./documentLibrary";
 import {
   buildCompetitionTestCompetitors,
@@ -138,6 +139,15 @@ function CompetitionDashboard({
   }
 
   function validateEvents(values) {
+    if ((values.kata0 || values.randori) && !canParticipateInKata0Randori0({
+      dateNaissance: values.dateNaissance,
+      age: calculateAge(values.dateNaissance),
+      grade: values.grade,
+    })) {
+      alert(KATA0_RANDORI0_RULE.rejectionMessage);
+      return false;
+    }
+
     const nombreKatas = [
       values.kata0,
       values.kata1,
@@ -519,7 +529,7 @@ function CompetitionDashboard({
           return;
         }
 
-        const epreuves = {
+        const rawEpreuves = {
           kata0: kata0 === "1",
           kata1: kata1 === "1",
           kata2: kata2 === "1",
@@ -527,6 +537,12 @@ function CompetitionDashboard({
           juRandori1: juRandori1 === "1",
           juRandori2: juRandori2 === "1",
         };
+        const epreuves = sanitizeRestrictedEventsForCompetitor({
+          dateNaissance,
+          age: calculateAge(dateNaissance),
+          grade,
+          epreuves: rawEpreuves,
+        }).epreuves;
 
         const nombreKatas = [
           epreuves.kata0,

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { canParticipateInEvent } from "./competitorRules";
 
 const EVENT_DEFINITIONS = {
   kata0: {
@@ -290,18 +291,12 @@ function isAgeAllowedForEvent(
 ) {
   const age = getAge(competitor);
 
+  if (!canParticipateInEvent(competitor, type, competition.date ? new Date(competition.date) : new Date())) {
+    return false;
+  }
+
   if (age === null) {
-    return true;
-  }
-
-  // Kata 0 réservé aux 10 ans maximum
-  if (type === "kata0") {
-    return age <= 10;
-  }
-
-  // Randori réservé aux 10 ans maximum
-  if (type === "randori") {
-    return age <= 10;
+    return !["kata0", "randori"].includes(type);
   }
 
   // Ju Randori réservé aux plus de 10 ans

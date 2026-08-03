@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
+import { KATA0_RANDORI0_RULE, calculateAge, canParticipateInKata0Randori0 } from "./competitorRules";
 
 const STORAGE_KEY = "nanbudo-online-registrations-v2";
 const REGISTRATIONS_CHANGED_EVENT = "nanbudo-registrations-changed";
@@ -27,6 +28,7 @@ const initialForm = {
   telephone: "",
   epreuves: [],
 };
+
 
 function readJsonFromStorage(key, fallback) {
   try {
@@ -147,6 +149,15 @@ function RegistrationManager() {
 
     if (!canSubmit) {
       setMessage("Vérifiez les champs obligatoires et sélectionnez au moins une épreuve.");
+      return;
+    }
+
+    if ((form.epreuves.includes("kata0") || form.epreuves.includes("randori")) && !canParticipateInKata0Randori0({
+      dateNaissance: form.dateNaissance,
+      age: calculateAge(form.dateNaissance),
+      grade: form.grade,
+    })) {
+      setMessage(KATA0_RANDORI0_RULE.rejectionMessage);
       return;
     }
 
