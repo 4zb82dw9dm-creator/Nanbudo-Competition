@@ -1,13 +1,11 @@
 import { Component, useEffect, useRef, useState } from "react";
-import MatchManager from "./MatchManager";
+import ArbitrationManager from "./ArbitrationManager";
 import { COMPETITIONS_STORAGE_KEY } from "./backupUtils";
-import { buildRankings, canShowRankings, generateTournament, normalizeCompetitionData, parseCompetitorFile, recordMatchResult } from "./competitionWorkflow";
+import { buildRankings, canShowRankings, generateTournament, normalizeCompetitionData, parseCompetitorFile } from "./competitionWorkflow";
 import { buildDemoCompetition2027 } from "./demoCompetition2027";
 
 const STORAGE_KEY = COMPETITIONS_STORAGE_KEY;
-const ACTIVE_SHEET_KEY = "nanbudo-active-score-sheet";
 const STRUCTURE_WARNING = "Attention.\n\nVous allez modifier des données qui peuvent rendre les tableaux actuels incohérents.\n\nSi vous continuez, les tableaux devront être régénérés et tous les résultats déjà saisis seront perdus.\n\nSouhaitez-vous continuer ?";
-const UNSAVED_MATCH_MESSAGE = "Le combat en cours n'a pas encore été validé.\n\nQue souhaitez-vous faire ?";
 const WIZARD_FILE = "src/CompetitionManager.jsx";
 
 const CATEGORIES = ["Enfant", "Benjamin", "Minime", "Junior", "Senior", "Vétéran"];
@@ -330,48 +328,6 @@ function getCompetitorLabel(competition, id) {
   return competitor ? `${competitor.nom} ${competitor.prenom}` : "Bye";
 }
 
-function getMatchStatusMeta(status) {
-  if (status === "Terminé") return { className: "finished", label: "🟢 Terminé" };
-  if (status === "En cours") return { className: "active", label: "🔵 En cours" };
-  return { className: "pending", label: "🟡 À jouer" };
-}
-
-
-function getMatchRoundContext(brackets, matchId) {
-  for (const bracket of brackets || []) {
-    for (const round of bracket.rounds || []) {
-      for (const match of round.matches || []) {
-        if (String(match.id) === String(matchId)) return { bracket, round, match };
-      }
-    }
-  }
-  return null;
-}
-
-function buildScoreSheetContext(competition, item) {
-  if (!item) return null;
-  const category = (competition.categories || []).find((cat) => String(cat.id) === String(item.bracket.categoryId));
-  const aka = (competition.competitors || []).find((competitor) => String(competitor.id) === String(item.match.akaId));
-  const shiro = (competition.competitors || []).find((competitor) => String(competitor.id) === String(item.match.shiroId));
-  return {
-    category,
-    round: item.round,
-    match: { ...item.match, aka, shiro },
-    pool: { nom: category?.nom || item.bracket.categoryId, tatami: item.bracket.tatami || category?.tatami || "—" },
-    eventType: category?.epreuve || item.bracket.epreuve || "Ju Randori",
-  };
-}
-
-function scoreSheetIsDirty(sheetState) {
-  return Boolean(sheetState && !sheetState.validated);
-}
-
-function confirmScoreSheetExit() {
-  const choice = window.prompt(`${UNSAVED_MATCH_MESSAGE}\n\n1 - 💾 Enregistrer et quitter\n2 - ❌ Quitter sans enregistrer\n3 - ↩ Revenir au combat`, "3");
-  if (choice === "1") return "save";
-  if (choice === "2") return "discard";
-  return "stay";
-}
 
 function hasCompetitionStructureResults(competition) {
   return (competition.brackets || []).length > 0 || (competition.matches || []).some((match) => match.statut === "Terminé") || (competition.pools || []).some((pool) => (pool.matches || []).some((match) => match.statut === "Terminé"));
@@ -381,79 +337,14 @@ function invalidateGeneratedStructure(competition) {
   return { ...competition, brackets: [], matches: [], pools: [], futureModules: { ...(competition.futureModules || {}), tableaux: [], tirage: null, classements: [] }, statut: "Préparation", workflow: { phase: "Préparation", currentScreen: "preparation" } };
 }
 
-export function CompetitionStepFive({ competition, onUpdate, onContinue }) {
+export function CompetitionStepFive({ competition, onUpdate }) {
   const safeCompetition = CompetitionService.normalizeCompetition(competition || {});
-  const brackets = safeCompetition.brackets || [];
-  const playableMatches = brackets.flatMap((bracket) => bracket.rounds.flatMap((round) => round.matches.map((match) => ({ bracket, round, match })))).filter(({ match }) => match.statut !== "Terminé" && match.akaId && match.shiroId);
-  const completedMatches = (safeCompetition.matches || []).filter((match) => match.statut === "Terminé").length;
-  const totalMatches = (safeCompetition.matches || []).length;
-  const [selectedMatchId, setSelectedMatchId] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(ACTIVE_SHEET_KEY) || "null");
-      return saved?.competitionId === safeCompetition.id ? saved.matchId : null;
-    } catch { return null; }
-  });
-  const [sheetState, setSheetState] = useState(null);
-  const scrollPositionRef = useRef(0);
-  const selectedMatch = (selectedMatchId && getMatchRoundContext(brackets, selectedMatchId)) || null;
-  const sheetContext = buildScoreSheetContext(safeCompetition, selectedMatch);
-
-  useEffect(() => {
-    if (selectedMatchId) localStorage.setItem(ACTIVE_SHEET_KEY, JSON.stringify({ competitionId: safeCompetition.id, matchId: selectedMatchId, openedAt: new Date().toISOString() }));
-    else localStorage.removeItem(ACTIVE_SHEET_KEY);
-  }, [safeCompetition.id, selectedMatchId]);
-
-  function launch() {
-    if (!brackets.length) { onUpdate(generateTournament(safeCompetition)); return; }
-    onUpdate({ ...safeCompetition, statut: "En cours", workflow: { phase: "En cours", currentScreen: "arbitrage" } });
-  }
-
-  function openScoreSheet(matchId) {
-    scrollPositionRef.current = window.scrollY;
-    setSelectedMatchId(matchId);
-    setSheetState({ validated: false });
-    onUpdate({ ...safeCompetition, lastOpenedMatchId: matchId, autosavedAt: new Date().toISOString() });
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  }
-
-  function closeScoreSheet() {
-    setSelectedMatchId(null);
-    setSheetState(null);
-    requestAnimationFrame(() => window.scrollTo({ top: scrollPositionRef.current, behavior: "instant" }));
-  }
-
-  function requestCloseScoreSheet() {
-    if (!scoreSheetIsDirty(sheetState)) { closeScoreSheet(); return true; }
-    const action = confirmScoreSheetExit();
-    if (action === "stay") return false;
-    if (action === "save") onUpdate({ ...safeCompetition, draftScoreSheets: { ...(safeCompetition.draftScoreSheets || {}), [selectedMatchId]: { ...(sheetState || {}), savedAt: new Date().toISOString() } } });
-    closeScoreSheet();
-    return true;
-  }
-
-  function saveArbitration(match, result) {
-    const winnerId = result.vainqueur === "aka" ? match.akaId : result.vainqueur === "shiro" ? match.shiroId : null;
-    if (!winnerId) return;
-    setSheetState({ validated: true });
-    onUpdate(recordMatchResult(safeCompetition, match.id, winnerId, { akaScore: result.scoreAka, shiroScore: result.scoreShiro, scoreBrutAka: result.scoreBrutAka, scoreBrutShiro: result.scoreBrutShiro, assauts: result.assauts, penalitesAka: result.penalitesAka, penalitesShiro: result.penalitesShiro, pointsNegatifsAka: result.pointsNegatifsAka, pointsNegatifsShiro: result.pointsNegatifsShiro, akaDisqualifie: result.akaDisqualifie, shiroDisqualifie: result.shiroDisqualifie, departageActif: result.departageActif, assautsDepartage: result.assautsDepartage, scoreDepartageAka: result.scoreDepartageAka, scoreDepartageShiro: result.scoreDepartageShiro, decisionType: result.decisionType, decisionDrapeaux: result.decisionDrapeaux }));
-    closeScoreSheet();
-  }
-
-  function goToRankings() { if (canShowRankings(safeCompetition) && requestCloseScoreSheet()) onContinue(); }
-
-  if (sheetContext) {
-    return <WizardCard eyebrow="Étape 5" title="Feuille de notation du combat"><button className="public-back" type="button" onClick={requestCloseScoreSheet}>← Retour au tableau</button><MatchManager key={sheetContext.match.id} match={sheetContext.match} mode="ju-randori" type="ju-randori" initialResult={sheetContext.match} category={sheetContext.category} pool={sheetContext.pool} eventType={sheetContext.eventType} onDirtyChange={setSheetState} onSave={(result) => saveArbitration(sheetContext.match, result)} /></WizardCard>;
-  }
 
   return (
-    <WizardCard eyebrow="Étape 5" title="Arbitrage des combats">
-      <div className="wizard-stats"><CompetitionCard label="Combats terminés" value={completedMatches} /><CompetitionCard label="Combats générés" value={totalMatches} /><CompetitionCard label="À arbitrer" value={playableMatches.length} /></div>
-      {!brackets.length && <button className="launch-button" type="button" onClick={launch}>Générer avant lancement</button>}
-      {brackets.length > 0 && safeCompetition.statut !== "En cours" && !canShowRankings(safeCompetition) && <button className="launch-button" type="button" onClick={launch}>Lancer la compétition</button>}
-      <div className="competition-board" aria-label="Liste des combats par catégorie et par tour">{brackets.map((bracket) => { const categoryLabel = safeCompetition.categories.find((category) => category.id === bracket.categoryId)?.nom || bracket.categoryId; return <section key={bracket.id} className="competition-category-section"><header className="competition-category-header"><div><p className="competition-category-kicker">Catégorie</p><h3>{categoryLabel}</h3></div><span className={bracket.status === "Terminée" ? "category-status finished" : "category-status"}>{bracket.status}</span></header><div className="competition-rounds">{bracket.rounds.map((round) => <section key={`${bracket.id}-${round.index}`} className="competition-round-section"><h4>{round.label}</h4><div className="match-card-list">{round.matches.map((match) => { const status = getMatchStatusMeta(match.statut); const canReferee = match.statut !== "Terminé" && match.akaId && match.shiroId; return <article key={match.id} className="match-card"><div className="match-card-main"><strong className="fighter-name">{getCompetitorLabel(safeCompetition, match.akaId)}</strong><span className="match-versus">VS</span><strong className="fighter-name">{getCompetitorLabel(safeCompetition, match.shiroId)}</strong></div><div className="match-card-footer"><span className={`match-status-badge ${status.className}`}>{status.label}</span>{match.statut === "Terminé" && <span className="match-score">Score {match.akaScore ?? "-"} / {match.shiroScore ?? "-"}</span>}{canReferee && <button className="referee-button" type="button" onClick={() => openScoreSheet(match.id)}>⚖️ À arbitrer</button>}</div></article>; })}</div></section>)}</div></section>; })}</div>
-      {playableMatches.length === 0 && <p className="wizard-helper">Tous les combats jouables sont arbitrés. Les vainqueurs ont été qualifiés automatiquement jusqu'à la finale.</p>}
-      <button className="primary" type="button" onClick={goToRankings} disabled={!canShowRankings(safeCompetition)}>Accéder aux classements</button><p className="wizard-helper">Le classement reste bloqué tant que tous les combats générés ne sont pas terminés.</p>
-    </WizardCard>
+    <ArbitrationManager
+      competition={safeCompetition}
+      onUpdateCompetition={onUpdate}
+    />
   );
 }
 
