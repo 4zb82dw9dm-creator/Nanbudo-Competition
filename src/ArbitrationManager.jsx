@@ -47,6 +47,7 @@ function ArbitrationManager({
   const categories = competition.categories || [];
 
   const notationSheetRef = useRef(null);
+  const arbitrationDetailRef = useRef(null);
 
   const [selectedTatami, setSelectedTatami] =
     useState(null);
@@ -107,6 +108,15 @@ function ArbitrationManager({
     return ["kata0", "kata1", "kata2"].includes(
       eventType
     );
+  }
+
+  function scrollToArbitrationDetail() {
+    setTimeout(() => {
+      arbitrationDetailRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
   }
 
   function scrollToNotationSheet() {
@@ -254,9 +264,28 @@ function ArbitrationManager({
     return "🔴 À jouer";
   }
 
+  function areAllKataEventsFinished() {
+    const kataPools = pools.filter((candidate) =>
+      isKataEvent(getPoolEventKey(candidate))
+    );
+
+    return (
+      kataPools.length === 0 ||
+      kataPools.every(
+        (candidate) =>
+          getPoolProgressStatus(candidate) ===
+          "finished"
+      )
+    );
+  }
+
   function isEventUnlocked(pool) {
     const eventKey = getPoolEventKey(pool);
     const currentRank = DISCIPLINE_ORDER.indexOf(eventKey);
+
+    if (!isKataEvent(eventKey) && !areAllKataEventsFinished()) {
+      return false;
+    }
 
     if (currentRank <= 0) {
       return true;
@@ -3027,6 +3056,7 @@ function ArbitrationManager({
                               setSelectedPoolId(pool.id);
                               resetSelections();
                               setSelectedClosingMode("");
+                              scrollToArbitrationDetail();
                             }}
                           >
                             {unlocked
@@ -3045,7 +3075,10 @@ function ArbitrationManager({
 
           {selectedPool && kataMode && (
             <>
-              <section className="category-section">
+              <section
+                className="category-section"
+                ref={arbitrationDetailRef}
+              >
                 <div className="category-section-header">
                   <div>
                     <p className="surtitle">
@@ -3220,7 +3253,10 @@ function ArbitrationManager({
 
           {selectedPool && !kataMode && (
             <>
-              <section className="category-section">
+              <section
+                className="category-section"
+                ref={arbitrationDetailRef}
+              >
                 <div className="category-section-header">
                   <div>
                     <p className="surtitle">

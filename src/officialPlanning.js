@@ -88,19 +88,37 @@ export function buildOfficialPlanning(competition = {}, options = {}) {
   const startAt = parsePlanningTime(options.startTime || competition.settings?.startTime || "09:30");
   const slotMinutes = Math.max(5, Number(options.slotMinutes || 30));
   const categories = (competition.pools || competition.brackets || []).map((pool, index) => buildPlanningCategory(competition, pool, index)).sort((a, b) => {
-    const workloadRank = b.workload - a.workload;
     const disciplineRank = DEFAULT_DISCIPLINE_ORDER.indexOf(a.disciplineKey) - DEFAULT_DISCIPLINE_ORDER.indexOf(b.disciplineKey);
-    return workloadRank || disciplineRank || a.ageRank - b.ageRank || a.sexRank - b.sexRank || a.label.localeCompare(b.label, "fr") || a.sourceOrder - b.sourceOrder;
+    const workloadRank = b.workload - a.workload;
+    return disciplineRank || workloadRank || a.ageRank - b.ageRank || a.sexRank - b.sexRank || a.label.localeCompare(b.label, "fr") || a.sourceOrder - b.sourceOrder;
   });
   const tatamis = Array.from({ length: tatamiCount }, (_, index) => ({ number: index + 1, workload: 0, nextStart: startAt, items: [] }));
-  categories.forEach((category) => {
-    tatamis.sort((a, b) => a.workload - b.workload || a.nextStart - b.nextStart || a.number - b.number);
-    const tatami = tatamis[0];
-    tatami.items.push({ ...category, time: formatPlanningTime(tatami.nextStart), estimatedStart: tatami.nextStart });
-    tatami.workload += category.workload;
-    tatami.nextStart += Math.ceil(category.workload / 4) * slotMinutes;
-  });
+  const kataCategories = categories.filter((category) => DEFAULT_DISCIPLINE_ORDER.indexOf(category.disciplineKey) <= DEFAULT_DISCIPLINE_ORDER.indexOf("kata2"));
+  const combatCategories = categories.filter((category) => DEFAULT_DISCIPLINE_ORDER.indexOf(category.disciplineKey) > DEFAULT_DISCIPLINE_ORDER.indexOf("kata2"));
+
+  function scheduleCategoryGroup(group) {
+    group.forEach((category) => {
+      tatamis.sort((a, b) => a.workload - b.workload || a.nextStart - b.nextStart || a.number - b.number);
+      const tatami = tatamis[0];
+      tatami.items.push({ ...category, time: formatPlanningTime(tatami.nextStart), estimatedStart: tatami.nextStart });
+      tatami.workload += category.workload;
+      tatami.nextStart += Math.ceil(category.workload / 4) * slotMinutes;
+    });
+  }
+
+  scheduleCategoryGroup(kataCategories);
+
+  if (kataCategories.length > 0 && combatCategories.length > 0) {
+    const combatStart = Math.max(...tatamis.map((tatami) => tatami.nextStart));
+    tatamis.forEach((tatami) => {
+      tatami.nextStart = Math.max(tatami.nextStart, combatStart);
+    });
+  }
+
+  scheduleCategoryGroup(combatCategories);
+
   tatamis.sort((a, b) => a.number - b.number);
+  tatamis.forEach((tatami) => tatami.items.sort((a, b) => a.estimatedStart - b.estimatedStart || DEFAULT_DISCIPLINE_ORDER.indexOf(a.disciplineKey) - DEFAULT_DISCIPLINE_ORDER.indexOf(b.disciplineKey) || a.sourceOrder - b.sourceOrder));
   return { id: createPlanningId(), title: OFFICIAL_PLANNING_DOCUMENT_TITLE, type: DOCUMENT_TYPES.OFFICIAL_PLANNING, generatedAt: new Date().toISOString(), tatamiCount, dayMarkers: DEFAULT_DAY_MARKERS, tatamis };
 }
 
