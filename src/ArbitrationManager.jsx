@@ -1,5 +1,18 @@
 import { useRef, useState } from "react";
 import MatchManager from "./MatchManager";
+import {
+  getPlanningDisciplineKey,
+  getPlanningDisciplineLabel,
+} from "./officialPlanning.js";
+
+const DISCIPLINE_ORDER = [
+  "kata0",
+  "kata1",
+  "kata2",
+  "randori",
+  "juRandori1",
+  "juRandori2",
+];
 
 const EVENT_LABELS = {
   kata0: "Kata 0 — Shihotai",
@@ -34,6 +47,9 @@ function ArbitrationManager({
   const categories = competition.categories || [];
 
   const notationSheetRef = useRef(null);
+
+  const [selectedTatami, setSelectedTatami] =
+    useState(null);
 
   const [selectedPoolId, setSelectedPoolId] =
     useState("");
@@ -110,10 +126,15 @@ function ArbitrationManager({
     ? getCategory(selectedPool.categoryId)
     : null;
 
-  const selectedEvent =
-    selectedCategory?.epreuve ||
-    selectedPool?.epreuve ||
-    "";
+  const selectedEvent = selectedPool
+    ? getPlanningDisciplineKey(
+        selectedPool.epreuve ||
+          selectedPool.epreuveLabel ||
+          selectedCategory?.epreuve ||
+          selectedCategory?.epreuveLabel ||
+          selectedPool.type
+      )
+    : "";
 
   const kataMode = isKataEvent(selectedEvent);
 
@@ -161,6 +182,164 @@ function ArbitrationManager({
     setSelectedPassageId("");
     setSelectedFinalPassageId("");
   }
+
+  function getPoolEventKey(pool) {
+    const category = getCategory(pool.categoryId);
+
+    return getPlanningDisciplineKey(
+      pool.epreuve ||
+        pool.epreuveLabel ||
+        category?.epreuve ||
+        category?.epreuveLabel ||
+        pool.type
+    );
+  }
+
+  function getPoolCategoryName(pool) {
+    return (pool?.nom || "Catégorie").replace(
+      /^Poule\s*-?\s*/i,
+      ""
+    );
+  }
+
+  function getPoolProgressStatus(pool) {
+    const eventKey = getPoolEventKey(pool);
+
+    if (isKataEvent(eventKey)) {
+      const kataPassages = [
+        ...(pool.passages || []),
+        ...(pool.finalPassages || []),
+        ...(pool.kataTieBreaks?.finale?.passages || []),
+        ...(pool.kataTieBreaks?.["petite-finale"]
+          ?.passages || []),
+      ];
+
+      if (kataPassages.length === 0) {
+        return "not-started";
+      }
+
+      return kataPassages.every(
+        (passage) => passage.statut === "Terminé"
+      )
+        ? "finished"
+        : "in-progress";
+    }
+
+    const combatItems = [
+      ...(pool.matches || []),
+      ...(pool.finalMatches || []),
+      ...(pool.combatTieBreaks || []),
+    ];
+
+    if (combatItems.length === 0) {
+      return "not-started";
+    }
+
+    return combatItems.every(
+      (item) => item.statut === "Terminé"
+    )
+      ? "finished"
+      : "in-progress";
+  }
+
+  function getStatusLabel(status) {
+    if (status === "finished") {
+      return "🟢 Terminée";
+    }
+
+    if (status === "in-progress") {
+      return "🟡 En cours";
+    }
+
+    return "🔴 À jouer";
+  }
+
+  function isEventUnlocked(pool) {
+    const eventKey = getPoolEventKey(pool);
+    const currentRank = DISCIPLINE_ORDER.indexOf(eventKey);
+
+    if (currentRank <= 0) {
+      return true;
+    }
+
+    return DISCIPLINE_ORDER.slice(0, currentRank).every(
+      (previousKey) => {
+        const previousPool = pools.find(
+          (candidate) =>
+            sameId(candidate.categoryId, pool.categoryId) &&
+            getPoolEventKey(candidate) === previousKey
+        );
+
+        return (
+          !previousPool ||
+          getPoolProgressStatus(previousPool) ===
+            "finished"
+        );
+      }
+    );
+  }
+
+  function getCategoryEventProgress(categoryId) {
+    return DISCIPLINE_ORDER.map((eventKey) => {
+      const pool = pools.find(
+        (candidate) =>
+          sameId(candidate.categoryId, categoryId) &&
+          getPoolEventKey(candidate) === eventKey
+      );
+
+      if (!pool) {
+        return null;
+      }
+
+      const status = getPoolProgressStatus(pool);
+      const unlocked = isEventUnlocked(pool);
+
+      return {
+        eventKey,
+        label: getPlanningDisciplineLabel(eventKey),
+        status,
+        icon: unlocked
+          ? status === "finished"
+            ? "✅"
+            : status === "in-progress"
+              ? "🟡"
+              : "🔴"
+          : "🔒",
+      };
+    }).filter(Boolean);
+  }
+
+  const tatamiItems = Array.from(
+    { length: 3 },
+    (_, index) => {
+      const number = index + 1;
+      const officialTatami = (
+        competition.planning?.tatamis || []
+      ).find((tatami) => tatami.number === number);
+
+      return {
+        number,
+        items: (officialTatami?.items || [])
+          .map((item, sourceOrder) => {
+            const pool = pools.find((candidate) =>
+              sameId(candidate.id, item.id)
+            );
+
+            return pool
+              ? { ...item, pool, sourceOrder }
+              : null;
+          })
+          .filter(Boolean),
+      };
+    }
+  );
+
+  const selectedTatamiItems = selectedTatami
+    ? tatamiItems.find(
+        (tatami) => tatami.number === selectedTatami
+      )?.items || []
+    : [];
+
 
   /*
    * =========================================================
@@ -2721,50 +2900,145 @@ function ArbitrationManager({
         </div>
       ) : (
         <>
-          <div className="competition-form">
-            <label>
-              Poule / catégorie
+          {!selectedTatami ? (
+            <section className="category-section arbitration-tatami-selection">
+              <div className="category-section-header">
+                <div>
+                  <p className="surtitle">TATAMI</p>
 
-              <select
-                value={selectedPoolId}
-                onChange={(event) => {
-                  setSelectedPoolId(
-                    event.target.value
-                  );
+                  <h3>Choisir son aire d'arbitrage</h3>
 
-                  resetSelections();
+                  <p>
+                    Sélectionnez votre tatami pour afficher
+                    uniquement les épreuves prévues au planning
+                    officiel.
+                  </p>
+                </div>
+              </div>
 
-                  setSelectedClosingMode("");
-                }}
-              >
-                <option value="">
-                  Sélectionner
-                </option>
+              <div className="arbitration-tatami-grid">
+                {[1, 2, 3].map((tatamiNumber) => (
+                  <button
+                    type="button"
+                    className="arbitration-tatami-button"
+                    key={tatamiNumber}
+                    onClick={() => {
+                      setSelectedTatami(tatamiNumber);
+                      setSelectedPoolId("");
+                      resetSelections();
+                    }}
+                  >
+                    🥋 Tatami {tatamiNumber}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <>
+              <section className="category-section">
+                <div className="category-section-header">
+                  <div>
+                    <p className="surtitle">
+                      TATAMI {selectedTatami}
+                    </p>
 
-                {pools.map((pool) => {
-                  const category = getCategory(
-                    pool.categoryId
-                  );
+                    <h3>Planning d'arbitrage</h3>
 
-                  const eventType =
-                    category?.epreuve ||
-                    pool.epreuve;
+                    <p>
+                      Les épreuves suivent l'ordre chronologique
+                      du planning officiel.
+                    </p>
+                  </div>
 
-                  return (
-                    <option
-                      key={pool.id}
-                      value={pool.id}
-                    >
-                      {getEventLabel(eventType)}
-                      {" — "}
-                      {pool.nom}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-          </div>
+                  <button
+                    type="button"
+                    className="manage-button"
+                    onClick={() => {
+                      setSelectedTatami(null);
+                      setSelectedPoolId("");
+                      resetSelections();
+                    }}
+                  >
+                    Changer de tatami
+                  </button>
+                </div>
 
+                {selectedTatamiItems.length === 0 ? (
+                  <div className="empty-state">
+                    <h3>Aucune épreuve programmée</h3>
+                    <p>
+                      Aucune catégorie n'est associée à ce tatami
+                      dans le planning officiel.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="arbitration-schedule">
+                    {selectedTatamiItems.map((item) => {
+                      const pool = item.pool;
+                      const eventKey = getPoolEventKey(pool);
+                      const status = getPoolProgressStatus(pool);
+                      const unlocked = isEventUnlocked(pool);
+                      const progress = getCategoryEventProgress(
+                        pool.categoryId
+                      );
+
+                      return (
+                        <article
+                          className={`arbitration-schedule-card ${
+                            sameId(selectedPoolId, pool.id)
+                              ? "active"
+                              : ""
+                          } ${!unlocked ? "locked" : ""}`}
+                          key={pool.id}
+                        >
+                          <div className="arbitration-schedule-time">
+                            {item.time || "—"}
+                          </div>
+
+                          <div className="arbitration-schedule-body">
+                            <p className="surtitle">
+                              {getPoolCategoryName(pool)}
+                            </p>
+
+                            <h3>
+                              {getPlanningDisciplineLabel(eventKey)}
+                            </h3>
+
+                            <span className="status">
+                              {unlocked
+                                ? getStatusLabel(status)
+                                : "🔒 Verrouillée"}
+                            </span>
+
+                            <div className="arbitration-progress">
+                              {progress.map((step) => (
+                                <span key={step.eventKey}>
+                                  {step.icon} {step.label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="primary"
+                            disabled={!unlocked}
+                            onClick={() => {
+                              setSelectedPoolId(pool.id);
+                              resetSelections();
+                              setSelectedClosingMode("");
+                            }}
+                          >
+                            {unlocked
+                              ? "Ouvrir l'épreuve"
+                              : "Épreuve verrouillée"}
+                          </button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
           {/* ===============================
               KATA
           =============================== */}
@@ -2779,6 +3053,10 @@ function ArbitrationManager({
                     </p>
 
                     <h3>{selectedPool.nom}</h3>
+
+                    <p className="event-subtitle">
+                      {getEventLabel(selectedEvent)}
+                    </p>
 
                     <p>
                       Chaque compétiteur effectue deux
@@ -2950,6 +3228,10 @@ function ArbitrationManager({
                     </p>
 
                     <h3>{selectedPool.nom}</h3>
+
+                    <p className="event-subtitle">
+                      {getEventLabel(selectedEvent)}
+                    </p>
                   </div>
 
                   <span className="status">
@@ -3219,6 +3501,9 @@ function ArbitrationManager({
                   </div>
                 </section>
               )}
+            </>
+          )}
+
             </>
           )}
 
