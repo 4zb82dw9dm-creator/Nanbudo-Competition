@@ -52,6 +52,9 @@ function ArbitrationManager({
   const [selectedTatami, setSelectedTatami] =
     useState(null);
 
+  const [poolSort, setPoolSort] =
+    useState("priority");
+
   const [selectedPoolId, setSelectedPoolId] =
     useState("");
 
@@ -399,10 +402,81 @@ function ArbitrationManager({
   );
 
   const selectedTatamiItems = selectedTatami
-    ? tatamiItems.find(
-        (tatami) => tatami.number === selectedTatami
-      )?.items || []
+    ? sortPoolItems(
+        tatamiItems.find(
+          (tatami) => tatami.number === selectedTatami
+        )?.items || []
+      )
     : [];
+
+
+  function getPoolRemainingCount(pool) {
+    const eventKey = getPoolEventKey(pool);
+
+    if (isKataEvent(eventKey)) {
+      return [
+        ...(pool.passages || []),
+        ...(pool.finalPassages || []),
+        ...(pool.kataTieBreaks?.finale?.passages || []),
+        ...(pool.kataTieBreaks?.["petite-finale"]
+          ?.passages || []),
+      ].filter((passage) => passage.statut !== "Terminé")
+        .length;
+    }
+
+    return [
+      ...(pool.matches || []),
+      ...(pool.finalMatches || []),
+      ...(pool.combatTieBreaks || []),
+    ].filter((item) => item.statut !== "Terminé")
+      .length;
+  }
+
+  function getPoolSortValue(item, criterion) {
+    const pool = item.pool;
+    const categoryName = getPoolCategoryName(pool);
+    const eventLabel = getPlanningDisciplineLabel(
+      getPoolEventKey(pool)
+    );
+
+    if (criterion === "category") {
+      return `${eventLabel} ${categoryName}`;
+    }
+
+    if (criterion === "matches") {
+      return getPoolRemainingCount(pool);
+    }
+
+    if (criterion === "pool") {
+      return categoryName;
+    }
+
+    return Number(item.sourceOrder) || 0;
+  }
+
+  function sortPoolItems(items) {
+    return [...items].sort((a, b) => {
+      if (poolSort === "matches") {
+        return (
+          getPoolSortValue(b, poolSort) -
+          getPoolSortValue(a, poolSort)
+        );
+      }
+
+      const valueA = getPoolSortValue(a, poolSort);
+      const valueB = getPoolSortValue(b, poolSort);
+
+      if (typeof valueA === "number") {
+        return valueA - valueB;
+      }
+
+      return String(valueA).localeCompare(
+        String(valueB),
+        "fr",
+        { numeric: true }
+      );
+    });
+  }
 
 
   /*
@@ -3113,72 +3187,82 @@ function ArbitrationManager({
                     </p>
                   </div>
                 ) : (
-                  <div className="arbitration-schedule">
-                    {selectedTatamiItems.map((item) => {
-                      const pool = item.pool;
-                      const eventKey = getPoolEventKey(pool);
-                      const status = getPoolProgressStatus(pool);
-                      const unlocked = isEventUnlocked(pool);
-                      const progress = getCategoryEventProgress(
-                        pool.categoryId
-                      );
-
-                      return (
-                        <article
-                          className={`arbitration-schedule-card ${
-                            sameId(selectedPoolId, pool.id)
-                              ? "active"
-                              : ""
-                          } ${!unlocked ? "locked" : ""}`}
-                          key={pool.id}
+                  <>
+                    <div className="arbitration-sortbar">
+                      <label>
+                        Trier par
+                        <select
+                          value={poolSort}
+                          onChange={(event) =>
+                            setPoolSort(event.target.value)
+                          }
                         >
-                          <div className="arbitration-schedule-time">
-                            {item.time || "—"}
-                          </div>
+                          <option value="pool">Poule</option>
+                          <option value="category">Catégorie</option>
+                          <option value="matches">Nombre de combats</option>
+                          <option value="priority">Priorité</option>
+                        </select>
+                      </label>
+                    </div>
 
-                          <div className="arbitration-schedule-body">
-                            <p className="surtitle">
-                              {getPoolCategoryName(pool)}
-                            </p>
+                    <div className="arbitration-schedule">
+                      {selectedTatamiItems.map((item) => {
+                        const pool = item.pool;
+                        const eventKey = getPoolEventKey(pool);
+                        const status = getPoolProgressStatus(pool);
+                        const unlocked = isEventUnlocked(pool);
+                        const remainingCount = getPoolRemainingCount(pool);
 
-                            <h3>
-                              {getPlanningDisciplineLabel(eventKey)}
-                            </h3>
-
-                            <span className="status">
-                              {unlocked
-                                ? getStatusLabel(status)
-                                : "🔒 Verrouillée"}
-                            </span>
-
-                            <div className="arbitration-progress">
-                              {progress.map((step) => (
-                                <span key={step.eventKey}>
-                                  {step.icon} {step.label}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            className="primary"
-                            disabled={!unlocked}
-                            onClick={() => {
-                              setSelectedPoolId(pool.id);
-                              resetSelections();
-                              setSelectedClosingMode("");
-                              scrollToArbitrationDetail();
-                            }}
+                        return (
+                          <article
+                            className={`arbitration-schedule-card ${
+                              sameId(selectedPoolId, pool.id)
+                                ? "active"
+                                : ""
+                            } ${!unlocked ? "locked" : ""}`}
+                            key={pool.id}
                           >
-                            {unlocked
-                              ? "Ouvrir l'épreuve"
-                              : "Épreuve verrouillée"}
-                          </button>
-                        </article>
-                      );
-                    })}
-                  </div>
+                            <div className="arbitration-pool-cell">
+                              <p className="surtitle">
+                                {getPoolCategoryName(pool)}
+                              </p>
+
+                              <h3>
+                                {getPlanningDisciplineLabel(eventKey)}
+                              </h3>
+                            </div>
+
+                            <strong className="arbitration-count">
+                              {remainingCount} combat
+                              {remainingCount > 1 ? "s" : ""}
+                            </strong>
+
+                            <div className="arbitration-row-actions">
+                              <span className="status">
+                                {unlocked
+                                  ? getStatusLabel(status)
+                                  : "🔒 Verrouillée"}
+                              </span>
+
+                              <button
+                                type="button"
+                                className="manage-button"
+                                disabled={!unlocked}
+                                onClick={() => {
+                                  setSelectedPoolId(pool.id);
+                                  resetSelections();
+                                  setSelectedClosingMode("");
+                                  scrollToArbitrationDetail();
+                                }}
+                              >
+                                Arbitrer
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </section>
           {/* ===============================
