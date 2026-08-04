@@ -2,7 +2,9 @@ import { useState } from "react";
 import CategoriesManager from "./CategoriesManager";
 import PoolsManager from "./PoolsManager";
 import ArbitrationManager from "./ArbitrationManager";
-import ResultsManager from "./ResultsManager";function CompetitionDashboard({
+import ResultsManager from "./ResultsManager";
+
+function CompetitionDashboard({
 
   competition,
   onBack,
@@ -250,7 +252,9 @@ function deleteTestCompetitors() {
   link.remove();
 
   URL.revokeObjectURL(url);
-} (
+}
+
+  return (
     <section className="competition-dashboard">
       <button
         className="back-button"

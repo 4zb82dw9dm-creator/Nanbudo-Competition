@@ -1,12 +1,14 @@
 import { useState } from "react";
 
 function MatchManager({ match, onSave }) {
+  const emptyAssauts = Array.from({ length: 7 }, () => ({
+    juge1: "",
+    juge2: "",
+    juge3: "",
+  }));
+
   const [assauts, setAssauts] = useState(
-    Array.from({ length: 7 }, () => ({
-      juge1: "",
-      juge2: "",
-      juge3: "",
-    }))
+    match?.assauts || emptyAssauts
   );
 
   function modifierVote(numeroAssaut, juge, valeur) {
@@ -39,20 +41,22 @@ function MatchManager({ match, onSave }) {
   }
 
   const score = calculerScore();
-const [penalitesAka, setPenalitesAka] = useState({
+const defaultPenalites = {
   keikoku: 0,
   fujubun: 0,
   chui: 0,
   hansokuChui: 0,
   shikaku: false,
+};
+
+const [penalitesAka, setPenalitesAka] = useState({
+  ...defaultPenalites,
+  ...(match?.penalitesAka || {}),
 });
 
 const [penalitesShiro, setPenalitesShiro] = useState({
-  keikoku: 0,
-  fujubun: 0,
-  chui: 0,
-  hansokuChui: 0,
-  shikaku: false,
+  ...defaultPenalites,
+  ...(match?.penalitesShiro || {}),
 });
 
 function ajouterPenalite(couleur, type) {
