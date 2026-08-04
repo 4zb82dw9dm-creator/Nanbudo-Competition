@@ -42,21 +42,13 @@ button {
   flex: 1;
 }
 
-.afdp-logo {
-  width: 120px;
-  height: auto;
+.header-logo {
+  display: block;
+  height: 56px;
+  width: auto;
+  max-width: min(220px, 35vw);
   object-fit: contain;
   flex-shrink: 0;
-}
-
-@media (max-width: 700px) {
-  .header {
-    padding: 28px 7%;
-  }
-
-  .afdp-logo {
-    width: 75px;
-  }
 }
 
 .header h1 {
@@ -273,6 +265,15 @@ footer span {
 @media (max-width: 700px) {
   .header {
     padding: 28px 6%;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    gap: 18px;
+  }
+
+  .header-logo {
+    height: 52px;
+    max-width: min(200px, 70vw);
   }
 
   .navigation {

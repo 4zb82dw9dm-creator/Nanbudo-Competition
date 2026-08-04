@@ -35,20 +35,21 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-  <div className="header-text">
-    <p className="surtitle">AFDP NANBUDO</p>
+        <div className="header-text">
+          <p className="surtitle">AFDP NANBUDO</p>
 
-    <h1>Commission Compétition</h1>
+          <h1>Commission Compétition</h1>
 
-    <p className="subtitle">
-      Gestion et organisation des compétitions
-    </p>
-  </div>
+          <p className="subtitle">
+            Gestion et organisation des compétitions
+          </p>
+        </div>
 
-  <img
-  src="./logo-afdp.png"  alt="AFDP Nanbudo"
-  className="header-logo"
-/>
+        <img
+          src="/assets/logo-afdp.png"
+          alt="AFDP Nanbudo"
+          className="header-logo"
+        />
       </header>
       <nav className="navigation">
         <button
