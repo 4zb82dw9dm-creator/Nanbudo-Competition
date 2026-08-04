@@ -308,31 +308,12 @@ function ArbitrationManager({
 
   function isEventUnlocked(pool) {
     const eventKey = getPoolEventKey(pool);
-    const currentRank = DISCIPLINE_ORDER.indexOf(eventKey);
 
-    if (!isKataEvent(eventKey) && !areAllKataEventsFinished()) {
-      return false;
-    }
-
-    if (currentRank <= 0) {
+    if (isKataEvent(eventKey)) {
       return true;
     }
 
-    return DISCIPLINE_ORDER.slice(0, currentRank).every(
-      (previousKey) => {
-        const previousPool = pools.find(
-          (candidate) =>
-            sameId(candidate.categoryId, pool.categoryId) &&
-            getPoolEventKey(candidate) === previousKey
-        );
-
-        return (
-          !previousPool ||
-          getPoolProgressStatus(previousPool) ===
-            "finished"
-        );
-      }
-    );
+    return areAllKataEventsFinished();
   }
 
   function getCategoryEventProgress(categoryId) {
