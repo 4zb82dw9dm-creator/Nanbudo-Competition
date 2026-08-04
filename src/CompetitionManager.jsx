@@ -1,15 +1,7 @@
 import { useEffect, useState } from "react";
 import CompetitionDashboard from "./CompetitionDashboard";
 function CompetitionManager() {
-  const [competitions, setCompetitions] = useState(() => {
-    try {
-      const saved = localStorage.getItem("nanbudo_competitions");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
+  
   const [showForm, setShowForm] = useState(false);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
   const [form, setForm] = useState({
@@ -248,15 +240,13 @@ if (selectedCompetition) {
               <div className="competition-stats">
                 <div>
                   <strong>
-                    {competition.competitors.length}
-                  </strong>
+                    {competition.competitors?.length || 0}                  </strong>
                   <span>Compétiteurs</span>
                 </div>
 
                 <div>
                   <strong>
-                    {competition.categories.length}
-                  </strong>
+                    {competition.categories?.length || 0}                  </strong>
                   <span>Catégories</span>
                 </div>
               </div>
