@@ -44,7 +44,7 @@ button {
 
 .header-logo {
   display: block;
-  height: 56px;
+  height: 60px;
   width: auto;
   max-width: min(220px, 35vw);
   object-fit: contain;
@@ -272,7 +272,7 @@ footer span {
   }
 
   .header-logo {
-    height: 52px;
+    height: 60px;
     max-width: min(200px, 70vw);
   }
 
