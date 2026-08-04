@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MatchManager from "./MatchManager";
 import {
   getPlanningDisciplineKey,
@@ -127,6 +127,20 @@ function ArbitrationManager({
       });
     }, 100);
   }
+
+  useEffect(() => {
+    if (
+      selectedMatchId ||
+      selectedPassageId ||
+      selectedFinalPassageId
+    ) {
+      scrollToNotationSheet();
+    }
+  }, [
+    selectedMatchId,
+    selectedPassageId,
+    selectedFinalPassageId,
+  ]);
 
   const selectedPool = pools.find((pool) =>
     sameId(pool.id, selectedPoolId)
@@ -2260,9 +2274,15 @@ function ArbitrationManager({
           Combat {match.numero || ""}
         </h3>
 
-        <p>
-          {statusIcon} {match.statut}
-        </p>
+        <button
+          className="inline-status-button"
+          type="button"
+          onClick={() =>
+            selectMatch(match, matchType)
+          }
+        >
+          {statusIcon} {match.statut || "À arbitrer"}
+        </button>
 
         <h3>
           🔴 AKA —{" "}
@@ -2314,7 +2334,7 @@ function ArbitrationManager({
       >
         {match.statut === "Terminé"
           ? "Modifier"
-          : "Arbitrer"}
+          : "À arbitrer"}
       </button>
     </article>
   );
@@ -2592,19 +2612,39 @@ function ArbitrationManager({
           </p>
 
           <div className="competitor-events">
-            <span>
-              Passage 1 :{" "}
-              {passage1Finished
-                ? Number(passage1.score).toFixed(1)
-                : "À noter"}
-            </span>
+            {passage1 ? (
+              <button
+                className="inline-status-button"
+                type="button"
+                onClick={() =>
+                  selectKataPassage(passage1)
+                }
+              >
+                Passage 1 : {" "}
+                {passage1Finished
+                  ? Number(passage1.score).toFixed(1)
+                  : "À noter"}
+              </button>
+            ) : (
+              <span>Passage 1 : —</span>
+            )}
 
-            <span>
-              Passage 2 :{" "}
-              {passage2Finished
-                ? Number(passage2.score).toFixed(1)
-                : "À noter"}
-            </span>
+            {passage2 ? (
+              <button
+                className="inline-status-button"
+                type="button"
+                onClick={() =>
+                  selectKataPassage(passage2)
+                }
+              >
+                Passage 2 : {" "}
+                {passage2Finished
+                  ? Number(passage2.score).toFixed(1)
+                  : "À noter"}
+              </button>
+            ) : (
+              <span>Passage 2 : —</span>
+            )}
 
             {passage1Finished &&
               passage2Finished && (
