@@ -256,6 +256,65 @@ function ArbitrationManager({
     setSelectedFinalPassageId("");
   }
 
+  function getKataPassageSelectionKeyFromPool(passage) {
+    if (!passage) {
+      return "";
+    }
+
+    return passage.id
+      ? String(passage.id)
+      : `${passage.competitorId}-${passage.numero}`;
+  }
+
+  function openPoolOfficialNotation(pool) {
+    if (!pool) {
+      return;
+    }
+
+    const eventKey = getPoolEventKey(pool);
+
+    setSelectedPoolId(pool.id);
+    setSelectedClosingMode("");
+    resetSelections();
+
+    if (isKataEvent(eventKey)) {
+      const poolPassages = pool.passages || [];
+      const passageToScore =
+        poolPassages.find(
+          (passage) => passage.statut !== "Terminé"
+        ) || poolPassages[0];
+
+      if (passageToScore) {
+        setSelectedPassageId(
+          getKataPassageSelectionKeyFromPool(passageToScore)
+        );
+      }
+
+      scrollToNotationSheet();
+      return;
+    }
+
+    const poolRoundMatches =
+      pool.rounds?.flatMap(
+        (round) => round.matches || []
+      ) || [];
+    const poolMatchList =
+      (pool.matches || []).length > 0
+        ? pool.matches
+        : poolRoundMatches;
+    const matchToScore =
+      poolMatchList.find(
+        (match) => match.statut !== "Terminé"
+      ) || poolMatchList[0];
+
+    if (matchToScore) {
+      setSelectedMatchId(matchToScore.id);
+      setSelectedMatchType("pool");
+    }
+
+    scrollToNotationSheet();
+  }
+
   function getPoolEventKey(pool) {
     const category = getCategory(pool.categoryId);
 
@@ -3248,12 +3307,9 @@ function ArbitrationManager({
                                 type="button"
                                 className="manage-button"
                                 disabled={!unlocked}
-                                onClick={() => {
-                                  setSelectedPoolId(pool.id);
-                                  resetSelections();
-                                  setSelectedClosingMode("");
-                                  scrollToArbitrationDetail();
-                                }}
+                                onClick={() =>
+                                  openPoolOfficialNotation(pool)
+                                }
                               >
                                 Arbitrer
                               </button>
