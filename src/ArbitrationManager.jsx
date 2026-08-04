@@ -150,19 +150,52 @@ function ArbitrationManager({
     ? getCategory(selectedPool.categoryId)
     : null;
 
-  const selectedEvent = selectedPool
-    ? getPlanningDisciplineKey(
-        selectedPool.epreuve ||
-          selectedPool.epreuveLabel ||
-          selectedCategory?.epreuve ||
-          selectedCategory?.epreuveLabel ||
-          selectedPool.type
+  function getPoolDisciplineKey(pool, category = null) {
+    if (!pool) {
+      return "";
+    }
+
+    const explicitEvent =
+      pool.epreuve ||
+      pool.epreuveLabel ||
+      category?.epreuve ||
+      category?.epreuveLabel;
+
+    if (explicitEvent) {
+      return getPlanningDisciplineKey(explicitEvent);
+    }
+
+    if (pool.type === "kata" || (pool.passages || []).length > 0) {
+      return "kata2";
+    }
+
+    if (
+      pool.type === "combat" ||
+      (pool.matches || []).length > 0 ||
+      (pool.rounds || []).some(
+        (round) => (round.matches || []).length > 0
       )
+    ) {
+      return "randori";
+    }
+
+    return "";
+  }
+
+  const selectedEvent = selectedPool
+    ? getPoolDisciplineKey(selectedPool, selectedCategory)
     : "";
 
   const kataMode = isKataEvent(selectedEvent);
 
-  const poolMatches = selectedPool?.matches || [];
+  const roundMatches =
+    selectedPool?.rounds?.flatMap(
+      (round) => round.matches || []
+    ) || [];
+  const poolMatches =
+    (selectedPool?.matches || []).length > 0
+      ? selectedPool.matches
+      : roundMatches;
 
   const finalMatches =
     selectedPool?.finalMatches || [];
@@ -223,13 +256,7 @@ function ArbitrationManager({
   function getPoolEventKey(pool) {
     const category = getCategory(pool.categoryId);
 
-    return getPlanningDisciplineKey(
-      pool.epreuve ||
-        pool.epreuveLabel ||
-        category?.epreuve ||
-        category?.epreuveLabel ||
-        pool.type
-    );
+    return getPoolDisciplineKey(pool, category);
   }
 
   function getPoolCategoryName(pool) {
@@ -1267,10 +1294,22 @@ function ArbitrationManager({
           : match
       );
 
+      const updatedRounds = (pool.rounds || []).map(
+        (round) => ({
+          ...round,
+          matches: (round.matches || []).map((match) =>
+            sameId(match.id, selectedMatch.id)
+              ? savedMatch
+              : match
+          ),
+        })
+      );
+
       return {
         ...pool,
 
         matches: updatedPoolMatches,
+        rounds: updatedRounds,
 
         /*
          * Une modification d'un combat
