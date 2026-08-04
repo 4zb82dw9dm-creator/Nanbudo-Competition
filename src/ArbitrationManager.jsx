@@ -2622,7 +2622,7 @@ function ArbitrationManager({
               >
                 Passage 1 : {" "}
                 {passage1Finished
-                  ? Number(passage1.score).toFixed(1)
+                  ? "Noté"
                   : "À noter"}
               </button>
             ) : (
@@ -2639,7 +2639,7 @@ function ArbitrationManager({
               >
                 Passage 2 : {" "}
                 {passage2Finished
-                  ? Number(passage2.score).toFixed(1)
+                  ? "Noté"
                   : "À noter"}
               </button>
             ) : (
