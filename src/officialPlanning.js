@@ -1,7 +1,15 @@
 import { DOCUMENT_TYPES } from "./documentLibrary.js";
 
-const DEFAULT_DISCIPLINE_ORDER = ["kata", "randori", "juRandori"];
-const DISCIPLINE_LABELS = { kata: "KATA", randori: "RANDORI", juRandori: "JU RANDORI" };
+const OFFICIAL_TATAMI_COUNT = 3;
+const DEFAULT_DISCIPLINE_ORDER = ["kata0", "kata1", "kata2", "randori", "juRandori1", "juRandori2"];
+const DISCIPLINE_LABELS = {
+  kata0: "Kata 0",
+  kata1: "Kata 1",
+  kata2: "Kata 2",
+  randori: "Randori",
+  juRandori1: "Ju Randori 1",
+  juRandori2: "Ju Randori 2",
+};
 const AGE_CATEGORY_ORDER = ["poussin", "pupille", "benjamin", "minime", "cadet", "junior", "senior", "veteran"];
 const DEFAULT_DAY_MARKERS = [
   { id: "opening", label: "CÉRÉMONIE D'OUVERTURE", time: "09h00", placement: "top" },
@@ -22,20 +30,26 @@ export function normalizePlanningText(value) {
 }
 
 export function getPlanningDisciplineKey(value) {
-  const text = normalizePlanningText(value);
-  if (text.includes("ju") && text.includes("randori")) return "juRandori";
+  const text = normalizePlanningText(value).replace(/[\s_-]+/g, "");
+  if (text.includes("jurandori1")) return "juRandori1";
+  if (text.includes("jurandori2")) return "juRandori2";
+  if (text.includes("ju") && text.includes("randori")) return text.includes("2") ? "juRandori2" : "juRandori1";
+  if (text.includes("kata0") || text.includes("shihotai")) return "kata0";
+  if (text.includes("kata1")) return "kata1";
+  if (text.includes("kata2")) return "kata2";
   if (text.includes("randori")) return "randori";
-  return "kata";
+  return "kata2";
 }
 
 export function getPlanningDisciplineLabel(key) {
-  return DISCIPLINE_LABELS[key] || String(key || "ÉPREUVE").toUpperCase();
+  return DISCIPLINE_LABELS[key] || String(key || "Épreuve");
 }
 
 function getCategory(competition, pool) {
   return (competition.categories || []).find((category) => String(category.id) === String(pool.categoryId));
 }
 function getCategoryName(pool, category) { return category?.nom || pool.nom || "Catégorie"; }
+function getCategoryDisplayName(pool, category) { return getCategoryName(pool, category).replace(/^Poule\s*-?\s*/i, ""); }
 function getAgeRank(pool, category) {
   const text = normalizePlanningText([category?.ageClass, category?.categorie, category?.nom, pool.ageClass, pool.nom].filter(Boolean).join(" "));
   const rank = AGE_CATEGORY_ORDER.findIndex((label) => text.includes(label));
@@ -65,17 +79,18 @@ function escapeHtml(value) {
 }
 function buildPlanningCategory(competition, pool, sourceOrder) {
   const category = getCategory(competition, pool);
-  const disciplineKey = getPlanningDisciplineKey(pool.epreuve || pool.epreuveLabel || pool.type);
-  return { id: pool.id || `${pool.categoryId || "category"}-${sourceOrder}`, categoryId: pool.categoryId || category?.id || null, disciplineKey, disciplineLabel: getPlanningDisciplineLabel(disciplineKey), label: getCategoryName(pool, category).replace(/^Poule\s*-?\s*/i, ""), ageRank: getAgeRank(pool, category), sexRank: getSexRank(pool, category), workload: getCategoryWorkload(pool), competitorIds: pool.competitorIds || category?.competitorIds || [], sourceOrder };
+  const disciplineKey = getPlanningDisciplineKey(pool.epreuve || pool.epreuveLabel || category?.epreuve || category?.epreuveLabel || pool.type);
+  return { id: pool.id || `${pool.categoryId || "category"}-${sourceOrder}`, categoryId: pool.categoryId || category?.id || null, disciplineKey, disciplineLabel: getPlanningDisciplineLabel(disciplineKey), label: getCategoryDisplayName(pool, category), ageRank: getAgeRank(pool, category), sexRank: getSexRank(pool, category), workload: getCategoryWorkload(pool), competitorIds: pool.competitorIds || category?.competitorIds || [], sourceOrder };
 }
 
 export function buildOfficialPlanning(competition = {}, options = {}) {
-  const tatamiCount = Math.max(1, Number(options.tatamiCount || competition.nombreTatamis || competition.settings?.nombreTatamis || 3));
+  const tatamiCount = OFFICIAL_TATAMI_COUNT;
   const startAt = parsePlanningTime(options.startTime || competition.settings?.startTime || "09:30");
   const slotMinutes = Math.max(5, Number(options.slotMinutes || 30));
   const categories = (competition.pools || competition.brackets || []).map((pool, index) => buildPlanningCategory(competition, pool, index)).sort((a, b) => {
+    const workloadRank = b.workload - a.workload;
     const disciplineRank = DEFAULT_DISCIPLINE_ORDER.indexOf(a.disciplineKey) - DEFAULT_DISCIPLINE_ORDER.indexOf(b.disciplineKey);
-    return disciplineRank || a.ageRank - b.ageRank || a.sexRank - b.sexRank || a.label.localeCompare(b.label, "fr") || a.sourceOrder - b.sourceOrder;
+    return workloadRank || disciplineRank || a.ageRank - b.ageRank || a.sexRank - b.sexRank || a.label.localeCompare(b.label, "fr") || a.sourceOrder - b.sourceOrder;
   });
   const tatamis = Array.from({ length: tatamiCount }, (_, index) => ({ number: index + 1, workload: 0, nextStart: startAt, items: [] }));
   categories.forEach((category) => {
@@ -95,7 +110,7 @@ function getCompetitorsHtml(item, competition) {
   return competitors.map((c) => `<tr><td>${escapeHtml(c.club || "—")}</td><td>${escapeHtml(c.nom || "—")}</td><td>${escapeHtml(c.prenom || "—")}</td></tr>`).join("");
 }
 function renderCategoryCard(item, competition) {
-  return `<section class="official-category"><div class="official-category-time">${escapeHtml(item.time || "")}</div><div class="official-category-table"><h3>${escapeHtml(item.label)}</h3><table><thead><tr><th>CLUB</th><th>NOM</th><th>Prénom</th></tr></thead><tbody>${getCompetitorsHtml(item, competition)}</tbody></table></div></section>`;
+  return `<section class="official-category"><div class="official-category-time">${escapeHtml(item.time || "")}</div><div class="official-category-table"><h3><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.disciplineLabel)}</strong></h3><table><thead><tr><th>CLUB</th><th>NOM</th><th>Prénom</th></tr></thead><tbody>${getCompetitorsHtml(item, competition)}</tbody></table></div></section>`;
 }
 export function renderOfficialPlanningHtml(planning, competition = {}) {
   const top = planning.dayMarkers?.filter((m) => m.placement === "top") || [];
@@ -107,7 +122,7 @@ export function renderOfficialPlanningHtml(planning, competition = {}) {
 }
 export function renderOfficialPlanningText(planning) { return `Planning officiel en grille - ${planning.tatamiCount} aire(s)`; }
 export function getOfficialPlanningStyles() {
-  return `@page{size:A4 landscape;margin:10mm}.official-planning-document{font-family:Arial,sans-serif;color:#111;background:#fff}.official-planning-document header{text-align:center;margin-bottom:10px}.official-planning-document h1{margin:0;font-size:20px;text-transform:uppercase}.official-planning-document p{margin:4px 0 0}.official-grid{display:grid;grid-template-columns:repeat(var(--area-count),minmax(0,1fr));gap:12px;align-items:start}.official-area h2{border:2px solid #777;margin:0 0 5px;text-align:center;font-size:20px;line-height:1.1}.official-category{display:grid;grid-template-columns:42px minmax(0,1fr);gap:5px;margin-bottom:7px;break-inside:avoid}.official-category-time{font-weight:900;text-align:right;padding-top:18px;font-size:12px}.official-category-table h3{margin:0;text-align:center;font-size:11px;line-height:1.2}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #555;padding:2px 4px;text-align:center;font-size:10px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}th{background:#2f75b5;color:white;font-weight:900}.official-banner{display:grid;grid-template-columns:90px 1fr;border:2px solid #777;margin:10px 0;padding:5px;text-align:center;font-size:15px;font-weight:900;text-transform:uppercase}.official-banner span{text-align:left}@media print{button{display:none}}`;
+  return `@page{size:A4 landscape;margin:10mm}.official-planning-document{font-family:Arial,sans-serif;color:#111;background:#fff}.official-planning-document header{text-align:center;margin-bottom:10px}.official-planning-document h1{margin:0;font-size:20px;text-transform:uppercase}.official-planning-document p{margin:4px 0 0}.official-grid{display:grid;grid-template-columns:repeat(var(--area-count),minmax(0,1fr));gap:12px;align-items:start}.official-area h2{border:2px solid #777;margin:0 0 5px;text-align:center;font-size:20px;line-height:1.1}.official-category{display:grid;grid-template-columns:42px minmax(0,1fr);gap:5px;margin-bottom:7px;break-inside:avoid}.official-category-time{font-weight:900;text-align:right;padding-top:18px;font-size:12px}.official-category-table h3{margin:0;text-align:center;font-size:11px;line-height:1.2}.official-category-table h3 span,.official-category-table h3 strong{display:block}.official-category-table h3 strong{font-size:12px;text-transform:uppercase;color:#1f4e79}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #555;padding:2px 4px;text-align:center;font-size:10px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}th{background:#2f75b5;color:white;font-weight:900}.official-banner{display:grid;grid-template-columns:90px 1fr;border:2px solid #777;margin:10px 0;padding:5px;text-align:center;font-size:15px;font-weight:900;text-transform:uppercase}.official-banner span{text-align:left}@media print{button{display:none}}`;
 }
 export function renderOfficialPlanningFullHtml(document, competition = {}) {
   return `<!doctype html><html><head><title>${escapeHtml(document.title)}</title><style>${getOfficialPlanningStyles()}</style></head><body>${document.htmlContent || renderOfficialPlanningHtml(document.planning, competition)}</body></html>`;
