@@ -4388,3 +4388,117 @@ footer span {
 .official-planning-preview .official-banner span {
   text-align: left;
 }
+
+/* ========================================
+   ARBITRAGE PAR TATAMI
+======================================== */
+
+.arbitration-tatami-selection {
+  padding: 4px 0 10px;
+}
+
+.arbitration-tatami-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.arbitration-tatami-button {
+  min-height: 120px;
+  padding: 24px;
+  border: 2px solid var(--color-border);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff, #eef5ff);
+  color: var(--color-afdp-blue);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  font-size: 24px;
+  font-weight: 900;
+  transition: transform 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.arbitration-tatami-button:hover,
+.arbitration-tatami-button:focus-visible {
+  border-color: var(--color-afdp-blue);
+  box-shadow: 0 12px 30px rgba(0, 57, 121, 0.16);
+  transform: translateY(-2px);
+}
+
+.arbitration-schedule {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.arbitration-schedule-card {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: white;
+  box-shadow: var(--shadow-soft);
+}
+
+.arbitration-schedule-card.active {
+  border-color: var(--color-afdp-blue);
+  box-shadow: 0 0 0 2px rgba(0, 57, 121, 0.12);
+}
+
+.arbitration-schedule-card.locked {
+  background: #f7f8fa;
+}
+
+.arbitration-schedule-card.locked .arbitration-schedule-body {
+  opacity: 0.72;
+}
+
+.arbitration-schedule-time {
+  color: var(--color-afdp-blue);
+  font-size: 22px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.arbitration-schedule-body h3 {
+  margin: 3px 0 10px;
+}
+
+.arbitration-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.arbitration-progress span,
+.event-subtitle {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  background: #eef1f5;
+  padding: 6px 10px;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.event-subtitle {
+  margin: 8px 0 0;
+}
+
+@media (max-width: 850px) {
+  .arbitration-tatami-grid,
+  .arbitration-schedule-card {
+    grid-template-columns: 1fr;
+  }
+
+  .arbitration-schedule-time {
+    text-align: left;
+  }
+}
