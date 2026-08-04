@@ -2872,36 +2872,8 @@ function ArbitrationManager({
 
   return (
     <div className="arbitration-manager">
-      <div className="manager-header">
-        <div>
-          <p className="surtitle">
-            ARBITRAGE
-          </p>
-
-          <h2>Arbitrage</h2>
-
-          <p>
-            Saisie des résultats selon l'épreuve
-            sélectionnée.
-          </p>
-        </div>
-      </div>
-
-      {pools.length === 0 ? (
-        <div className="empty-state">
-          <h3>
-            Aucune poule disponible
-          </h3>
-
-          <p>
-            Génère d'abord les poules avant de
-            commencer l'arbitrage.
-          </p>
-        </div>
-      ) : (
-        <>
-          {!selectedTatami ? (
-            <section className="category-section arbitration-tatami-selection">
+      {!selectedTatami ? (
+        <section className="category-section arbitration-tatami-selection">
               <div className="category-section-header">
                 <div>
                   <p className="surtitle">TATAMI</p>
@@ -2932,7 +2904,35 @@ function ArbitrationManager({
                   </button>
                 ))}
               </div>
-            </section>
+        </section>
+      ) : (
+        <>
+          <div className="manager-header">
+            <div>
+              <p className="surtitle">
+                ARBITRAGE
+              </p>
+
+              <h2>Arbitrage</h2>
+
+              <p>
+                Saisie des résultats selon l'épreuve
+                sélectionnée.
+              </p>
+            </div>
+          </div>
+
+          {pools.length === 0 ? (
+            <div className="empty-state">
+              <h3>
+                Aucune poule disponible
+              </h3>
+
+              <p>
+                Génère d'abord les poules avant de
+                commencer l'arbitrage.
+              </p>
+            </div>
           ) : (
             <>
               <section className="category-section">
