@@ -260,7 +260,8 @@ button {
 .primary,
 .manage-button,
 .delete-button,
-.back-button {
+.back-button,
+.inline-status-button {
   border: 0;
   border-radius: 9px;
   cursor: pointer;
@@ -290,6 +291,23 @@ button {
 
 .manage-button:hover {
   filter: brightness(0.92);
+}
+
+.inline-status-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(39, 82, 150, 0.1);
+  color: var(--color-afdp-blue);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.inline-status-button:hover {
+  filter: brightness(0.94);
 }
 
 .delete-button {
