@@ -4520,3 +4520,156 @@ footer span {
     text-align: left;
   }
 }
+
+/* Tableau de bord compact d'arbitrage */
+.arbitration-manager .manager-header,
+.arbitration-manager .category-section-header {
+  margin-bottom: 12px;
+}
+
+.arbitration-manager .category-section {
+  margin-top: 18px;
+}
+
+.arbitration-sortbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 8px;
+}
+
+.arbitration-sortbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.arbitration-sortbar select {
+  min-height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: white;
+  color: var(--color-text);
+  padding: 6px 28px 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.arbitration-schedule {
+  gap: 8px;
+  margin-top: 0;
+}
+
+.arbitration-schedule-card {
+  grid-template-columns: minmax(230px, 1fr) minmax(120px, 0.45fr) auto;
+  min-height: 78px;
+  max-height: 78px;
+  gap: 14px;
+  padding: 10px 12px 10px 16px;
+  overflow: hidden;
+}
+
+.arbitration-pool-cell,
+.arbitration-row-actions {
+  min-width: 0;
+}
+
+.arbitration-pool-cell .surtitle {
+  margin: 0 0 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arbitration-pool-cell h3 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-afdp-blue);
+  font-size: clamp(16px, 2vw, 20px);
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arbitration-count {
+  justify-self: center;
+  color: var(--color-text);
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.arbitration-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.arbitration-row-actions .status {
+  padding: 7px 10px;
+  background: var(--color-horizon-gold);
+  color: var(--color-afdp-blue);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.arbitration-row-actions .manage-button {
+  min-width: 112px;
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
+.manage-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wizard-card > .primary,
+.wizard-card > .success-action {
+  min-height: 36px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.arbitration-manager .wizard-stats,
+.arbitration-manager .results-stats,
+.arbitration-manager .competition-stats-grid {
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+@media (min-width: 851px) and (max-width: 1180px) {
+  .arbitration-schedule-card {
+    grid-template-columns: minmax(210px, 1fr) minmax(105px, 0.35fr) auto;
+    gap: 10px;
+  }
+
+  .arbitration-row-actions .manage-button {
+    min-width: 104px;
+  }
+}
+
+@media (max-width: 850px) {
+  .arbitration-sortbar {
+    justify-content: flex-start;
+  }
+
+  .arbitration-schedule-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 88px;
+    max-height: 88px;
+  }
+
+  .arbitration-count {
+    justify-self: end;
+  }
+
+  .arbitration-row-actions {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+  }
+}
