@@ -170,8 +170,21 @@ function ArbitrationManager({
           sameId(match.id, selectedMatchId)
         );
 
+  function getKataPassageSelectionKey(passage) {
+    if (!passage) {
+      return "";
+    }
+
+    return passage.id
+      ? String(passage.id)
+      : `${passage.competitorId}-${passage.numero}`;
+  }
+
   const selectedPassage = passages.find((passage) =>
-    sameId(passage.id, selectedPassageId)
+    sameId(
+      getKataPassageSelectionKey(passage),
+      selectedPassageId
+    )
   );
 
   const allFinalKataPassages = [
@@ -1302,7 +1315,9 @@ function ArbitrationManager({
       return;
     }
 
-    setSelectedPassageId(passage.id);
+    setSelectedPassageId(
+      getKataPassageSelectionKey(passage)
+    );
 
     setSelectedFinalPassageId("");
     setSelectedMatchId("");
@@ -1316,11 +1331,17 @@ function ArbitrationManager({
       return;
     }
 
+    const selectedPassageKey =
+      getKataPassageSelectionKey(selectedPassage);
+
     const updatedPassages = (
       selectedPool.passages || []
     ).map((passage) => {
       if (
-        !sameId(passage.id, selectedPassage.id)
+        !sameId(
+          getKataPassageSelectionKey(passage),
+          selectedPassageKey
+        )
       ) {
         return passage;
       }
@@ -1342,18 +1363,49 @@ function ArbitrationManager({
       };
     });
 
+    const kataQualificationsAreComplete =
+      updatedPassages.length > 0 &&
+      updatedPassages.every(
+        (passage) => passage.statut === "Terminé"
+      );
+
     const updatedPools = pools.map((pool) =>
       sameId(pool.id, selectedPool.id)
         ? {
             ...pool,
             passages: updatedPassages,
+            statut: kataQualificationsAreComplete
+              ? "Terminé"
+              : pool.statut,
           }
         : pool
     );
 
+    const updatedPlanning = competition.planning
+      ? {
+          ...competition.planning,
+          tatamis: (competition.planning.tatamis || []).map(
+            (tatami) => ({
+              ...tatami,
+              items: (tatami.items || []).map((item) =>
+                sameId(item.id, selectedPool.id)
+                  ? {
+                      ...item,
+                      statut: kataQualificationsAreComplete
+                        ? "Terminé"
+                        : item.statut,
+                    }
+                  : item
+              ),
+            })
+          ),
+        }
+      : competition.planning;
+
     onUpdateCompetition({
       ...competition,
       pools: updatedPools,
+      planning: updatedPlanning,
     });
 
     setSelectedPassageId("");
