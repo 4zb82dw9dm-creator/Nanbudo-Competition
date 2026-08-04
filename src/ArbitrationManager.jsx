@@ -48,6 +48,11 @@ function ArbitrationManager({
     setSelectedMatchType(type);
   }
 
+  function returnToPool() {
+    setSelectedMatchId("");
+    setSelectedMatchType("");
+  }
+
   function calculatePodium(finalMatchesList) {
     const finale = finalMatchesList.find(
       (match) => match.type === "finale"
@@ -252,6 +257,45 @@ function ArbitrationManager({
     );
   }
 
+  if (selectedPool && selectedMatch) {
+    return (
+      <div className="arbitration-manager">
+        <button
+          className="back-button"
+          type="button"
+          onClick={returnToPool}
+        >
+          ← Retour à la poule
+        </button>
+
+        <div className="manager-header">
+          <div>
+            <p className="surtitle">COMBAT</p>
+
+            <h2>{selectedPool.nom}</h2>
+
+            <p>
+              Feuille officielle de notation de la rencontre
+              sélectionnée.
+            </p>
+          </div>
+        </div>
+
+        <MatchManager
+          key={selectedMatch.id}
+          match={{
+            aka: getCompetitor(selectedMatch.akaId),
+            shiro: getCompetitor(selectedMatch.shiroId),
+            assauts: selectedMatch.assauts,
+            penalitesAka: selectedMatch.penalitesAka,
+            penalitesShiro: selectedMatch.penalitesShiro,
+          }}
+          onSave={saveOfficialMatch}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="arbitration-manager">
       <div className="manager-header">
@@ -436,21 +480,6 @@ function ArbitrationManager({
                 </section>
               )}
             </>
-          )}
-
-          {selectedMatch && (
-            <MatchManager
-              key={selectedMatch.id}
-              match={{
-                aka: getCompetitor(
-                  selectedMatch.akaId
-                ),
-                shiro: getCompetitor(
-                  selectedMatch.shiroId
-                ),
-              }}
-              onSave={saveOfficialMatch}
-            />
           )}
         </>
       )}
