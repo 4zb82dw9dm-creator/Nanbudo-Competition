@@ -4225,6 +4225,17 @@ footer span {
   line-height: 1.2;
 }
 
+.planning-table-preview h4 span,
+.planning-table-preview h4 strong {
+  display: block;
+}
+
+.planning-table-preview h4 strong {
+  color: #1f4e79;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
 .planning-table-preview table {
   width: 100%;
   border-collapse: collapse;
@@ -4325,6 +4336,17 @@ footer span {
   text-align: center;
   font-size: 11px;
   line-height: 1.2;
+}
+
+.official-planning-preview .official-category-table h3 span,
+.official-planning-preview .official-category-table h3 strong {
+  display: block;
+}
+
+.official-planning-preview .official-category-table h3 strong {
+  color: #1f4e79;
+  font-size: 12px;
+  text-transform: uppercase;
 }
 
 .official-planning-preview table {

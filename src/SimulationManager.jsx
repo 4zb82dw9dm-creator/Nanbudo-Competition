@@ -9,7 +9,7 @@ const SIMULATION_SETTINGS = {
   startTime: "09:30",
   lunchStartTime: "12:00",
   lunchEndTime: "14:00",
-  tatamiCount: 2,
+  tatamiCount: 3,
   durations: { kata: 10, randori: 15, juRandori: 15 },
 };
 const SPEEDS = [1, 2, 5, 10];

@@ -5,7 +5,7 @@ const DEFAULT_SETTINGS = {
   startTime: "09:30",
   lunchStartTime: "12:00",
   lunchEndTime: "14:00",
-  tatamiCount: 2,
+  tatamiCount: 3,
   durations: {
     kata: 10,
     randori: 15,

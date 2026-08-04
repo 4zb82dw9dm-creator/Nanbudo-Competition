@@ -4,7 +4,8 @@ import logoAfdp from "./assets/logo-afdp.png";
 const DEFAULT_START_TIME = "09:30";
 const DEFAULT_LUNCH_START_TIME = "12:00";
 const DEFAULT_LUNCH_END_TIME = "14:00";
-const DEFAULT_TATAMI_COUNT = 2;
+const DEFAULT_TATAMI_COUNT = 3;
+const OFFICIAL_TATAMI_COUNT = 3;
 const DEFAULT_DURATIONS = {
   kata: 10,
   randori: 15,
@@ -90,7 +91,7 @@ function getPoolDuration(pool, durations) {
 
 function getPoolLabel(pool, categories) {
   const category = categories.find((item) => String(item.id) === String(pool.categoryId));
-  return pool.nom || category?.nom || pool.epreuveLabel || "Poule";
+  return category?.nom || pool.nom || pool.epreuveLabel || "Poule";
 }
 
 function getCompetitorCount(pool, categories) {
@@ -121,14 +122,14 @@ function getNextAuthorizedStart(availableAt, settings = {}) {
 function schedulePools(pools, categories, settings) {
   const startMinutes = parseTime(settings.startTime);
   const { lunchStart, lunchEnd } = getLunchWindow(settings);
-  const tatamis = Array.from({ length: settings.tatamiCount }, (_, index) => ({
+  const tatamis = Array.from({ length: OFFICIAL_TATAMI_COUNT }, (_, index) => ({
     index: index + 1,
     availableAt: getNextAuthorizedStart(startMinutes, settings),
   }));
 
   return [...pools]
     .map((pool, order) => ({ pool, order, duration: getPoolDuration(pool, settings.durations) }))
-    .sort((a, b) => getOrderRank(a.pool) - getOrderRank(b.pool) || a.order - b.order)
+    .sort((a, b) => b.duration - a.duration || getOrderRank(a.pool) - getOrderRank(b.pool) || a.order - b.order)
     .map(({ pool, duration }, passageOrder) => {
       tatamis.sort((a, b) => a.availableAt - b.availableAt || a.index - b.index);
       const tatami = tatamis[0];
@@ -210,7 +211,7 @@ function renderCompetitorRows(competitors) {
 }
 
 function renderPlanningBlock(item, competitors) {
-  return `<section class="planning-pool"><div class="planning-time">${formatTime(item.start)}</div><div class="planning-table"><h3>${escapeHtml(item.epreuveLabel || item.label)}</h3><table><thead><tr><th>CLUB</th><th>NOM</th><th>Prénom</th></tr></thead><tbody>${renderCompetitorRows(getScheduledCompetitors(item, competitors))}</tbody></table></div></section>`;
+  return `<section class="planning-pool"><div class="planning-time">${formatTime(item.start)}</div><div class="planning-table"><h3><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.epreuveLabel || "Épreuve")}</strong></h3><table><thead><tr><th>CLUB</th><th>NOM</th><th>Prénom</th></tr></thead><tbody>${renderCompetitorRows(getScheduledCompetitors(item, competitors))}</tbody></table></div></section>`;
 }
 
 function PlanningManager({ competition = {} }) {
@@ -229,7 +230,7 @@ function PlanningManager({ competition = {} }) {
       startTime,
       lunchStartTime,
       lunchEndTime,
-      tatamiCount: clampNumber(tatamiCount, 1, 8, DEFAULT_TATAMI_COUNT),
+      tatamiCount: OFFICIAL_TATAMI_COUNT,
       durations: {
         kata: clampNumber(durations.kata, 1, 180, DEFAULT_DURATIONS.kata),
         randori: clampNumber(durations.randori, 1, 180, DEFAULT_DURATIONS.randori),
@@ -266,7 +267,7 @@ function PlanningManager({ competition = {} }) {
     const popup = window.open("", "_blank");
     if (!popup) return;
 
-    popup.document.write(`<!doctype html><html><head><title>Planning compétition</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;margin:0;color:#111;background:white;font-size:11px}header{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px}img{width:42px;object-fit:contain}h1{font-size:18px;margin:0;text-transform:uppercase}.planning-sheet{display:grid;grid-template-columns:repeat(${settings.tatamiCount},1fr);gap:10px;align-items:start}.planning-area h2{border:2px solid #777;margin:0 0 4px;text-align:center;font-size:18px;line-height:1.15}.planning-pool{display:grid;grid-template-columns:38px 1fr;gap:4px;break-inside:avoid;margin-bottom:5px}.planning-time{font-weight:800;text-align:right;padding-top:16px}.planning-table h3{margin:0;text-align:center;font-size:10px;line-height:1.2}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #555;padding:2px 4px;text-align:center;font-size:10px;line-height:1.15;overflow:hidden;text-overflow:ellipsis}th{background:#2f75b5;color:white;font-weight:800}.pause,.ceremony{border:2px solid #777;font-weight:900;text-align:center;font-size:16px;margin:8px 0;padding:4px;grid-column:1/-1}.meta{text-align:center;margin-bottom:8px;color:#333}@media print{button{display:none}}</style></head><body><header><img src="${logoAfdp}" alt="Logo AFDP"><div><h1>${escapeHtml(competition.nom || "Planning compétition")}</h1><div class="meta">${escapeHtml(competition.lieu || "Lieu à définir")} · ${escapeHtml(competition.date || "Date à définir")} · Fin estimée ${formatTime(stats.endTime)}</div></div></header><main class="planning-sheet">${tatamiColumns}<div class="pause">PAUSE — ${formatTime(lunchWindow.lunchStart)} → ${formatTime(lunchWindow.lunchEnd)}</div><div class="ceremony">REMISE DE MÉDAILLE - CÉRÉMONIE</div></main><script>window.print();</script></body></html>`);
+    popup.document.write(`<!doctype html><html><head><title>Planning compétition</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;margin:0;color:#111;background:white;font-size:11px}header{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px}img{width:42px;object-fit:contain}h1{font-size:18px;margin:0;text-transform:uppercase}.planning-sheet{display:grid;grid-template-columns:repeat(${settings.tatamiCount},1fr);gap:10px;align-items:start}.planning-area h2{border:2px solid #777;margin:0 0 4px;text-align:center;font-size:18px;line-height:1.15}.planning-pool{display:grid;grid-template-columns:38px 1fr;gap:4px;break-inside:avoid;margin-bottom:5px}.planning-time{font-weight:800;text-align:right;padding-top:16px}.planning-table h3{margin:0;text-align:center;font-size:10px;line-height:1.2}.planning-table h3 span,.planning-table h3 strong{display:block}.planning-table h3 strong{font-size:11px;text-transform:uppercase;color:#1f4e79}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #555;padding:2px 4px;text-align:center;font-size:10px;line-height:1.15;overflow:hidden;text-overflow:ellipsis}th{background:#2f75b5;color:white;font-weight:800}.pause,.ceremony{border:2px solid #777;font-weight:900;text-align:center;font-size:16px;margin:8px 0;padding:4px;grid-column:1/-1}.meta{text-align:center;margin-bottom:8px;color:#333}@media print{button{display:none}}</style></head><body><header><img src="${logoAfdp}" alt="Logo AFDP"><div><h1>${escapeHtml(competition.nom || "Planning compétition")}</h1><div class="meta">${escapeHtml(competition.lieu || "Lieu à définir")} · ${escapeHtml(competition.date || "Date à définir")} · Fin estimée ${formatTime(stats.endTime)}</div></div></header><main class="planning-sheet">${tatamiColumns}<div class="pause">PAUSE — ${formatTime(lunchWindow.lunchStart)} → ${formatTime(lunchWindow.lunchEnd)}</div><div class="ceremony">REMISE DE MÉDAILLE - CÉRÉMONIE</div></main><script>window.print();</script></body></html>`);
     popup.document.close();
   }
 
@@ -285,7 +286,7 @@ function PlanningManager({ competition = {} }) {
           <label className="action-card">Heure de début<input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} /></label>
           <label className="action-card">Pause déjeuner<input type="time" value={lunchStartTime} onChange={(event) => setLunchStartTime(event.target.value)} /><small>Début de pause</small></label>
           <label className="action-card">Heure de reprise<input type="time" value={lunchEndTime} onChange={(event) => setLunchEndTime(event.target.value)} /><small>Fin de pause</small></label>
-          <label className="action-card">Nombre de tatamis<select value={tatamiCount} onChange={(event) => setTatamiCount(event.target.value)}>{Array.from({ length: 8 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1} tatami{index > 0 ? "s" : ""}</option>)}</select></label>
+          <div className="action-card"><strong>Nombre de tatamis</strong><span>3 aires officielles</span><small>Aire 1 · Aire 2 · Aire 3</small></div>
           <label className="action-card">Durée Kata<input type="number" min="1" max="180" value={durations.kata} onChange={(event) => updateDuration("kata", event.target.value)} /><small>minutes par poule</small></label>
           <label className="action-card">Durée Randori<input type="number" min="1" max="180" value={durations.randori} onChange={(event) => updateDuration("randori", event.target.value)} /><small>minutes par poule</small></label>
           <label className="action-card">Durée Ju Randori<input type="number" min="1" max="180" value={durations.juRandori} onChange={(event) => updateDuration("juRandori", event.target.value)} /><small>minutes par poule</small></label>
@@ -331,7 +332,7 @@ function PlanningManager({ competition = {} }) {
                     <section className="planning-pool-preview" key={item.id} draggable>
                       <div className="planning-time-preview">{formatTime(item.start)}</div>
                       <div className="planning-table-preview">
-                        <h4>{item.epreuveLabel || item.label}</h4>
+                        <h4><span>{item.label}</span><strong>{item.epreuveLabel || "Épreuve"}</strong></h4>
                         <table>
                           <thead>
                             <tr><th>CLUB</th><th>NOM</th><th>Prénom</th></tr>
