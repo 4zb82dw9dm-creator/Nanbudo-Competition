@@ -65,7 +65,7 @@ export function createDemoCompetitionTest30() {
     competitors,
     categories: buildAutomaticCategories(competitors),
     pools: [],
-    availableKatas: ["Kata 1", "Kata 2"],
-    katas: ["Kata 1", "Kata 2"],
+    availableKatas: ["Kata 0", "Kata 1", "Kata 2"],
+    katas: ["Kata 0", "Kata 1", "Kata 2"],
   };
 }

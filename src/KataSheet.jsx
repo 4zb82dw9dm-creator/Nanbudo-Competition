@@ -8,7 +8,7 @@ function KataSheet({ match, onSave }) {
   const initialNotes = match?.kataScores?.length === 5 ? match.kataScores.map(String) : ["", "", "", "", ""];
   const [kataName, setKataName] = useState(match?.kataName || "");
   const [notes, setNotes] = useState(initialNotes);
-  const kataOptions = useMemo(() => getKatasForCategory(match.categoryName), [match.categoryName]);
+  const kataOptions = useMemo(() => getKatasForCategory(match.categoryName, match.kataGroup), [match.categoryName, match.kataGroup]);
   const result = useMemo(() => competitionRulesEngine.calculateKataPoints(notes), [notes]);
   const competitor = match.competitor;
 
