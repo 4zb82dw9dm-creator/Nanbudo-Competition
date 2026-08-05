@@ -106,11 +106,31 @@ button {
 }
 
 .hero {
+  position: relative;
+  overflow: hidden;
   background: #054caa;
   color: white;
   padding: clamp(35px, 7vw, 70px);
   border-radius: 18px;
   box-shadow: 0 12px 35px rgba(7, 26, 51, 0.15);
+}
+
+.hero-wallpaper {
+  min-height: clamp(430px, 56vw, 620px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  isolation: isolate;
+  background:
+    linear-gradient(90deg, rgba(3, 10, 25, 0.82) 0%, rgba(3, 10, 25, 0.52) 38%, rgba(3, 10, 25, 0.08) 72%),
+    linear-gradient(180deg, rgba(2, 6, 15, 0.82) 0%, rgba(2, 6, 15, 0.18) 48%, rgba(2, 6, 15, 0.34) 100%),
+    url("/assets/nanbudo-hero-wallpaper.svg") center / cover no-repeat;
+}
+
+.hero-wallpaper > * {
+  position: relative;
+  z-index: 1;
+  max-width: min(560px, 58%);
 }
 
 .hero h2 {

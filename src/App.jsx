@@ -85,7 +85,7 @@ function App() {
       <main className="content">
         {section === "accueil" && (
           <>
-            <section className="hero">
+            <section className="hero hero-wallpaper">
               <p className="badge">HORIZON 2030</p>
 
               <h2>Nanbudo Competition</h2>
