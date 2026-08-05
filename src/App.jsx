@@ -24,12 +24,7 @@ function App() {
       <main className="content">
         {section === "accueil" && (
           <>
-            <section className="hero hero-wallpaper">
-              <p className="badge">APPLICATION COMPÉTITION</p>
-              <h2>Une application centrée exclusivement sur les compétitions</h2>
-              <p>Réception des inscriptions, création automatique des catégories et poules, génération du tableau, ouverture directe des feuilles d'arbitrage Kata ou Combat, puis publication des résultats.</p>
-              <button className="primary" onClick={() => setSection("competitions")}>Gérer les compétitions</button>
-            </section>
+            <section className="hero hero-wallpaper"></section>
 
             <section className="dashboard">
               <div className="card"><span className="number">1</span><h3>Inscriptions</h3><p>Nom, prénom, sexe, naissance, grade, club, ligue, pays et disciplines uniquement.</p></div>
