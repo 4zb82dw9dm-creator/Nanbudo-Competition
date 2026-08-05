@@ -2,6 +2,23 @@
 
 Application exclusivement dédiée à la gestion des compétitions de Nanbudo.
 
+## Référence règlementaire CINDA 2025
+
+Le document officiel « Règlement International Compétition 2025 » de la Worldwide Nanbudo Federation (CINDA) est la référence métier de l'application.
+
+L'application ne doit pas dupliquer des règles directement dans les écrans : les règles évolutives sont centralisées dans le moteur indépendant situé dans `src/rules/`.
+
+Le moteur distingue les disciplines prévues par le règlement :
+
+- Kata individuel ;
+- Kata par équipe ;
+- Randori ;
+- Ju Randori ;
+- Ju Randori par équipe ;
+- Dantai Randori, réservé aux évolutions futures.
+
+Les chapitres du PDF qui ne sont pas encore structurés dans la configuration sont volontairement marqués `to_be_structured_from_pdf`. Aucune ambiguïté ne doit être résolue par interprétation personnelle.
+
 ## Périmètre fonctionnel
 
 L'application suit le cycle complet d'une compétition :

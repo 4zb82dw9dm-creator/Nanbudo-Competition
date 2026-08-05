@@ -1,27 +1,16 @@
 import { useMemo, useState } from "react";
+import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 
-const JUDGES = ["Sushin", "Fukushin 1", "Fukushin 2", "Fukushin 3", "Fukushin 4"];
-const NOTE_OPTIONS = ["3.9", "4.0", "4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "4.8", "4.9"];
-const DEFAULT_KATAS = ["Nanbu Shodan", "Nanbu Nidan", "Nanbu Sandan", "Nanbu Yondan", "Nanbu Godan"];
-
-function calculateKataResult(notes) {
-  if (notes.some((note) => note === "")) return null;
-  const numericNotes = notes.map(Number);
-  const highest = Math.max(...numericNotes);
-  const lowest = Math.min(...numericNotes);
-  const remaining = [...numericNotes];
-  remaining.splice(remaining.indexOf(highest), 1);
-  remaining.splice(remaining.indexOf(lowest), 1);
-  const total = remaining.reduce((sum, note) => sum + note, 0);
-  return { highest, lowest, retained: remaining, total, average: total / remaining.length };
-}
+const JUDGES = competitionRulesEngine.ruleset.kata.judges;
+const NOTE_OPTIONS = competitionRulesEngine.ruleset.kata.noteValues;
+const DEFAULT_KATAS = competitionRulesEngine.ruleset.kata.katas;
 
 function KataSheet({ match, availableKatas = [], onSave }) {
   const initialNotes = match?.kataScores?.length === 5 ? match.kataScores.map(String) : ["", "", "", "", ""];
   const [kataName, setKataName] = useState(match?.kataName || "");
   const [notes, setNotes] = useState(initialNotes);
   const kataOptions = availableKatas.length > 0 ? availableKatas : DEFAULT_KATAS;
-  const result = useMemo(() => calculateKataResult(notes), [notes]);
+  const result = useMemo(() => competitionRulesEngine.calculateKataPoints(notes), [notes]);
   const competitor = match.competitor;
 
   function save() {
