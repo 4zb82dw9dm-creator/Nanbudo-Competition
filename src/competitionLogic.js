@@ -32,6 +32,12 @@ export function disciplineLabel(discipline) {
   return discipline === "kata" ? "Kata" : "Combat";
 }
 
+export function getRegistrationCategories(inscription) {
+  if (Array.isArray(inscription.categoriesInscription) && inscription.categoriesInscription.length > 0) return inscription.categoriesInscription;
+  if (inscription.categorieInscription) return [inscription.categorieInscription];
+  return getEligibleDisciplines(inscription).map(disciplineLabel);
+}
+
 export function getEligibleDisciplines(inscription) {
   if (inscription.discipline === "both") return ["kata", "combat"];
   if (inscription.discipline === "kata") return ["kata"];
@@ -41,14 +47,16 @@ export function getEligibleDisciplines(inscription) {
 export function buildAutomaticCategories(inscriptions) {
   const groups = new Map();
   inscriptions.forEach((inscription) => {
-    getEligibleDisciplines(inscription).forEach((discipline) => {
+    getRegistrationCategories(inscription).forEach((registrationCategory) => {
+      const discipline = registrationCategory.startsWith("Kata") ? "kata" : "combat";
       const age = inscription.age ?? calculateAge(inscription.dateNaissance);
-      const key = [discipline, ageBand(age), inscription.sexe, gradeBand(inscription.grade)].join("|");
+      const key = [registrationCategory, ageBand(age), inscription.sexe, gradeBand(inscription.grade)].join("|");
       if (!groups.has(key)) {
         groups.set(key, {
           id: `${discipline}-${key}`.replace(/\s+/g, "-").toLowerCase(),
-          nom: `${disciplineLabel(discipline)} · ${ageBand(age)} · ${inscription.sexe} · ${gradeBand(inscription.grade)}`,
+          nom: `${registrationCategory} · ${ageBand(age)} · ${inscription.sexe} · ${gradeBand(inscription.grade)}`,
           discipline,
+          registrationCategory,
           ageGroup: ageBand(age),
           sexe: inscription.sexe,
           gradeGroup: gradeBand(inscription.grade),

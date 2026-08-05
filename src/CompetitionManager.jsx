@@ -1,24 +1,42 @@
 import { useEffect, useState } from "react";
-import CompetitionDashboard from "./CompetitionDashboard";
+import CompetitionDashboard, { INITIAL_REGISTRATION_FORM, RegistrationForm, normalizeCompetitor } from "./CompetitionDashboard";
 
 function CompetitionManager() {
   const [competitions, setCompetitions] = useState(() => JSON.parse(localStorage.getItem("nanbudo_competitions") || "[]"));
   const [showForm, setShowForm] = useState(false);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
+  const [hash, setHash] = useState(window.location.hash);
   const [form, setForm] = useState({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
+  const [registrationForm, setRegistrationForm] = useState(INITIAL_REGISTRATION_FORM);
 
   useEffect(() => { localStorage.setItem("nanbudo_competitions", JSON.stringify(competitions)); }, [competitions]);
+  useEffect(() => { const listener = () => setHash(window.location.hash); window.addEventListener("hashchange", listener); return () => window.removeEventListener("hashchange", listener); }, []);
 
   function createCompetition(event) {
     event.preventDefault();
     if (!form.nom.trim()) return alert("Indique le nom de la compétition.");
-    setCompetitions((current) => [...current, { id: Date.now(), nom: form.nom.trim(), date: form.date, lieu: form.lieu.trim(), tatamis: Number(form.tatamis) || 1, horairesActifs: form.horairesActifs, statut: "Inscriptions ouvertes", competitors: [], categories: [], pools: [] }]);
+    setCompetitions((current) => [...current, { id: Date.now(), publicToken: crypto.randomUUID(), nom: form.nom.trim(), date: form.date, lieu: form.lieu.trim(), tatamis: Number(form.tatamis) || 1, horairesActifs: form.horairesActifs, statut: "Inscriptions ouvertes", competitors: [], categories: [], pools: [] }]);
     setForm({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
     setShowForm(false);
   }
 
   function updateCompetition(updatedCompetition) { setCompetitions((current) => current.map((competition) => competition.id === updatedCompetition.id ? updatedCompetition : competition)); }
   function deleteCompetition(id) { if (window.confirm("Supprimer cette compétition ?")) setCompetitions((current) => current.filter((competition) => competition.id !== id)); }
+  function handleRegistrationChange(event) { const { name, value } = event.target; setRegistrationForm((current) => ({ ...current, [name]: value })); }
+  function toggleRegistrationCategory(category) { setRegistrationForm((current) => ({ ...current, categoriesInscription: current.categoriesInscription.includes(category) ? current.categoriesInscription.filter((item) => item !== category) : [...current.categoriesInscription, category] })); }
+
+  const publicToken = hash.startsWith("#inscription-") ? hash.replace("#inscription-", "") : null;
+  const publicCompetition = competitions.find((competition) => String(competition.publicToken || competition.id) === publicToken);
+  if (publicCompetition) {
+    function submitPublicRegistration(event) {
+      event.preventDefault();
+      if (!registrationForm.nom.trim() || !registrationForm.prenom.trim() || !registrationForm.age || !registrationForm.ceinture || !registrationForm.club.trim() || registrationForm.categoriesInscription.length === 0) return alert("Veuillez renseigner tous les champs obligatoires.");
+      updateCompetition({ ...publicCompetition, competitors: [...(publicCompetition.competitors || []), normalizeCompetitor(registrationForm)] });
+      setRegistrationForm(INITIAL_REGISTRATION_FORM);
+      alert("Inscription enregistrée. Elle est visible par l’organisateur.");
+    }
+    return <section className="competition-manager public-registration"><p className="surtitle">LIEN PUBLIC SÉCURISÉ CLUB</p><h2>{publicCompetition.nom}</h2><p>Accès limité au formulaire d’inscription : aucune autre fonctionnalité organisateur n’est disponible depuis ce lien.</p><RegistrationForm form={registrationForm} onChange={handleRegistrationChange} onToggleCategory={toggleRegistrationCategory} onSubmit={submitPublicRegistration} /></section>;
+  }
 
   const selectedCompetition = competitions.find((competition) => competition.id === selectedCompetitionId);
   if (selectedCompetition) return <CompetitionDashboard competition={selectedCompetition} onBack={() => setSelectedCompetitionId(null)} onUpdateCompetition={updateCompetition} />;
