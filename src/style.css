@@ -637,9 +637,39 @@ footer span {
   background: #f8fafc;
   border: 1px solid #e1e6ef;
   border-radius: 12px;
-  display: grid;
-  gap: 10px;
-  padding: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px;
+}
+
+.category-checklist strong {
+  flex: 0 0 100%;
+  margin-bottom: 0;
+}
+
+.competition-form .category-checklist .checkbox-line {
+  align-items: center;
+  background: white;
+  border: 1px solid #e1e6ef;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 1 1 130px;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  min-height: 58px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.competition-form .category-checklist .checkbox-line input {
+  margin: 0;
+  min-height: 16px;
+  padding: 0;
+  width: 16px;
 }
 
 .registrations-table {
