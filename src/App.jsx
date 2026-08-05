@@ -44,7 +44,7 @@ function App() {
         <div className="header-text">
           <p className="surtitle">AFDP NANBUDO</p>
 
-          <h1>Commission Compétition</h1>
+          <h1>Nanbudo Competition</h1>
 
           <p className="subtitle">
             Gestion et organisation des compétitions
