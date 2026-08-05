@@ -27,15 +27,24 @@ function voteResult(votes, allowDraw = true) {
 
 function scoreRows(rows) {
   return rows.reduce((score, row) => {
-    const result = voteResult(row.votes);
-    if (result === "AKA") return { ...score, akaPositive: score.akaPositive + 1 };
-    if (result === "SHIRO") return { ...score, shiroPositive: score.shiroPositive + 1 };
-    return score;
+    return row.votes.reduce((totals, vote) => {
+      if (vote === "AKA") return { ...totals, akaPositive: totals.akaPositive + 1 };
+      if (vote === "SHIRO") return { ...totals, shiroPositive: totals.shiroPositive + 1 };
+      if (vote === "HIKIWAKE") return { akaPositive: totals.akaPositive + 1, shiroPositive: totals.shiroPositive + 1 };
+      return totals;
+    }, score);
   }, { akaPositive: 0, shiroPositive: 0 });
 }
 
 function penaltyTotal(penalties) {
   return penalties.reduce((total, penalty) => total + penalty.value, 0);
+}
+
+function groupedPenalties(penalties) {
+  return PENALTIES.map((penalty) => ({
+    ...penalty,
+    count: penalties.filter((item) => item.id === penalty.id).length,
+  })).filter((penalty) => penalty.count > 0);
 }
 
 function MatchManager({ match, onSave }) {
@@ -46,6 +55,7 @@ function MatchManager({ match, onSave }) {
   const [finalFlags, setFinalFlags] = useState(match?.finalFlags || ["", "", ""]);
   const [penalties, setPenalties] = useState(match?.penalties || { aka: [], shiro: [] });
   const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
+  const isLocked = match.statut === "Terminé";
   const sum = (values) => values.reduce((total, value) => total + Number(value || 0), 0);
   const kataScoreAka = sum(kataAka);
   const kataScoreShiro = sum(kataShiro);
@@ -77,16 +87,25 @@ function MatchManager({ match, onSave }) {
   }, [assaults, tieBreakAssaults, finalFlags, penalties]);
 
   function setVote(section, rowIndex, judgeIndex, value) {
+    if (isLocked) return;
     const setter = section === "main" ? setAssaults : setTieBreakAssaults;
     setter((current) => current.map((row, index) => index === rowIndex ? { ...row, votes: row.votes.map((vote, itemIndex) => itemIndex === judgeIndex ? value : vote) } : row));
   }
 
   function addPenalty(side, penalty) {
+    if (isLocked) return;
     setPenalties((current) => ({ ...current, [side]: [...current[side], { ...penalty, at: new Date().toISOString() }] }));
   }
 
-  function removePenalty(side, index) {
-    setPenalties((current) => ({ ...current, [side]: current[side].filter((_, itemIndex) => itemIndex !== index) }));
+  function removePenalty(side, penaltyId) {
+    if (isLocked) return;
+    setPenalties((current) => {
+      const removalIndex = current[side].findIndex((penalty) => penalty.id === penaltyId);
+      return {
+        ...current,
+        [side]: current[side].filter((_, itemIndex) => itemIndex !== removalIndex),
+      };
+    });
   }
 
   function buildHistory(winner) {
@@ -102,16 +121,17 @@ function MatchManager({ match, onSave }) {
 
   function save() {
     if (isKata) return onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : kataScoreShiro > kataScoreAka ? "shiro" : null });
+    if (isLocked) return;
     onSave({ assaults, tieBreakAssaults, finalFlags, penalties, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) });
   }
 
   if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save}>Valider le résultat</button></div></section>;
 
-  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} /><AssaultCards title="Les 7 assauts" rows={assaults} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} />{randoriScore.phase === "tieBreak" && <AssaultCards title="Départage automatique" rows={tieBreakAssaults} onVote={(rowIndex, judgeIndex, value) => setVote("tie", rowIndex, judgeIndex, value)} />}{randoriScore.phase === "finalFlags" && <div className="final-flags"><h3>Décision finale aux drapeaux</h3><div className="final-flag-cards">{finalFlags.map((vote, index) => <article className="final-flag-card" key={index}><strong>{FUKUSHIN[index]}</strong><DecisionButtons value={vote} options={FINAL_DECISIONS} onChange={(value) => setFinalFlags((current) => current.map((item, itemIndex) => itemIndex === index ? value : item))} /></article>)}</div></div>}<div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>Vainqueur</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / départage en cours"}</p><button className="primary kata-validate" onClick={save}>Valider le combat</button></div></section>;
+  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} disabled={isLocked} /><AssaultCards title="Les 7 assauts" rows={assaults} disabled={isLocked} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} />{randoriScore.phase === "tieBreak" && <AssaultCards title="Départage automatique" rows={tieBreakAssaults} disabled={isLocked} onVote={(rowIndex, judgeIndex, value) => setVote("tie", rowIndex, judgeIndex, value)} />}{randoriScore.phase === "finalFlags" && <div className="final-flags"><h3>Décision finale aux drapeaux</h3><div className="final-flag-cards">{finalFlags.map((vote, index) => <article className="final-flag-card" key={index}><strong>{FUKUSHIN[index]}</strong><DecisionButtons value={vote} options={FINAL_DECISIONS} disabled={isLocked} onChange={(value) => !isLocked && setFinalFlags((current) => current.map((item, itemIndex) => itemIndex === index ? value : item))} /></article>)}</div></div>}<div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>Vainqueur</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / départage en cours"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked}>{isLocked ? "Combat validé" : "Valider le combat"}</button></div></section>;
 }
 
-function ControlPanel({ match, score, penalties, onAddPenalty, onRemovePenalty }) { return <div className="randori-control-zone" aria-label="Console de pilotage du combat">{["aka", "shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} onAddPenalty={(penalty) => onAddPenalty(side, penalty)} onRemovePenalty={(index) => onRemovePenalty(side, index)} />)}</div>; }
-function CompetitorControlCard({ side, competitor, score, penalties, onAddPenalty, onRemovePenalty }) { return <article className={`control-card ${side}`}><div className="control-fighter"><h2>{side.toUpperCase()} <span>{side === "aka" ? "Rouge" : "Blanc"}</span></h2><p><strong>{competitor?.nom || "-"} {competitor?.prenom || ""}</strong><span>{competitor?.club || "Club non renseigné"}</span></p></div><div className="control-score-values"><p><span>Points +</span><strong>{score[`${side}Positive`]}</strong></p><p><span>Points -</span><strong>{score[`${side}Negative`]}</strong></p><p><span>Total</span><strong>{score[`${side}Total`]}</strong></p></div><div className="penalty-actions"><span className="penalty-title">Pénalités</span>{PENALTIES.map((penalty) => <button className={`penalty-button ${penalty.id}`} key={penalty.id} type="button" onClick={() => onAddPenalty(penalty)}>{penalty.label}</button>)}</div><div className="penalty-list" aria-live="polite">{penalties.map((penalty, index) => <button key={`${penalty.id}-${index}`} type="button" onClick={() => onRemovePenalty(index)}>{penalty.label} ×</button>)}</div></article>; }
-function DecisionButtons({ value, options = DECISIONS, onChange }) { return <div className="decision-buttons">{options.map((option) => <button key={option} type="button" className={`vote-button ${value === option ? `selected ${option.toLowerCase()}` : ""}`} onClick={() => onChange(option)}>{option}</button>)}</div>; }
-function AssaultCards({ title, rows, onVote }) { return <div className="assaults-section"><h3>{title}</h3>{rows.map((row, rowIndex) => <article className="assault-card" key={row.label}><div className="assault-card-header"><span className="assault-label">{row.label}</span><strong className={`result-pill ${voteResult(row.votes).toLowerCase()}`}>{voteResult(row.votes) || "En attente"}</strong></div><div className="judge-vote-grid">{FUKUSHIN.map((judge, judgeIndex) => <div className="judge-vote-card" key={`${row.label}-${judge}`}><strong>{judge}</strong><DecisionButtons value={row.votes[judgeIndex]} onChange={(value) => onVote(rowIndex, judgeIndex, value)} /></div>)}</div></article>)}</div>; }
+function ControlPanel({ match, score, penalties, onAddPenalty, onRemovePenalty, disabled }) { return <div className="randori-control-zone" aria-label="Console de pilotage du combat">{["aka", "shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} onAddPenalty={(penalty) => onAddPenalty(side, penalty)} onRemovePenalty={(penaltyId) => onRemovePenalty(side, penaltyId)} disabled={disabled} />)}</div>; }
+function CompetitorControlCard({ side, competitor, score, penalties, onAddPenalty, onRemovePenalty, disabled }) { const visiblePenalties = groupedPenalties(penalties); return <article className={`control-card ${side}`}><div className="control-fighter"><h2>{side.toUpperCase()} <span>{side === "aka" ? "Rouge" : "Blanc"}</span></h2><p><strong>{competitor?.nom || "-"} {competitor?.prenom || ""}</strong><span>{competitor?.club || "Club non renseigné"}</span></p></div><div className="control-score-values"><p><span>Points +</span><strong>{score[`${side}Positive`]}</strong></p><p><span>Points -</span><strong>{score[`${side}Negative`]}</strong></p><p><span>Total</span><strong>{score[`${side}Total`]}</strong></p></div><div className="penalty-actions"><span className="penalty-title">Pénalités</span>{PENALTIES.map((penalty) => <button className={`penalty-button ${penalty.id}`} key={penalty.id} type="button" disabled={disabled} onClick={() => onAddPenalty(penalty)}>{penalty.label}</button>)}</div><div className="penalty-list" aria-live="polite">{visiblePenalties.map((penalty) => <button key={penalty.id} type="button" disabled={disabled} onClick={() => onRemovePenalty(penalty.id)}>{penalty.label} ×{penalty.count} <span aria-hidden="true">[-]</span></button>)}</div></article>; }
+function DecisionButtons({ value, options = DECISIONS, onChange, disabled = false }) { return <div className="decision-buttons">{options.map((option) => <button key={option} type="button" disabled={disabled} className={`vote-button ${value === option ? `selected ${option.toLowerCase()}` : ""}`} onClick={() => onChange(option)}>{option}</button>)}</div>; }
+function AssaultCards({ title, rows, onVote, disabled = false }) { return <div className="assaults-section"><h3>{title}</h3>{rows.map((row, rowIndex) => <article className="assault-card" key={row.label}><div className="assault-card-header"><span className="assault-label">{row.label}</span><strong className={`result-pill ${voteResult(row.votes).toLowerCase()}`}>{voteResult(row.votes) || "En attente"}</strong></div><div className="judge-vote-grid">{FUKUSHIN.map((judge, judgeIndex) => <div className="judge-vote-card" key={`${row.label}-${judge}`}><strong>{judge}</strong><DecisionButtons value={row.votes[judgeIndex]} disabled={disabled} onChange={(value) => onVote(rowIndex, judgeIndex, value)} /></div>)}</div></article>)}</div>; }
 export default MatchManager;
