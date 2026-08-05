@@ -1,4 +1,4 @@
-import { DEFAULT_KATA_GROUP } from "./constants/katas";
+import { DEFAULT_KATA_GROUP, kataGroupForAgeGroup } from "./constants/katas";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 
 export const DISCIPLINES = Object.entries(competitionRulesEngine.ruleset.disciplines).map(([id, discipline]) => ({
@@ -69,7 +69,7 @@ export function buildAutomaticCategories(inscriptions) {
           sexe: inscription.sexe,
           gradeGroup: gradeBand(inscription.grade),
           competitorIds: [],
-          kataGroup: competitionRulesEngine.isKataDiscipline(discipline) ? DEFAULT_KATA_GROUP : "",
+          kataGroup: competitionRulesEngine.isKataDiscipline(discipline) ? kataGroupForAgeGroup(ageBand(age)) : "",
           statut: "À valider",
         });
       }
