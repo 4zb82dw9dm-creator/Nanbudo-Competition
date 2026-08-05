@@ -34,13 +34,14 @@ button {
   border-bottom: 4px solid #c9a227;
 
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 30px;
 }
 
 .header-text {
   flex: 1;
+  margin-left: clamp(96px, 10vw, 140px);
 }
 
 .header-logo {
@@ -105,7 +106,7 @@ button {
 }
 
 .hero {
-  background: #071a33;
+  background: #054caa;
   color: white;
   padding: clamp(35px, 7vw, 70px);
   border-radius: 18px;
@@ -269,10 +270,13 @@ footer span {
 @media (max-width: 700px) {
   .header {
     padding: 28px 6%;
-    flex-direction: column;
-    justify-content: center;
-    text-align: center;
+    justify-content: flex-start;
+    text-align: left;
     gap: 18px;
+  }
+
+  .header-text {
+    margin-left: clamp(82px, 24vw, 110px);
   }
 
   .header-logo {
