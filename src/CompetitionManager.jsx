@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import CompetitionDashboard, { INITIAL_REGISTRATION_FORM, RegistrationForm, normalizeCompetitor } from "./CompetitionDashboard";
+import { createDemoCompetitionTest30 } from "./demoCompetitionData";
 
 function CompetitionManager() {
-  const [competitions, setCompetitions] = useState(() => JSON.parse(localStorage.getItem("nanbudo_competitions") || "[]"));
+  const [competitions, setCompetitions] = useState(() => {
+    const savedCompetitions = JSON.parse(localStorage.getItem("nanbudo_competitions") || "[]");
+    return savedCompetitions.some((competition) => competition.nom === "Compétition Test 30")
+      ? savedCompetitions
+      : [...savedCompetitions, createDemoCompetitionTest30()];
+  });
   const [showForm, setShowForm] = useState(false);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
   const [hash, setHash] = useState(window.location.hash);
