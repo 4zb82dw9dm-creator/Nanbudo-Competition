@@ -1,24 +1,21 @@
-# Nanbudo-Competition
+# Nanbudo Competition
 
-Application de gestion des compétitions de Nanbudo.
+Application exclusivement dédiée à la gestion des compétitions de Nanbudo.
 
-## Objectif
+## Périmètre fonctionnel
 
-Moderniser la gestion des compétitions et remplacer progressivement les tableurs utilisés actuellement.
+L'application suit le cycle complet d'une compétition :
 
-L'application permettra notamment de gérer :
+- création d'une compétition ;
+- réception des inscriptions dans la compétition choisie ;
+- création automatique des catégories selon l'âge, le sexe et le grade ;
+- fusion ou séparation manuelle des catégories par l'organisateur ;
+- génération automatique, équilibrée et aléatoire des poules ;
+- déplacement manuel d'un compétiteur entre poules d'une même catégorie ;
+- génération du tableau de compétition avec matchs, ordre de passage, tatamis et horaires optionnels ;
+- ouverture directe de la feuille d'arbitrage officielle Kata ou Combat au clic sur un match ;
+- validation du vainqueur, recalcul du classement, attribution des médailles et consultation des résultats.
 
-- les compétitions
-- les clubs
-- les compétiteurs
-- les catégories
-- les inscriptions
-- les épreuves
-- les résultats
-- les classements
-- les tableaux et poules
-- l'édition et l'export des résultats
+## Hors périmètre
 
-## Projet
-
-Projet de modernisation de la gestion des compétitions de Nanbudo.
+L'application ne gère pas les clubs, associations, licenciés, cotisations, entraînements, finances ou documents administratifs sans lien direct avec une compétition.
