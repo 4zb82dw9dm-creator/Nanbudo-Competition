@@ -1,7 +1,11 @@
-export const DISCIPLINES = [
-  { id: "kata", label: "Kata" },
-  { id: "combat", label: "Combat" },
-];
+import { competitionRulesEngine } from "./rules/competitionRulesEngine";
+
+export const DISCIPLINES = Object.entries(competitionRulesEngine.ruleset.disciplines).map(([id, discipline]) => ({
+  id,
+  label: discipline.label,
+  family: discipline.family,
+  team: discipline.team,
+}));
 
 export function calculateAge(dateNaissance, referenceDate = new Date()) {
   if (!dateNaissance) return "";
@@ -13,23 +17,26 @@ export function calculateAge(dateNaissance, referenceDate = new Date()) {
 }
 
 export function ageBand(age) {
-  if (age === "" || age === undefined) return "Âge à vérifier";
-  if (age < 12) return "Poussins";
-  if (age < 15) return "Benjamins / Minimes";
-  if (age < 18) return "Cadets / Juniors";
-  if (age < 36) return "Seniors";
-  return "Vétérans";
+  return competitionRulesEngine.findAgeBand(age).label;
 }
 
 export function gradeBand(grade = "") {
-  const normalized = grade.toLowerCase();
-  if (normalized.includes("dan")) return "Dan";
-  if (normalized.includes("kyu")) return "Kyu";
-  return grade.trim() || "Grade à vérifier";
+  return competitionRulesEngine.gradeBand(grade);
 }
 
 export function disciplineLabel(discipline) {
-  return discipline === "kata" ? "Kata" : "Combat";
+  return competitionRulesEngine.disciplineLabel(discipline);
+}
+
+
+export function disciplineIdFromRegistrationCategory(registrationCategory = "") {
+  const normalized = registrationCategory.toLowerCase();
+  if (normalized.includes("kata") && normalized.includes("équipe")) return "kata_equipe";
+  if (normalized.includes("kata")) return "kata_individuel";
+  if (normalized.includes("ju randori") && normalized.includes("équipe")) return "ju_randori_equipe";
+  if (normalized.includes("ju randori")) return "ju_randori";
+  if (normalized.includes("dantai")) return "dantai_randori";
+  return "randori";
 }
 
 export function getRegistrationCategories(inscription) {
@@ -39,16 +46,16 @@ export function getRegistrationCategories(inscription) {
 }
 
 export function getEligibleDisciplines(inscription) {
-  if (inscription.discipline === "both") return ["kata", "combat"];
-  if (inscription.discipline === "kata") return ["kata"];
-  return ["combat"];
+  if (inscription.discipline === "both") return ["kata_individuel", "randori"];
+  if (inscription.discipline === "kata") return ["kata_individuel"];
+  return ["randori"];
 }
 
 export function buildAutomaticCategories(inscriptions) {
   const groups = new Map();
   inscriptions.forEach((inscription) => {
     getRegistrationCategories(inscription).forEach((registrationCategory) => {
-      const discipline = registrationCategory.startsWith("Kata") ? "kata" : "combat";
+      const discipline = disciplineIdFromRegistrationCategory(registrationCategory);
       const age = inscription.age ?? calculateAge(inscription.dateNaissance);
       const key = [registrationCategory, ageBand(age), inscription.sexe, gradeBand(inscription.grade)].join("|");
       if (!groups.has(key)) {
@@ -67,7 +74,7 @@ export function buildAutomaticCategories(inscriptions) {
       groups.get(key).competitorIds.push(inscription.id);
     });
   });
-  return Array.from(groups.values()).map((category, index) => ({ ...category, id: `${Date.now()}-${index}`, statut: category.competitorIds.length >= 2 ? "Prête" : "À fusionner" }));
+  return Array.from(groups.values()).map((category, index) => ({ ...category, id: `${Date.now()}-${index}`, statut: category.competitorIds.length >= competitionRulesEngine.ruleset.categories.minimumCompetitors ? "Prête" : "À fusionner" }));
 }
 
 export function shuffle(items) {
@@ -75,7 +82,7 @@ export function shuffle(items) {
 }
 
 export function generateMatches(competitorIds, category, poolIndex = 0) {
-  if (category.discipline === "kata") {
+  if (competitionRulesEngine.isKataDiscipline(category.discipline)) {
     return competitorIds.map((competitorId, index) => ({
       id: `${Date.now()}-${poolIndex}-kata-${index}`,
       categoryId: category.id,
@@ -140,7 +147,7 @@ export function buildPoolsForCategory(category) {
 }
 
 export function calculateRanking(pool) {
-  if (pool.discipline === "kata") {
+  if (competitionRulesEngine.isKataDiscipline(pool.discipline)) {
     return pool.competitorIds.map((id) => {
       const match = (pool.matches || []).find((item) => item.competitorId === id || item.akaId === id);
       const score = match?.statut === "Terminé" ? (match.finalScore ?? match.akaScore ?? 0) : 0;
