@@ -75,6 +75,26 @@ export function shuffle(items) {
 }
 
 export function generateMatches(competitorIds, category, poolIndex = 0) {
+  if (category.discipline === "kata") {
+    return competitorIds.map((competitorId, index) => ({
+      id: `${Date.now()}-${poolIndex}-kata-${index}`,
+      categoryId: category.id,
+      discipline: category.discipline,
+      competitorId,
+      akaId: competitorId,
+      shiroId: null,
+      akaScore: null,
+      shiroScore: null,
+      winnerId: null,
+      kataName: "",
+      kataScores: [],
+      finalScore: null,
+      tatami: (index % 3) + 1,
+      ordre: index + 1,
+      horaire: "",
+      statut: "À jouer",
+    }));
+  }
   const matches = [];
   for (let i = 0; i < competitorIds.length; i += 1) {
     for (let j = i + 1; j < competitorIds.length; j += 1) {
@@ -120,6 +140,13 @@ export function buildPoolsForCategory(category) {
 }
 
 export function calculateRanking(pool) {
+  if (pool.discipline === "kata") {
+    return pool.competitorIds.map((id) => {
+      const match = (pool.matches || []).find((item) => item.competitorId === id || item.akaId === id);
+      const score = match?.statut === "Terminé" ? (match.finalScore ?? match.akaScore ?? 0) : 0;
+      return { competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: score, scoreAgainst: 0, difference: score, finalScore: score };
+    }).sort((a, b) => b.finalScore - a.finalScore);
+  }
   const ranking = pool.competitorIds.map((id) => ({ competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: 0, scoreAgainst: 0, difference: 0 }));
   (pool.matches || []).forEach((match) => {
     if (match.statut !== "Terminé") return;
