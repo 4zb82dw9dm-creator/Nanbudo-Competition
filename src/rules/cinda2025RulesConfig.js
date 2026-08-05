@@ -15,7 +15,7 @@ export const CINDA_2025_RULESET = {
   kata: {
     judges: ["Sushin", "Fukushin 1", "Fukushin 2", "Fukushin 3", "Fukushin 4"],
     scoring: { removeHighestAndLowest: true, result: "average_retained_scores" },
-    katas: ["Nanbu Shodan", "Nanbu Nidan", "Nanbu Sandan", "Nanbu Yondan", "Nanbu Godan"],
+    katas: ["Nanbu Shodan", "Nanbu Nidan", "Nanbu Sandan", "Nanbu Yondan", "Nanbu Godan", "Ikkyoku", "Hyaku Hachi", "Seienchin", "Seipai", "Sampo Sho", "Shin Tajima", "Kaguya Hime"],
     noteValues: ["3.9", "4.0", "4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "4.8", "4.9"],
     childrenRules: { status: "to_be_structured_from_pdf" },
     specialCases: { status: "to_be_structured_from_pdf" },
