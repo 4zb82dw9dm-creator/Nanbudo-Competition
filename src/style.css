@@ -121,10 +121,13 @@ button {
   flex-direction: column;
   justify-content: center;
   isolation: isolate;
-  background:
+  background-image:
     linear-gradient(90deg, rgba(3, 10, 25, 0.82) 0%, rgba(3, 10, 25, 0.52) 38%, rgba(3, 10, 25, 0.08) 72%),
     linear-gradient(180deg, rgba(2, 6, 15, 0.82) 0%, rgba(2, 6, 15, 0.18) 48%, rgba(2, 6, 15, 0.34) 100%),
-    url("/assets/nanbudo-hero-wallpaper.svg") center / cover no-repeat;
+    url("/assets/nanbudo-competition-background.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .hero-wallpaper > * {
