@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3840 2160" role="img" aria-label="Fond panoramique Nanbudo Competition sans texte">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3640"/><stop offset="0.55" stop-color="#596674"/><stop offset="1" stop-color="#79423f"/></linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7e3a37"/><stop offset="1" stop-color="#b9675f"/></linearGradient>
+    <linearGradient id="giBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#202bb2"/><stop offset="0.5" stop-color="#3840d6"/><stop offset="1" stop-color="#151a84"/></linearGradient>
+    <radialGradient id="spot" cx="50%" cy="20%" r="70%"><stop offset="0" stop-color="#edf4ff" stop-opacity=".42"/><stop offset="1" stop-color="#edf4ff" stop-opacity="0"/></radialGradient>
+    <filter id="bgBlur"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="softShadow"><feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#02040a" flood-opacity=".34"/></filter>
+    <filter id="subjectSharp"><feColorMatrix type="saturate" values="1.16"/><feComponentTransfer><feFuncR type="linear" slope="1.06" intercept="-.02"/><feFuncG type="linear" slope="1.06" intercept="-.02"/><feFuncB type="linear" slope="1.08" intercept="-.02"/></feComponentTransfer></filter>
+    <linearGradient id="edgeFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#020814" stop-opacity=".76"/><stop offset=".42" stop-color="#020814" stop-opacity=".23"/><stop offset=".78" stop-color="#020814" stop-opacity=".08"/><stop offset="1" stop-color="#020814" stop-opacity=".58"/></linearGradient>
+    <linearGradient id="topFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#020814" stop-opacity=".82"/><stop offset=".42" stop-color="#020814" stop-opacity=".24"/><stop offset="1" stop-color="#020814" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect width="3840" height="2160" fill="url(#wall)"/>
+  <g filter="url(#bgBlur)" opacity=".78">
+    <rect x="0" y="0" width="3840" height="1240" fill="url(#wall)"/>
+    <g stroke="#111923" stroke-width="18" fill="#71808a">
+      <rect x="180" y="120" width="470" height="340" rx="18"/><rect x="760" y="95" width="470" height="360" rx="18"/><rect x="1340" y="110" width="470" height="340" rx="18"/><rect x="1920" y="90" width="470" height="360" rx="18"/><rect x="2500" y="115" width="470" height="340" rx="18"/><rect x="3080" y="100" width="470" height="360" rx="18"/>
+    </g>
+    <g opacity=".35" fill="#dfe8ef"><ellipse cx="920" cy="230" rx="420" ry="95"/><ellipse cx="2050" cy="210" rx="470" ry="105"/><ellipse cx="3080" cy="240" rx="390" ry="85"/></g>
+    <rect x="0" y="1220" width="3840" height="940" fill="url(#floor)"/>
+    <g stroke="#d68a7f" stroke-width="10" opacity=".5"><path d="M0 1430h3840M0 1620h3840M0 1820h3840M0 2030h3840"/><path d="M210 1220 0 2160M740 1220 610 2160M1270 1220 1240 2160M1800 1220 1870 2160M2330 1220 2500 2160M2860 1220 3130 2160M3390 1220 3760 2160"/></g>
+  </g>
+  <ellipse cx="2520" cy="1840" rx="1080" ry="170" fill="#05070d" opacity=".25"/>
+  <g filter="url(#subjectSharp) url(#softShadow)">
+    <!-- compétiteur gauche, posture debout, exactement dans l'échange de coup de pied -->
+    <g transform="translate(1180 420)">
+      <path d="M320 92c70-34 160 14 166 96 6 82-60 132-132 116-92-20-126-170-34-212z" fill="#b88466"/><path d="M280 96c48-72 158-78 218-22-70-8-108 18-128 66-22 52-60 64-90-44z" fill="#211819"/>
+      <path d="M184 338c82-108 358-104 462-2 38 170 12 420-34 620H192c-70-228-70-440-8-618z" fill="url(#giBlue)"/><path d="M145 505c-82 128-112 322-52 468l230-34 42-402z" fill="#2630be"/><path d="M580 510c166 4 300 72 376 166l-98 140c-104-84-206-110-328-116z" fill="#3840d6"/>
+      <path d="M145 927h498l-38 94H162z" fill="#ead6df"/><path d="M205 1028h210l-60 700H118zM430 1028h216l146 692H560z" fill="#eee8df"/><path d="M112 1690h266l-22 80H88zM540 1690h280l30 82H574z" fill="#e2ddd6"/>
+      <path d="M232 412c108 46 244 48 366 0" fill="none" stroke="#121765" stroke-width="18" opacity=".45"/><path d="M250 328c112 80 226 80 342 0" fill="none" stroke="#5d65ff" stroke-width="22" opacity=".35"/>
+    </g>
+    <!-- compétiteur droit, coup de pied latéral dynamique vers la gauche -->
+    <g transform="translate(1480 420) rotate(2 980 750)">
+      <path d="M1065 134c78-42 178 14 184 104 6 76-48 132-118 134-106 2-158-178-66-238z" fill="#b67b5d"/><path d="M1045 120c126-68 228 38 284 126-74-48-132-32-174-10-48 26-96 20-110-116z" fill="#21181a"/><path d="M1210 126c164 4 250 90 314 174-136-38-228-10-320 48z" fill="#21181a"/>
+      <path d="M622 304c174-84 468-42 650 104-6 204-92 406-214 560-216-18-426-104-584-256 28-164 76-298 148-408z" fill="url(#giBlue)"/><path d="M1132 420c230-22 468 8 646 94l-62 180c-192-60-384-70-574-50z" fill="#3d45dc"/><ellipse cx="1770" cy="592" rx="72" ry="56" fill="#b67b5d"/><path d="M1018 806c172 48 286 126 390 252l-122 136c-104-106-228-170-372-194z" fill="#1f28ad"/><ellipse cx="1400" cy="1100" rx="64" ry="54" fill="#b67b5d"/>
+      <path d="M680 796c-346-158-690-226-1050-206l-58 178c418 28 744 126 1038 280z" fill="#efe8df"/><path d="M-470 570c-106 44-136 144-68 212 84 22 188-10 236-88 8-72-54-120-168-124z" fill="#8d4f40"/><path d="M360 970c152 58 296 70 436 42l-6 558-214 18c-52-216-118-416-216-618z" fill="#eee8df"/><path d="M560 1538h272l32 102H572z" fill="#e4ded6"/>
+      <path d="M650 790c100 108 240 174 418 192" fill="none" stroke="#11176d" stroke-width="20" opacity=".5"/><path d="M750 764c100 78 214 110 352 98" fill="none" stroke="#6d72ff" stroke-width="22" opacity=".35"/><path d="M740 812c128 14 250-8 366-62" fill="none" stroke="#b21e32" stroke-width="58"/><path d="M912 838c44 142 42 296-10 462" fill="none" stroke="#b21e32" stroke-width="42"/>
+    </g>
+  </g>
+  <rect width="3840" height="2160" fill="url(#edgeFade)"/><rect width="3840" height="1260" fill="url(#topFade)"/>
+  <circle cx="2660" cy="820" r="780" fill="url(#spot)" opacity=".28"/>
+</svg>
