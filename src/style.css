@@ -120,7 +120,7 @@ button {
   flex-direction: column;
   justify-content: center;
   isolation: isolate;
-  background-image: url("/assets/nanbudo-competition-background.jpg");
+  background-image: url("/assets/home-background.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
