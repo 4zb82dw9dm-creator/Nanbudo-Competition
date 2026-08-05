@@ -108,7 +108,6 @@ button {
 .hero {
   position: relative;
   overflow: hidden;
-  background: #054caa;
   color: white;
   padding: clamp(35px, 7vw, 70px);
   border-radius: 18px;
@@ -121,10 +120,7 @@ button {
   flex-direction: column;
   justify-content: center;
   isolation: isolate;
-  background-image:
-    linear-gradient(90deg, rgba(3, 10, 25, 0.82) 0%, rgba(3, 10, 25, 0.52) 38%, rgba(3, 10, 25, 0.08) 72%),
-    linear-gradient(180deg, rgba(2, 6, 15, 0.82) 0%, rgba(2, 6, 15, 0.18) 48%, rgba(2, 6, 15, 0.34) 100%),
-    url("/assets/nanbudo-competition-background.jpg");
+  background-image: url("/assets/nanbudo-competition-background.jpg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
