@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 
 const FUKUSHIN = ["Fukushin 1", "Fukushin 2", "Fukushin 3"];
@@ -13,6 +13,9 @@ const PENALTIES = [
   { id: "hansoku_chui", label: "Hansoku Chui (-3)", value: 3 },
   { id: "shikaku", label: "Shikaku", value: 0, disqualification: true },
 ];
+const PENALTY_FLOW = ["keikoku", "fujubun", "chui", "hansoku_chui", "shikaku"];
+const PENALTY_BY_ID = Object.fromEntries(PENALTIES.map((penalty) => [penalty.id, penalty]));
+const MANUAL_PENALTIES = PENALTIES.filter((penalty) => penalty.id !== "shikaku");
 
 function emptyVotes(labels) {
   return labels.map((label) => ({ label, votes: ["", "", ""] }));
@@ -36,15 +39,68 @@ function scoreRows(rows) {
   }, { akaPositive: 0, shiroPositive: 0 });
 }
 
+function emptyPenaltyCounts() {
+  return Object.fromEntries(PENALTY_FLOW.map((penaltyId) => [penaltyId, 0]));
+}
+
+function normalizePenaltyCounts(penalties = []) {
+  const counts = penalties.reduce((totals, penalty) => {
+    if (!PENALTY_BY_ID[penalty.id]) return totals;
+    return { ...totals, [penalty.id]: totals[penalty.id] + 1 };
+  }, emptyPenaltyCounts());
+
+  for (let index = 0; index < PENALTY_FLOW.length - 1; index += 1) {
+    const currentLevel = PENALTY_FLOW[index];
+    const upperLevel = PENALTY_FLOW[index + 1];
+    const conversions = Math.floor(counts[currentLevel] / 3);
+    counts[currentLevel] %= 3;
+    counts[upperLevel] += conversions;
+  }
+
+  if (counts.shikaku > 0) {
+    counts.hansoku_chui = 0;
+    counts.shikaku = 1;
+  }
+
+  return counts;
+}
+
+function normalizePenalties(penalties = []) {
+  const now = new Date().toISOString();
+  const counts = normalizePenaltyCounts(penalties);
+  return PENALTY_FLOW.flatMap((penaltyId) =>
+    Array.from({ length: counts[penaltyId] }, (_, index) => ({
+      ...PENALTY_BY_ID[penaltyId],
+      at: penalties.find((penalty) => penalty.id === penaltyId)?.at || now,
+      automatic: true,
+      conversionIndex: index,
+    }))
+  );
+}
+
 function penaltyTotal(penalties) {
-  return penalties.reduce((total, penalty) => total + penalty.value, 0);
+  return normalizePenalties(penalties).reduce((total, penalty) => total + penalty.value, 0);
+}
+
+function hasShikaku(penalties) {
+  return normalizePenaltyCounts(penalties).shikaku > 0;
 }
 
 function groupedPenalties(penalties) {
-  return PENALTIES.map((penalty) => ({
-    ...penalty,
-    count: penalties.filter((item) => item.id === penalty.id).length,
-  })).filter((penalty) => penalty.count > 0);
+  const counts = normalizePenaltyCounts(penalties);
+  return PENALTIES.map((penalty) => ({ ...penalty, count: counts[penalty.id] })).filter((penalty) => penalty.count > 0);
+}
+
+function removePenaltyFromChain(penalties, penaltyId) {
+  const directIndex = penalties.findIndex((penalty) => penalty.id === penaltyId);
+  if (directIndex >= 0) return penalties.filter((_, itemIndex) => itemIndex !== directIndex);
+
+  const lowerPenaltyId = PENALTY_FLOW[PENALTY_FLOW.indexOf(penaltyId) - 1];
+  if (!lowerPenaltyId) return penalties;
+
+  let updatedPenalties = penalties;
+  for (let index = 0; index < 3; index += 1) updatedPenalties = removePenaltyFromChain(updatedPenalties, lowerPenaltyId);
+  return updatedPenalties;
 }
 
 function MatchManager({ match, onSave }) {
@@ -54,6 +110,7 @@ function MatchManager({ match, onSave }) {
   const [tieBreakAssaults, setTieBreakAssaults] = useState(match?.tieBreakAssaults || emptyVotes(TIE_BREAK_ASSAULTS));
   const [finalFlags, setFinalFlags] = useState(match?.finalFlags || ["", "", ""]);
   const [penalties, setPenalties] = useState(match?.penalties || { aka: [], shiro: [] });
+  const automaticSaveDone = useRef(false);
   const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
   const isLocked = match.statut === "Terminé";
   const sum = (values) => values.reduce((total, value) => total + Number(value || 0), 0);
@@ -64,8 +121,8 @@ function MatchManager({ match, onSave }) {
     const main = scoreRows(assaults);
     const akaNegative = penaltyTotal(penalties.aka);
     const shiroNegative = penaltyTotal(penalties.shiro);
-    const akaShikaku = penalties.aka.some((penalty) => penalty.id === "shikaku");
-    const shiroShikaku = penalties.shiro.some((penalty) => penalty.id === "shikaku");
+    const akaShikaku = hasShikaku(penalties.aka);
+    const shiroShikaku = hasShikaku(penalties.shiro);
     let phase = "main";
     let winner = null;
     if (akaShikaku) winner = "shiro";
@@ -93,17 +150,16 @@ function MatchManager({ match, onSave }) {
   }
 
   function addPenalty(side, penalty) {
-    if (isLocked) return;
+    if (isLocked || penalty.id === "shikaku") return;
     setPenalties((current) => ({ ...current, [side]: [...current[side], { ...penalty, at: new Date().toISOString() }] }));
   }
 
   function removePenalty(side, penaltyId) {
     if (isLocked) return;
     setPenalties((current) => {
-      const removalIndex = current[side].findIndex((penalty) => penalty.id === penaltyId);
       return {
         ...current,
-        [side]: current[side].filter((_, itemIndex) => itemIndex !== removalIndex),
+        [side]: removePenaltyFromChain(current[side], penaltyId),
       };
     });
   }
@@ -112,7 +168,7 @@ function MatchManager({ match, onSave }) {
     return [
       { type: "start", label: "Début du combat", detail: `${match.aka?.nom || "AKA"} vs ${match.shiro?.nom || "SHIRO"}` },
       ...assaults.map((row) => ({ type: "assault", label: row.label, detail: voteResult(row.votes) || "En attente", votes: row.votes })),
-      ...["aka", "shiro"].flatMap((side) => penalties[side].map((penalty) => ({ type: "penalty", label: `Pénalité ${side.toUpperCase()}`, detail: penalty.label }))),
+      ...["aka", "shiro"].flatMap((side) => normalizePenalties(penalties[side]).map((penalty) => ({ type: "penalty", label: `Pénalité ${side.toUpperCase()}`, detail: penalty.label }))),
       ...(randoriScore.phase !== "main" ? tieBreakAssaults.map((row) => ({ type: "tieBreak", label: `Départage · ${row.label}`, detail: voteResult(row.votes) || "En attente", votes: row.votes })) : []),
       ...(randoriScore.phase === "finalFlags" ? [{ type: "finalFlags", label: "Décision finale aux drapeaux", detail: voteResult(finalFlags, false) || "En attente", votes: finalFlags }] : []),
       { type: "final", label: "Résultat final", detail: winner ? winner.toUpperCase() : "À départager" },
@@ -122,8 +178,15 @@ function MatchManager({ match, onSave }) {
   function save() {
     if (isKata) return onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : kataScoreShiro > kataScoreAka ? "shiro" : null });
     if (isLocked) return;
-    onSave({ assaults, tieBreakAssaults, finalFlags, penalties, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) });
+    onSave({ assaults, tieBreakAssaults, finalFlags, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) });
   }
+
+  useEffect(() => {
+    if (isKata || isLocked || automaticSaveDone.current) return;
+    if (!hasShikaku(penalties.aka) && !hasShikaku(penalties.shiro)) return;
+    automaticSaveDone.current = true;
+    save();
+  }, [isKata, isLocked, penalties, randoriScore.winner]);
 
   if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save}>Valider le résultat</button></div></section>;
 
@@ -131,7 +194,7 @@ function MatchManager({ match, onSave }) {
 }
 
 function ControlPanel({ match, score, penalties, onAddPenalty, onRemovePenalty, disabled }) { return <div className="randori-control-zone" aria-label="Console de pilotage du combat">{["aka", "shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} onAddPenalty={(penalty) => onAddPenalty(side, penalty)} onRemovePenalty={(penaltyId) => onRemovePenalty(side, penaltyId)} disabled={disabled} />)}</div>; }
-function CompetitorControlCard({ side, competitor, score, penalties, onAddPenalty, onRemovePenalty, disabled }) { const visiblePenalties = groupedPenalties(penalties); return <article className={`control-card ${side}`}><div className="control-fighter"><h2>{side.toUpperCase()} <span>{side === "aka" ? "Rouge" : "Blanc"}</span></h2><p><strong>{competitor?.nom || "-"} {competitor?.prenom || ""}</strong><span>{competitor?.club || "Club non renseigné"}</span></p></div><div className="control-score-values"><p><span>Points +</span><strong>{score[`${side}Positive`]}</strong></p><p><span>Points -</span><strong>{score[`${side}Negative`]}</strong></p><p><span>Total</span><strong>{score[`${side}Total`]}</strong></p></div><div className="penalty-actions"><span className="penalty-title">Pénalités</span>{PENALTIES.map((penalty) => <button className={`penalty-button ${penalty.id}`} key={penalty.id} type="button" disabled={disabled} onClick={() => onAddPenalty(penalty)}>{penalty.label}</button>)}</div><div className="penalty-list" aria-live="polite">{visiblePenalties.map((penalty) => <button key={penalty.id} type="button" disabled={disabled} onClick={() => onRemovePenalty(penalty.id)}>{penalty.label} ×{penalty.count} <span aria-hidden="true">[-]</span></button>)}</div></article>; }
+function CompetitorControlCard({ side, competitor, score, penalties, onAddPenalty, onRemovePenalty, disabled }) { const visiblePenalties = groupedPenalties(penalties); return <article className={`control-card ${side}`}><div className="control-fighter"><h2>{side.toUpperCase()} <span>{side === "aka" ? "Rouge" : "Blanc"}</span></h2><p><strong>{competitor?.nom || "-"} {competitor?.prenom || ""}</strong><span>{competitor?.club || "Club non renseigné"}</span></p></div><div className="control-score-values"><p><span>Points +</span><strong>{score[`${side}Positive`]}</strong></p><p><span>Points -</span><strong>{score[`${side}Negative`]}</strong></p><p><span>Total</span><strong>{score[`${side}Total`]}</strong></p></div><div className="penalty-actions"><span className="penalty-title">Pénalités</span>{MANUAL_PENALTIES.map((penalty) => <button className={`penalty-button ${penalty.id}`} key={penalty.id} type="button" disabled={disabled} onClick={() => onAddPenalty(penalty)}>{penalty.label}</button>)}</div><div className="penalty-list" aria-live="polite">{visiblePenalties.map((penalty) => <button key={penalty.id} type="button" disabled={disabled} onClick={() => onRemovePenalty(penalty.id)}>{penalty.label} ×{penalty.count} <span aria-hidden="true">[-]</span></button>)}</div></article>; }
 function DecisionButtons({ value, options = DECISIONS, onChange, disabled = false }) { return <div className="decision-buttons">{options.map((option) => <button key={option} type="button" disabled={disabled} className={`vote-button ${value === option ? `selected ${option.toLowerCase()}` : ""}`} onClick={() => onChange(option)}>{option}</button>)}</div>; }
 function AssaultCards({ title, rows, onVote, disabled = false }) { return <div className="assaults-section"><h3>{title}</h3>{rows.map((row, rowIndex) => <article className="assault-card" key={row.label}><div className="assault-card-header"><span className="assault-label">{row.label}</span><strong className={`result-pill ${voteResult(row.votes).toLowerCase()}`}>{voteResult(row.votes) || "En attente"}</strong></div><div className="judge-vote-grid">{FUKUSHIN.map((judge, judgeIndex) => <div className="judge-vote-card" key={`${row.label}-${judge}`}><strong>{judge}</strong><DecisionButtons value={row.votes[judgeIndex]} disabled={disabled} onChange={(value) => onVote(rowIndex, judgeIndex, value)} /></div>)}</div></article>)}</div>; }
 export default MatchManager;
