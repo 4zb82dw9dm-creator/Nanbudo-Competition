@@ -459,3 +459,148 @@ footer span {
     margin: 15mm;
   }
 }
+
+.manager-header,
+.competition-dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+
+.competition-menu {
+  display: flex;
+  gap: 8px;
+  margin: 22px 0;
+  overflow-x: auto;
+}
+
+.competition-menu button,
+.manage-button,
+.delete-button,
+.back-button,
+.link-button {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 10px 14px;
+}
+
+.competition-menu button,
+.manage-button,
+.back-button {
+  background: white;
+  color: #071a33;
+  border: 1px solid #d9dee7;
+}
+
+.competition-menu button.active,
+.manage-button:hover,
+.back-button:hover {
+  background: #071a33;
+  color: white;
+}
+
+.delete-button {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.competition-form {
+  background: white;
+  border: 1px solid #e1e6ef;
+  border-top: 4px solid #c9a227;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(7, 26, 51, 0.08);
+  display: grid;
+  gap: 18px;
+  margin: 22px 0;
+  padding: clamp(22px, 4vw, 34px);
+}
+
+.form-title h3,
+.competition-form h3 {
+  margin: 6px 0;
+}
+
+.form-title p:not(.surtitle) {
+  color: #657080;
+  margin: 0;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.competition-form label {
+  color: #24324a;
+  display: grid;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.competition-form input,
+.competition-form select,
+.test-tools input,
+.competitor-events select {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #ccd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #071a33;
+  font: inherit;
+  padding: 12px 14px;
+}
+
+.registration-form select {
+  min-height: 54px;
+  cursor: pointer;
+}
+
+.competition-form input:focus,
+.competition-form select:focus {
+  border-color: #c9a227;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.22);
+  outline: none;
+}
+
+.competitor-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.competitor-events span {
+  background: #eef1f5;
+  border-radius: 999px;
+  color: #24324a;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .manager-header,
+  .competition-dashboard-header {
+    flex-direction: column;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .competition-form input,
+  .competition-form select {
+    min-height: 56px;
+    font-size: 16px;
+  }
+}
