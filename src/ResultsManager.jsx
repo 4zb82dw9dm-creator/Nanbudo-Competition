@@ -80,9 +80,9 @@ function printResults() {
               >
                 <div>
                   <p className="surtitle">
-                    {category?.epreuve === "kata"
+                    {category?.discipline === "kata"
                       ? "KATA"
-                      : "JU RANDORI"}
+                      : "COMBAT"}
                   </p>
 
                   <h3>
@@ -91,8 +91,8 @@ function printResults() {
 
                   <p>
                     {pool.closingMode === "finals"
-                      ? "Finale + petite finale"
-                      : "Classement direct"}
+                      ? "Classement de compétition"
+                      : "Classement automatique"}
                   </p>
 
                   <div className="pool-ranking">
