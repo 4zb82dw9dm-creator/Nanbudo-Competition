@@ -35,6 +35,12 @@ function App() {
   return (
     <div className="app">
       <header className="header">
+        <img
+          src={`${import.meta.env.BASE_URL}assets/logo-afdp.png`}
+          alt="AFDP Nanbudo"
+          className="header-logo"
+        />
+
         <div className="header-text">
           <p className="surtitle">AFDP NANBUDO</p>
 
@@ -45,11 +51,6 @@ function App() {
           </p>
         </div>
 
-        <img
-          src={`${import.meta.env.BASE_URL}assets/logo-afdp.png`}
-          alt="AFDP Nanbudo"
-          className="header-logo"
-        />
       </header>
       <nav className="navigation">
         <button
