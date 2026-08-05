@@ -27,7 +27,8 @@ button {
 }
 
 .header {
-  background: #071a33;
+  position: relative;
+  background: #054caa;
   color: white;
   padding: 36px 7%;
   border-bottom: 4px solid #c9a227;
@@ -43,12 +44,15 @@ button {
 }
 
 .header-logo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
   display: block;
-  height: 60px;
+  height: 100%;
   width: auto;
-  max-width: min(220px, 35vw);
+  max-width: none;
   object-fit: contain;
-  flex-shrink: 0;
 }
 
 .header h1 {
@@ -272,8 +276,8 @@ footer span {
   }
 
   .header-logo {
-    height: 60px;
-    max-width: min(200px, 70vw);
+    height: 100%;
+    max-width: none;
   }
 
   .navigation {
