@@ -604,3 +604,87 @@ footer span {
     font-size: 16px;
   }
 }
+
+.public-link {
+  margin-top: 10px;
+}
+
+.public-link code {
+  background: #eef1f5;
+  border-radius: 6px;
+  color: #071a33;
+  display: inline-block;
+  padding: 6px 8px;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.filters input,
+.filters select {
+  border: 1px solid #ccd5e1;
+  border-radius: 10px;
+  font: inherit;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.category-checklist {
+  background: #f8fafc;
+  border: 1px solid #e1e6ef;
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.registrations-table {
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+}
+
+.registrations-table table {
+  border-collapse: collapse;
+  min-width: 1100px;
+  width: 100%;
+}
+
+.registrations-table th,
+.registrations-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.registrations-table th {
+  background: #071a33;
+  color: white;
+}
+
+.registrations-table th button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0;
+}
+
+.registrations-table td:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+}
