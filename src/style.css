@@ -1232,3 +1232,177 @@ footer span {
 .assault-row-contents {
   display: contents;
 }
+
+.navigation {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.randori-control-zone {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: sticky;
+  top: 68px;
+  z-index: 35;
+}
+
+.control-card {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+}
+
+.control-card.aka {
+  background: linear-gradient(135deg, #fff5f5, #fee2e2);
+  border: 2px solid rgba(220, 38, 38, 0.35);
+}
+
+.control-card.shiro {
+  background: #ffffff;
+  border: 2px solid #111827;
+}
+
+.control-fighter {
+  align-items: start;
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: auto 1fr;
+}
+
+.control-fighter h2 {
+  color: #0f172a;
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  letter-spacing: 0.03em;
+  margin: 0;
+}
+
+.control-fighter h2 span,
+.control-fighter p span,
+.control-score-values span,
+.penalty-title {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.control-fighter p {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.control-fighter p strong {
+  color: #0f172a;
+  font-size: clamp(0.95rem, 1.7vw, 1.2rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.control-score-values {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.control-score-values p {
+  background: rgba(248, 250, 252, 0.92);
+  border-radius: 10px;
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+}
+
+.control-score-values strong {
+  color: #0f172a;
+  font-size: clamp(1.35rem, 3vw, 2.1rem);
+  line-height: 1;
+}
+
+.control-card .penalty-actions {
+  align-items: stretch;
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.control-card .penalty-title {
+  align-self: center;
+  grid-column: 1 / -1;
+}
+
+.control-card .penalty-actions button {
+  border-radius: 10px;
+  font-size: clamp(0.72rem, 1.3vw, 0.9rem);
+  min-height: 40px;
+  padding: 0.45rem 0.5rem;
+  text-align: center;
+}
+
+.control-card .penalty-list {
+  margin-top: 0;
+  max-height: 42px;
+  overflow-y: auto;
+}
+
+.control-card .penalty-list button {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  min-height: 30px;
+  padding: 0.35rem 0.65rem;
+}
+
+@media (max-width: 1100px) {
+  .randori-control-zone {
+    top: 64px;
+  }
+
+  .control-card .penalty-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .randori-control-zone {
+    grid-template-columns: 1fr;
+    top: 60px;
+  }
+
+  .control-card {
+    gap: 0.45rem;
+    padding: 0.65rem;
+  }
+
+  .control-fighter {
+    align-items: center;
+    grid-template-columns: 82px 1fr;
+  }
+
+  .control-score-values strong {
+    font-size: 1.3rem;
+  }
+
+  .control-card .penalty-actions {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .randori-control-zone {
+    top: 58px;
+  }
+
+  .control-card .penalty-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
