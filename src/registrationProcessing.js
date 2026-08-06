@@ -33,9 +33,7 @@ export function validateRegistrationForm(form) {
   if (filledRows.length === 0) return "Veuillez renseigner au moins une ligne participant.";
 
   for (const [index, row] of filledRows.entries()) {
-    if (!row.nom?.trim() || !row.prenom?.trim() || !row.sexe || !row.dateNaissance || !row.ceinture || !row.typeInscription) return `La ligne ${index + 1} est incomplète : nom, prénom, sexe, date de naissance, grade et type sont obligatoires.`;
-    if (row.typeInscription === "Compétiteur" && !row.combat && !row.kata) return `La ligne ${index + 1} doit contenir au moins une épreuve combat ou kata.`;
-    if (row.typeInscription === "Arbitre" && !row.roleArbitre) return `La ligne ${index + 1} doit préciser le rôle d’arbitrage.`;
+    if (!row.nom?.trim() || !row.prenom?.trim() || !row.sexe || !row.dateNaissance || !row.ceinture || !row.typeInscription) return `La ligne ${index + 1} est incomplète : nom, prénom, sexe, date de naissance, grade et type d’inscription sont obligatoires.`;
   }
 
   return "";

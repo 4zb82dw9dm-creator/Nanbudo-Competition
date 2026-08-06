@@ -1521,6 +1521,11 @@ footer span {
   transform: translateX(-50%);
 }
 
+.content:has(.public-registration),
+.content:has(.competitors-module) {
+  width: 96vw;
+}
+
 .club-info-panel {
   background: white;
   border: 1px solid #e1e6ef;
@@ -1578,7 +1583,7 @@ footer span {
 
 .participants-table {
   border-collapse: collapse;
-  min-width: 1320px;
+  min-width: 1080px;
   width: 100%;
 }
 
@@ -1596,6 +1601,29 @@ footer span {
   font-size: 13px;
 }
 
+.participants-table th:nth-child(1),
+.participants-table th:nth-child(2) {
+  width: 13%;
+}
+
+.participants-table th:nth-child(3) {
+  width: 10%;
+}
+
+.participants-table th:nth-child(4) {
+  width: 14%;
+}
+
+.participants-table th:nth-child(5),
+.participants-table th:nth-child(6),
+.participants-table th:nth-child(7) {
+  width: 12%;
+}
+
+.participants-table th:nth-child(8) {
+  width: 15%;
+}
+
 .registration-actions {
   align-items: center;
   display: flex;
@@ -1609,7 +1637,7 @@ footer span {
   }
 
   .participants-table {
-    min-width: 1100px;
+    min-width: 960px;
   }
 }
 
