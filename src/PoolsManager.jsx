@@ -1,16 +1,47 @@
-import { buildPoolsForCategory, calculateRanking, podiumFromPool, disciplineLabel } from "./competitionLogic";
+import { buildPoolsForCategory, calculateRanking, podiumFromPool, disciplineLabel, setPoolTatami } from "./competitionLogic";
 
 function PoolsManager({ competition, onUpdateCompetition }) {
   const categories = competition.categories || [];
   const competitors = competition.competitors || [];
   const pools = competition.pools || [];
+  const tatamiCount = Math.max(1, Number(competition.tatamis) || 1);
   function getCompetitor(id) { return competitors.find((competitor) => competitor.id === id); }
-  function generateAllPools() { onUpdateCompetition({ ...competition, pools: categories.flatMap(buildPoolsForCategory), statut: "Poules générées" }); }
-  function validatePool(poolId) { onUpdateCompetition({ ...competition, pools: pools.map((pool) => pool.id === poolId ? { ...pool, statut: "Tableau généré", matches: pool.matches.map((match, index) => ({ ...match, ordre: index + 1, tatami: (index % (competition.tatamis || 1)) + 1, horaire: competition.horairesActifs ? `${String(9 + Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}` : "" })) } : pool), statut: "Tableau généré" }); }
-  function moveCompetitor(poolId, competitorId, targetPoolId) { if (!targetPoolId) return; const updated = pools.map((pool) => { if (pool.id === poolId) return { ...pool, competitorIds: pool.competitorIds.filter((id) => id !== competitorId) }; if (pool.id === targetPoolId) return { ...pool, competitorIds: [...pool.competitorIds, competitorId] }; return pool; }); onUpdateCompetition({ ...competition, pools: updated.map((pool) => { const category = categories.find((item) => item.id === pool.categoryId); return { ...pool, matches: generatePoolMatches(pool.competitorIds, category, pool.id), statut: "À valider", podium: null }; }) }); }
-  function generatePoolMatches(ids, category, poolId) { return buildPoolsForCategory({ ...category, competitorIds: ids })[0]?.matches.map((match, index) => ({ ...match, id: `${poolId}-${index}`, ordre: index + 1, tatami: (index % (competition.tatamis || 1)) + 1 })) || []; }
+  function generateAllPools() {
+    let nextPoolIndex = 0;
+    const generatedPools = categories.flatMap((category) => {
+      const categoryPools = buildPoolsForCategory(category, { tatamiCount, startIndex: nextPoolIndex });
+      nextPoolIndex += categoryPools.length;
+      return categoryPools;
+    });
+    onUpdateCompetition({ ...competition, pools: generatedPools, statut: "Poules générées" });
+  }
+  function validatePool(poolId) {
+    onUpdateCompetition({
+      ...competition,
+      pools: pools.map((pool) => {
+        if (pool.id !== poolId) return pool;
+        const tatami = pool.tatami || 1;
+        return {
+          ...pool,
+          tatami,
+          statut: "Tableau généré",
+          matches: pool.matches.map((match, index) => ({
+            ...match,
+            ordre: index + 1,
+            tatami,
+            horaire: competition.horairesActifs ? `${String(9 + Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}` : "",
+          })),
+        };
+      }),
+      statut: "Tableau généré",
+    });
+  }
+  function changePoolTatami(poolId, tatami) {
+    const selectedTatami = Number(tatami) || 1;
+    onUpdateCompetition({ ...competition, pools: pools.map((pool) => pool.id === poolId ? setPoolTatami(pool, selectedTatami) : pool) });
+  }
   function closePool(pool) { onUpdateCompetition({ ...competition, pools: pools.map((item) => item.id === pool.id ? { ...item, rankingLocked: calculateRanking(item), podium: podiumFromPool(item), statut: "Terminée" } : item), statut: "Résultats disponibles" }); }
 
-  return <div className="pools-manager"><div className="manager-header"><div><p className="surtitle">POULES ET TABLEAU</p><h2>Poules</h2><p>Tirage aléatoire, équilibrage, déplacement manuel, puis génération des matchs, tatamis et ordre de passage.</p></div><div className="category-total"><strong>{pools.length}</strong><span>poules</span></div></div><button className="primary" onClick={generateAllPools} disabled={categories.length === 0}>Générer automatiquement toutes les poules</button>{pools.length === 0 ? <div className="empty-state"><h3>Aucune poule</h3><p>Validez les catégories puis générez les poules.</p></div> : <div className="competition-list">{pools.map((pool) => { const category = categories.find((item) => item.id === pool.categoryId); const finished = pool.matches.length > 0 && pool.matches.every((match) => match.statut === "Terminé"); return <article className="competition" key={pool.id}><div><p className="surtitle">{disciplineLabel(pool.discipline)}</p><h3>{pool.nom}</h3><p>{pool.competitorIds.length} compétiteurs · {pool.matches.length} matchs · {pool.statut}</p><div className="competitor-events">{pool.competitorIds.map((id) => <span key={id}>{getCompetitor(id)?.nom} {getCompetitor(id)?.prenom}<select value="" onChange={(event) => moveCompetitor(pool.id, id, event.target.value)}><option value="">Déplacer vers...</option>{pools.filter((target) => target.id !== pool.id && target.categoryId === pool.categoryId).map((target) => <option key={target.id} value={target.id}>{target.nom}</option>)}</select></span>)}</div><div className="pool-matches"><h3>Tableau de compétition</h3>{pool.matches.map((match) => <p key={match.id}>#{match.ordre} · Tatami {match.tatami}{match.horaire ? ` · ${match.horaire}` : ""} · {getCompetitor(match.akaId)?.nom} / {getCompetitor(match.shiroId)?.nom} · {match.statut}</p>)}</div></div><div className="competition-actions"><button className="manage-button" onClick={() => validatePool(pool.id)}>Valider la poule / générer tableau</button><button className="primary" disabled={!finished} onClick={() => closePool(pool)}>Calculer podium</button></div></article>; })}</div>}</div>;
+  return <div className="pools-manager"><div className="manager-header"><div><p className="surtitle">POULES ET TABLEAU</p><h2>Poules</h2><p>Tirage aléatoire, équilibrage automatique des poules par tatami, puis génération des matchs et de l'ordre de passage.</p></div><div className="category-total"><strong>{pools.length}</strong><span>poules</span></div></div><button className="primary" onClick={generateAllPools} disabled={categories.length === 0}>Générer automatiquement toutes les poules</button>{pools.length === 0 ? <div className="empty-state"><h3>Aucune poule</h3><p>Validez les catégories puis générez les poules.</p></div> : <div className="competition-list">{pools.map((pool) => { const finished = pool.matches.length > 0 && pool.matches.every((match) => match.statut === "Terminé"); const poolTatami = pool.tatami || 1; return <article className="competition" key={pool.id}><div><p className="surtitle">{disciplineLabel(pool.discipline)}</p><div className="pool-card-title"><h3>{pool.nom}</h3><label>Tatami : <select value={poolTatami} onChange={(event) => changePoolTatami(pool.id, event.target.value)}>{Array.from({ length: tatamiCount }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select></label></div><p>{pool.competitorIds.length} compétiteurs · {pool.matches.length} matchs · {pool.statut}</p><div className="competitor-events">{pool.competitorIds.map((id) => <span key={id}>{getCompetitor(id)?.nom} {getCompetitor(id)?.prenom}</span>)}</div><div className="pool-matches"><h3>Tableau de compétition</h3><p><strong>Tatami {poolTatami}</strong></p>{pool.matches.map((match) => <p key={match.id}>#{match.ordre}{match.horaire ? ` · ${match.horaire}` : ""} · {getCompetitor(match.akaId)?.nom}{match.shiroId ? ` / ${getCompetitor(match.shiroId)?.nom}` : ""} · {match.statut}</p>)}</div></div><div className="competition-actions"><button className="manage-button" onClick={() => validatePool(pool.id)}>Valider la poule / générer tableau</button><button className="primary" disabled={!finished} onClick={() => closePool(pool)}>Calculer podium</button></div></article>; })}</div>}</div>;
 }
 export default PoolsManager;

@@ -294,6 +294,32 @@ button {
   color: #657080;
 }
 
+.pool-card-title {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.pool-card-title label {
+  align-items: center;
+  color: #24324a;
+  display: inline-flex;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.pool-card-title select {
+  min-height: 38px;
+  border: 1px solid #ccd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #071a33;
+  font: inherit;
+  padding: 8px 12px;
+}
+
 .status {
   white-space: nowrap;
   background: #eef1f5;
