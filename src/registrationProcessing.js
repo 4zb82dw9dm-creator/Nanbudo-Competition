@@ -15,13 +15,27 @@ export function isValidEmail(email) {
   return EMAIL_PATTERN.test(String(email || "").trim());
 }
 
+export function isParticipantRowEmpty(row) {
+  return Object.values(row).every((value) => !String(value || "").trim());
+}
+
 export function validateRegistrationForm(form) {
-  if (!form.nom.trim() || !form.prenom.trim() || !form.age || !form.ceinture || !form.club.trim() || form.categoriesInscription.length === 0) {
-    return "Veuillez renseigner tous les champs obligatoires.";
+  if (!Array.isArray(form.participants)) {
+    if (!form.nom?.trim() || !form.prenom?.trim() || !form.age || !form.ceinture || !form.club?.trim() || !form.categoriesInscription?.length) return "Veuillez renseigner tous les champs obligatoires.";
+    if (!isValidEmail(form.email)) return "Veuillez renseigner un e-mail du responsable du club valide.";
+    return "";
   }
 
-  if (!isValidEmail(form.email)) {
-    return "Veuillez renseigner un e-mail du responsable du club valide.";
+  if (!form.club?.trim() || !form.responsableClub?.trim()) return "Veuillez renseigner le nom du club et le responsable du club.";
+  if (!isValidEmail(form.email)) return "Veuillez renseigner un e-mail du responsable du club valide.";
+
+  const filledRows = (form.participants || []).filter((row) => !isParticipantRowEmpty(row));
+  if (filledRows.length === 0) return "Veuillez renseigner au moins une ligne participant.";
+
+  for (const [index, row] of filledRows.entries()) {
+    if (!row.nom?.trim() || !row.prenom?.trim() || !row.sexe || !row.dateNaissance || !row.ceinture || !row.typeInscription) return `La ligne ${index + 1} est incomplète : nom, prénom, sexe, date de naissance, grade et type sont obligatoires.`;
+    if (row.typeInscription === "Compétiteur" && !row.combat && !row.kata) return `La ligne ${index + 1} doit contenir au moins une épreuve combat ou kata.`;
+    if (row.typeInscription === "Arbitre" && !row.roleArbitre) return `La ligne ${index + 1} doit préciser le rôle d’arbitrage.`;
   }
 
   return "";
@@ -47,7 +61,7 @@ export function persistCompetitions(competitions, { notify = false } = {}) {
   return persistedCompetitions;
 }
 
-export async function sendRegistrationConfirmation({ competition, competitor }) {
+export async function sendRegistrationConfirmation({ competition, competitor, competitors }) {
   const emailEndpoint = import.meta.env.VITE_CONFIRMATION_EMAIL_API_URL;
 
   if (!emailEndpoint) {
@@ -58,10 +72,11 @@ export async function sendRegistrationConfirmation({ competition, competitor }) 
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      to: competitor.email,
+      to: (competitor || competitors?.[0])?.email,
       competitionId: competition.id,
       competitionName: competition.nom,
       competitor,
+      competitors,
     }),
   });
 
@@ -109,4 +124,27 @@ export async function processRegistration({ competitions, competition, form, cre
 
 export function reportRegistrationFailure(step, error) {
   logRegistrationError(step, error);
+}
+
+export async function processBulkRegistration({ competitions, competition, form, createCompetitor, sendConfirmation = sendRegistrationConfirmation }) {
+  logRegistrationStep(REGISTRATION_LOG_STEPS.FORM_RECEIVED, { competitionId: competition?.id, publicToken: competition?.publicToken });
+  const validationError = validateRegistrationForm(form);
+  if (validationError) throw new Error(validationError);
+
+  const filledRows = (form.participants || []).filter((row) => !isParticipantRowEmpty(row));
+  logRegistrationStep(REGISTRATION_LOG_STEPS.VALIDATION_OK, { email: form.email, participants: filledRows.length });
+  const competitors = filledRows.map((participant) => createCompetitor({ ...form, participant }));
+  const updatedCompetition = { ...competition, competitors: [...(competition.competitors || []), ...competitors] };
+  const updatedCompetitions = competitions.map((item) => item.id === competition.id ? updatedCompetition : item);
+  const persistedCompetitions = persistCompetitions(updatedCompetitions, { notify: true });
+  const persistedCompetition = persistedCompetitions.find((item) => item.id === competition.id);
+  const persistedCompetitors = competitors.map((competitor) => persistedCompetition?.competitors?.find((item) => item.id === competitor.id)).filter(Boolean);
+  if (persistedCompetitors.length !== competitors.length) throw new Error("Toutes les inscriptions n'ont pas été retrouvées dans la base après l'enregistrement.");
+
+  logRegistrationStep(REGISTRATION_LOG_STEPS.DATABASE_OK, { competitionId: competition.id, competitors: persistedCompetitors.length });
+  await sendConfirmation({ competition: updatedCompetition, competitor: persistedCompetitors?.[0], competitors: persistedCompetitors });
+  logRegistrationStep(REGISTRATION_LOG_STEPS.MAIL_OK, { recipient: form.email, competitors: persistedCompetitors.length });
+  logRegistrationStep(REGISTRATION_LOG_STEPS.FINISHED, { competitionId: competition.id, competitors: persistedCompetitors.length });
+
+  return { updatedCompetitions, updatedCompetition, competitors: persistedCompetitors };
 }
