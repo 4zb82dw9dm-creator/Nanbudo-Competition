@@ -34,6 +34,8 @@ export function validateRegistrationForm(form) {
 
   for (const [index, row] of filledRows.entries()) {
     if (!row.nom?.trim() || !row.prenom?.trim() || !row.sexe || !row.dateNaissance || !row.ceinture || !row.typeInscription) return `La ligne ${index + 1} est incomplète : nom, prénom, sexe, date de naissance, grade et type d’inscription sont obligatoires.`;
+    if (row.typeInscription === "Compétiteur" && !row.discipline) return `La ligne ${index + 1} est incomplète : choisissez une discipline pour ce compétiteur.`;
+    if (row.typeInscription === "Arbitre" && !row.fonctionArbitrage) return `La ligne ${index + 1} est incomplète : choisissez une fonction d’arbitrage.`;
   }
 
   return "";

@@ -1568,6 +1568,26 @@ footer span {
   padding: 9px 10px;
 }
 
+.participants-table select,
+.participants-table input[type="date"] {
+  cursor: pointer;
+}
+
+.participants-table tr:nth-child(even) td {
+  background: #fbfcff;
+}
+
+.participants-table tr:focus-within td {
+  background: #fff8df;
+}
+
+.cell-placeholder {
+  align-items: center;
+  color: #94a3b8;
+  display: flex;
+  min-height: 42px;
+}
+
 .participants-table textarea {
   min-height: 42px;
   resize: vertical;
@@ -1583,7 +1603,8 @@ footer span {
 
 .participants-table {
   border-collapse: collapse;
-  min-width: 1080px;
+  min-width: 1240px;
+  table-layout: fixed;
   width: 100%;
 }
 
@@ -1637,7 +1658,7 @@ footer span {
   }
 
   .participants-table {
-    min-width: 960px;
+    min-width: 1080px;
   }
 }
 
@@ -1664,12 +1685,17 @@ footer span {
   }
 
   .participants-table tr {
+    background: white;
     border: 1px solid #e1e6ef;
     border-left: 4px solid #c9a227;
     border-radius: 14px;
     margin: 12px;
     overflow: hidden;
     padding: 10px;
+  }
+
+  .participants-table tr.participant-referee {
+    border-left-color: #0f766e;
   }
 
   .participants-table td {

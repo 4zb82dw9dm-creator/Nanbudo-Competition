@@ -3,22 +3,15 @@ import CategoriesManager from "./CategoriesManager";
 import PoolsManager from "./PoolsManager";
 import ArbitrationManager from "./ArbitrationManager";
 import ResultsManager from "./ResultsManager";
-import { buildAutomaticCategories, calculateAge } from "./competitionLogic";
+import { buildAutomaticCategories, calculateAge, DISCIPLINES } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { validateRegistrationForm } from "./registrationProcessing";
 
 export const AGE_OPTIONS = Array.from({ length: 95 }, (_, index) => index + 5);
-export const BELT_OPTIONS = ["6ème Kyu", "5ème Kyu", "4ème Kyu", "3ème Kyu", "2ème Kyu", "1er Kyu", "1er Dan", "2ème Dan", "3ème Dan", "4ème Dan", "5ème Dan", "6ème Dan"];
-export const REGISTRATION_CATEGORIES = [
-  "Kata individuel",
-  "Kata par équipe",
-  "Randori",
-  "Ju Randori",
-  "Ju Randori par équipe",
-  "Dantai Randori",
-];
-export const KATA_OPTIONS = ["Kata individuel", "Kata par équipe"];
-export const INITIAL_PARTICIPANT_ROW = { nom: "", prenom: "", sexe: "", dateNaissance: "", ceinture: "", typeInscription: "", kata: "", observations: "" };
+export const BELT_OPTIONS = ["6e Kyu", "5e Kyu", "4e Kyu", "3e Kyu", "2e Kyu", "1er Kyu", "1er Dan", "2e Dan", "3e Dan", "4e Dan", "5e Dan", "6e Dan"];
+export const REGISTRATION_CATEGORIES = DISCIPLINES.map((discipline) => discipline.label);
+export const REFEREE_FUNCTION_OPTIONS = ["Arbitre de table", "Fukushin", "Shushin"];
+export const INITIAL_PARTICIPANT_ROW = { nom: "", prenom: "", sexe: "", dateNaissance: "", ceinture: "", typeInscription: "", discipline: "", fonctionArbitrage: "", observations: "" };
 export const INITIAL_REGISTRATION_FORM = { club: "", email: "", responsableClub: "", telephoneResponsable: "", participants: Array.from({ length: 15 }, () => ({ ...INITIAL_PARTICIPANT_ROW })) };
 
 export function competitionDiscipline(categoriesInscription = []) {
@@ -34,7 +27,7 @@ export function isParticipantRowEmpty(row) {
 
 export function categoriesFromParticipant(row) {
   if (row.typeInscription === "Arbitre") return [];
-  return row.kata ? [row.kata] : [];
+  return row.discipline ? [row.discipline] : [];
 }
 
 export function normalizeCompetitor(form, existingId) {
@@ -48,7 +41,7 @@ export function normalizeCompetitor(form, existingId) {
     responsableClub: form.responsableClub.trim(), telephoneResponsable: form.telephoneResponsable?.trim() || "",
     categoriesInscription, categorieInscription: categoriesInscription.join(", "), discipline: categoriesInscription.length ? competitionDiscipline(categoriesInscription) : "arbitrage",
     sexe: participant.sexe || "Non renseigné", dateNaissance: participant.dateNaissance || "", ligue: "", pays: "",
-    typeInscription: participant.typeInscription || "Compétiteur", roleArbitre: participant.typeInscription === "Arbitre" ? "Arbitre" : "", observations: participant.observations || "",
+    typeInscription: participant.typeInscription || "Compétiteur", roleArbitre: participant.typeInscription === "Arbitre" ? (participant.fonctionArbitrage || "Arbitre") : "", fonctionArbitrage: participant.typeInscription === "Arbitre" ? (participant.fonctionArbitrage || "") : "", observations: participant.observations || "",
     statutInscription: participant.statutInscription || "À valider",
   };
 }
@@ -79,9 +72,13 @@ function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
   }), [competitors, filters, sort]);
 
   function handleClubChange(event) { const { name, value } = event.target; setForm((current) => ({ ...current, [name]: value })); }
-  function handleParticipantChange(index, field, value) { setForm((current) => ({ ...current, participants: current.participants.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row) })); }
+  function handleParticipantChange(index, field, value) { setForm((current) => ({ ...current, participants: current.participants.map((row, rowIndex) => {
+    if (rowIndex !== index) return row;
+    if (field === "typeInscription") return { ...row, typeInscription: value, discipline: value === "Arbitre" ? "" : row.discipline, fonctionArbitrage: value === "Arbitre" ? row.fonctionArbitrage : "" };
+    return { ...row, [field]: value };
+  }) })); }
   function addParticipantRows() { setForm((current) => ({ ...current, participants: [...current.participants, ...createEmptyParticipantRows(5)] })); }
-  function clearParticipantRows() { setForm((current) => ({ ...current, participants: createEmptyParticipantRows(15) })); }
+  function clearParticipantRows() { if (window.confirm("Effacer toutes les lignes d’inscription ?")) setForm((current) => ({ ...current, participants: createEmptyParticipantRows(15) })); }
   function resetForm() { setForm(INITIAL_REGISTRATION_FORM); setEditingId(null); setShowForm(false); }
   function saveCompetitor(event) {
     event.preventDefault();
@@ -91,7 +88,7 @@ function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
     onUpdateCompetition({ ...competition, competitors: editingId ? competitors.map((item) => item.id === editingId ? { ...newCompetitors[0], id: editingId } : item) : [...competitors, ...newCompetitors] });
     resetForm();
   }
-  function editCompetitor(competitor) { setEditingId(competitor.id); setForm({ club: competitor.club || "", email: competitor.email || "", responsableClub: competitor.responsableClub || "", telephoneResponsable: competitor.telephoneResponsable || "", participants: [{ nom: competitor.nom || "", prenom: competitor.prenom || "", sexe: competitor.sexe || "", dateNaissance: competitor.dateNaissance || "", ceinture: competitor.ceinture || "", typeInscription: competitor.typeInscription || "Compétiteur", kata: (competitor.categoriesInscription || []).find((category) => category.toLowerCase().startsWith("kata")) || "", observations: competitor.observations || "" }] }); setShowForm(true); }
+  function editCompetitor(competitor) { setEditingId(competitor.id); setForm({ club: competitor.club || "", email: competitor.email || "", responsableClub: competitor.responsableClub || "", telephoneResponsable: competitor.telephoneResponsable || "", participants: [{ nom: competitor.nom || "", prenom: competitor.prenom || "", sexe: competitor.sexe || "", dateNaissance: competitor.dateNaissance || "", ceinture: competitor.ceinture || "", typeInscription: competitor.typeInscription || "Compétiteur", discipline: (competitor.categoriesInscription || [])[0] || "", fonctionArbitrage: competitor.fonctionArbitrage || competitor.roleArbitre || "", observations: competitor.observations || "" }] }); setShowForm(true); }
   function deleteCompetitor(id) { if (window.confirm("Supprimer cette inscription ?")) onUpdateCompetition({ ...competition, competitors: competitors.filter((competitor) => competitor.id !== id) }); }
   function validateCompetitor(id) { onUpdateCompetition({ ...competition, competitors: competitors.map((competitor) => competitor.id === id ? { ...competitor, statutInscription: "Validée" } : competitor) }); }
   function closeRegistrations() { if (competitors.length === 0) return alert("Ajoutez au moins une inscription avant la clôture."); onUpdateCompetition({ ...competition, statut: "Catégories générées", categories: buildAutomaticCategories(competitors), pools: [] }); setView("categories"); }
@@ -110,9 +107,9 @@ function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
 }
 export function RegistrationForm({ form, onClubChange, onParticipantChange, onAddRows, onClearRows, onSubmit, submitLabel = "Enregistrer l’inscription" }) {
   return <form className="club-registration-form" onSubmit={onSubmit}>
-    <section className="club-info-panel"><div className="form-title"><p className="surtitle">FORMULAIRE CLUB</p><h3>Inscription collective par club</h3><p>Renseignez le club une seule fois, puis ajoutez tous les participants dans le tableau.</p></div><div className="club-grid"><label>Nom du club *<input name="club" value={form.club} onChange={onClubChange} required /></label><label>Responsable du club *<input name="responsableClub" value={form.responsableClub} onChange={onClubChange} required /></label><label>Adresse e-mail du responsable *<input name="email" type="email" value={form.email} onChange={onClubChange} required /></label><label>Téléphone du responsable<input name="telephoneResponsable" value={form.telephoneResponsable} onChange={onClubChange} /></label></div></section>
-    <div className="participants-table-wrap"><table className="participants-table"><thead><tr>{["Nom", "Prénom", "Sexe", "Date de naissance", "Grade", "Type d’inscription", "Kata", "Observations"].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{form.participants.map((participant, index) => <tr key={index}><td data-label="Nom"><input value={participant.nom} onChange={(event) => onParticipantChange(index, "nom", event.target.value)} /></td><td data-label="Prénom"><input value={participant.prenom} onChange={(event) => onParticipantChange(index, "prenom", event.target.value)} /></td><td data-label="Sexe"><select value={participant.sexe} onChange={(event) => onParticipantChange(index, "sexe", event.target.value)}><option value="">Sexe</option><option>Féminin</option><option>Masculin</option><option>Non renseigné</option></select></td><td data-label="Date de naissance"><input type="date" value={participant.dateNaissance} onChange={(event) => onParticipantChange(index, "dateNaissance", event.target.value)} /></td><td data-label="Grade"><select value={participant.ceinture} onChange={(event) => onParticipantChange(index, "ceinture", event.target.value)}><option value="">Grade</option>{BELT_OPTIONS.map((belt) => <option key={belt}>{belt}</option>)}</select></td><td data-label="Type d’inscription"><select value={participant.typeInscription} onChange={(event) => onParticipantChange(index, "typeInscription", event.target.value)}><option value="">Type</option><option>Compétiteur</option><option>Arbitre</option></select></td><td data-label="Kata"><select value={participant.kata} onChange={(event) => onParticipantChange(index, "kata", event.target.value)} disabled={participant.typeInscription === "Arbitre"}><option value="">Aucun</option>{KATA_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></td><td data-label="Observations"><textarea value={participant.observations} onChange={(event) => onParticipantChange(index, "observations", event.target.value)} /></td></tr>)}</tbody></table></div>
-    <div className="registration-actions"><button className="manage-button" type="button" onClick={onAddRows}>Ajouter 5 lignes</button><button className="delete-button" type="button" onClick={onClearRows}>Effacer toutes les lignes</button><button className="primary" type="submit">{submitLabel}</button></div>
+    <section className="club-info-panel"><div className="form-title"><p className="surtitle">FORMULAIRE CLUB</p><h3>Inscription collective par club</h3><p>Renseignez le club une seule fois, puis ajoutez tous les compétiteurs et arbitres dans le tableau.</p></div><div className="club-grid"><label>Nom du club *<input name="club" value={form.club} onChange={onClubChange} required /></label><label>Responsable du club *<input name="responsableClub" value={form.responsableClub} onChange={onClubChange} required /></label><label>Adresse e-mail du responsable *<input name="email" type="email" value={form.email} onChange={onClubChange} required /></label><label>Téléphone du responsable<input name="telephoneResponsable" value={form.telephoneResponsable} onChange={onClubChange} /></label></div></section>
+    <div className="participants-table-wrap"><table className="participants-table"><thead><tr>{["Nom", "Prénom", "Sexe", "Date de naissance", "Grade", "Type d’inscription", "Discipline", "Fonction d’arbitrage", "Observations"].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{form.participants.map((participant, index) => <tr key={index} className={participant.typeInscription === "Arbitre" ? "participant-referee" : ""}><td data-label="Nom"><input value={participant.nom} onChange={(event) => onParticipantChange(index, "nom", event.target.value)} /></td><td data-label="Prénom"><input value={participant.prenom} onChange={(event) => onParticipantChange(index, "prenom", event.target.value)} /></td><td data-label="Sexe"><select value={participant.sexe} onChange={(event) => onParticipantChange(index, "sexe", event.target.value)}><option value="">Sexe</option><option>Homme</option><option>Femme</option></select></td><td data-label="Date de naissance"><input type="date" value={participant.dateNaissance} onChange={(event) => onParticipantChange(index, "dateNaissance", event.target.value)} /></td><td data-label="Grade"><select value={participant.ceinture} onChange={(event) => onParticipantChange(index, "ceinture", event.target.value)}><option value="">Grade</option>{BELT_OPTIONS.map((belt) => <option key={belt}>{belt}</option>)}</select></td><td data-label="Type d’inscription"><select value={participant.typeInscription} onChange={(event) => onParticipantChange(index, "typeInscription", event.target.value)}><option value="">Type</option><option>Compétiteur</option><option>Arbitre</option></select></td><td data-label="Discipline"><select value={participant.discipline} onChange={(event) => onParticipantChange(index, "discipline", event.target.value)} disabled={participant.typeInscription === "Arbitre"}><option value="">Discipline</option>{REGISTRATION_CATEGORIES.map((option) => <option key={option}>{option}</option>)}</select></td><td data-label="Fonction d’arbitrage">{participant.typeInscription === "Arbitre" ? <select value={participant.fonctionArbitrage} onChange={(event) => onParticipantChange(index, "fonctionArbitrage", event.target.value)}><option value="">Fonction</option>{REFEREE_FUNCTION_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select> : <span className="cell-placeholder">—</span>}</td><td data-label="Observations"><textarea value={participant.observations} onChange={(event) => onParticipantChange(index, "observations", event.target.value)} /></td></tr>)}</tbody></table></div>
+    <div className="registration-actions"><button className="manage-button" type="button" onClick={onAddRows}>+ Ajouter 5 lignes</button><button className="delete-button" type="button" onClick={onClearRows}>Effacer toutes les lignes</button><button className="primary" type="submit">{submitLabel}</button></div>
   </form>;
 }
 export default CompetitionDashboard;
