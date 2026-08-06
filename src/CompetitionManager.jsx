@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import CompetitionDashboard, { INITIAL_REGISTRATION_FORM, RegistrationForm, normalizeCompetitor } from "./CompetitionDashboard";
 import { createDemoCompetitionTest30 } from "./demoCompetitionData";
+import { persistCompetitions, processRegistration, reportRegistrationFailure } from "./registrationProcessing";
 
 function CompetitionManager() {
   const [competitions, setCompetitions] = useState(() => {
@@ -15,7 +16,8 @@ function CompetitionManager() {
   const [form, setForm] = useState({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
   const [registrationForm, setRegistrationForm] = useState(INITIAL_REGISTRATION_FORM);
 
-  useEffect(() => { localStorage.setItem("nanbudo_competitions", JSON.stringify(competitions)); }, [competitions]);
+  useEffect(() => { persistCompetitions(competitions); }, [competitions]);
+  useEffect(() => { const listener = (event) => { if (Array.isArray(event.detail)) setCompetitions(event.detail); }; window.addEventListener("nanbudo:competitions-updated", listener); return () => window.removeEventListener("nanbudo:competitions-updated", listener); }, []);
   useEffect(() => { const listener = () => setHash(window.location.hash); window.addEventListener("hashchange", listener); return () => window.removeEventListener("hashchange", listener); }, []);
 
   function createCompetition(event) {
@@ -34,12 +36,18 @@ function CompetitionManager() {
   const publicToken = hash.startsWith("#inscription-") ? hash.replace("#inscription-", "") : null;
   const publicCompetition = competitions.find((competition) => String(competition.publicToken || competition.id) === publicToken);
   if (publicCompetition) {
-    function submitPublicRegistration(event) {
+    async function submitPublicRegistration(event) {
       event.preventDefault();
-      if (!registrationForm.nom.trim() || !registrationForm.prenom.trim() || !registrationForm.age || !registrationForm.ceinture || !registrationForm.club.trim() || registrationForm.categoriesInscription.length === 0) return alert("Veuillez renseigner tous les champs obligatoires.");
-      updateCompetition({ ...publicCompetition, competitors: [...(publicCompetition.competitors || []), normalizeCompetitor(registrationForm)] });
-      setRegistrationForm(INITIAL_REGISTRATION_FORM);
-      alert("Inscription enregistrée. Elle est visible par l’organisateur.");
+      try {
+        const { updatedCompetitions } = await processRegistration({ competitions, competition: publicCompetition, form: registrationForm, createCompetitor: normalizeCompetitor });
+        setCompetitions(updatedCompetitions);
+        setRegistrationForm(INITIAL_REGISTRATION_FORM);
+        alert("Inscription enregistrée. Elle est visible par l’organisateur.");
+      } catch (error) {
+        reportRegistrationFailure("Traitement public", error);
+        alert(error.message || "Une erreur est survenue pendant l’inscription.");
+        throw error;
+      }
     }
     return <section className="competition-manager public-registration"><p className="surtitle">LIEN PUBLIC SÉCURISÉ CLUB</p><h2>{publicCompetition.nom}</h2><p>Accès limité au formulaire d’inscription : aucune autre fonctionnalité organisateur n’est disponible depuis ce lien.</p><RegistrationForm form={registrationForm} onChange={handleRegistrationChange} onToggleCategory={toggleRegistrationCategory} onSubmit={submitPublicRegistration} /></section>;
   }
