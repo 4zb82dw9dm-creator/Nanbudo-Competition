@@ -10,6 +10,11 @@ body,
   width: 100%;
 }
 
+body,
+#root {
+  min-height: 100vh;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
   background: #f4f6f9;
@@ -45,16 +50,16 @@ button {
   z-index: -2;
   background-image: url('/assets/home-background.jpg');
   background-attachment: fixed;
-  background-position: center;
+  background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
+  filter: brightness(1.12) contrast(1.06);
+  transform: scale(1.01);
 }
 
 .app.home-screen::after {
   z-index: -1;
-  background:
-    linear-gradient(180deg, rgba(3, 12, 28, 0.82) 0%, rgba(3, 12, 28, 0.42) 42%, rgba(3, 12, 28, 0.78) 100%),
-    radial-gradient(circle at center, rgba(5, 76, 170, 0.18) 0%, rgba(3, 12, 28, 0.58) 72%);
+  background: radial-gradient(circle at center, rgba(3, 12, 28, 0.18) 0%, rgba(3, 12, 28, 0.34) 48%, rgba(3, 12, 28, 0.72) 100%);
 }
 
 .header {
@@ -169,6 +174,14 @@ button {
   min-height: 0;
 }
 
+.home-screen .header,
+.home-screen .navigation,
+.home-screen .content,
+.home-screen footer {
+  position: relative;
+  z-index: 1;
+}
+
 .home-screen .hero {
   display: none;
 }
@@ -215,10 +228,10 @@ button {
 }
 
 .home-screen .card {
-  background: rgba(7, 26, 51, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-top: 3px solid #c9a227;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+  background: rgba(7, 26, 51, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-top: 3px solid #d4af37;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(212, 175, 55, 0.12);
   backdrop-filter: blur(10px);
 }
 
