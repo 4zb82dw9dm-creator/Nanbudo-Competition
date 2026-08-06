@@ -123,24 +123,33 @@ function MatchManager({ match, onSave }) {
     const shiroNegative = penaltyTotal(penalties.shiro);
     const akaShikaku = hasShikaku(penalties.aka);
     const shiroShikaku = hasShikaku(penalties.shiro);
+    const akaTotal = main.akaPositive - akaNegative;
+    const shiroTotal = main.shiroPositive - shiroNegative;
+    const tie = scoreRows(tieBreakAssaults);
+    const mainAssaultsResolved = assaults.every((row) => voteResult(row.votes));
+    const tieBreakAssaultsResolved = tieBreakAssaults.every((row) => voteResult(row.votes));
     let phase = "main";
     let winner = null;
-    if (akaShikaku) winner = "shiro";
-    if (shiroShikaku) winner = "aka";
-    if (!winner && assaults.every((row) => voteResult(row.votes))) {
-      if (main.akaPositive - akaNegative > main.shiroPositive - shiroNegative) winner = "aka";
-      if (main.shiroPositive - shiroNegative > main.akaPositive - akaNegative) winner = "shiro";
-      if (!winner && akaNegative !== shiroNegative) winner = akaNegative > shiroNegative ? "shiro" : "aka";
-      if (!winner) phase = "tieBreak";
+
+    if (akaShikaku && !shiroShikaku) winner = "shiro";
+    if (shiroShikaku && !akaShikaku) winner = "aka";
+
+    if (!winner) {
+      if (akaTotal > shiroTotal) winner = "aka";
+      if (shiroTotal > akaTotal) winner = "shiro";
     }
-    const tie = scoreRows(tieBreakAssaults);
-    if (!winner && phase === "tieBreak" && tieBreakAssaults.every((row) => voteResult(row.votes))) {
-      if (tie.akaPositive > tie.shiroPositive) winner = "aka";
-      if (tie.shiroPositive > tie.akaPositive) winner = "shiro";
-      if (!winner) phase = "finalFlags";
+
+    if (!winner && mainAssaultsResolved && akaTotal === shiroTotal) {
+      phase = "tieBreak";
+      if (tieBreakAssaultsResolved) {
+        if (tie.akaPositive > tie.shiroPositive) winner = "aka";
+        if (tie.shiroPositive > tie.akaPositive) winner = "shiro";
+        if (!winner) phase = "finalFlags";
+      }
     }
+
     if (!winner && phase === "finalFlags" && finalFlags.every(Boolean)) winner = voteResult(finalFlags, false).toLowerCase();
-    return { ...main, akaNegative, shiroNegative, akaTotal: main.akaPositive - akaNegative, shiroTotal: main.shiroPositive - shiroNegative, tie, phase, winner };
+    return { ...main, akaNegative, shiroNegative, akaTotal, shiroTotal, tie, phase, winner };
   }, [assaults, tieBreakAssaults, finalFlags, penalties]);
 
   function setVote(section, rowIndex, judgeIndex, value) {
