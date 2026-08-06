@@ -1526,7 +1526,8 @@ footer span {
   width: 96vw;
 }
 
-.club-info-panel {
+.club-info-panel,
+.participants-section {
   background: white;
   border: 1px solid #e1e6ef;
   border-top: 4px solid #c9a227;
@@ -1603,7 +1604,7 @@ footer span {
 
 .participants-table {
   border-collapse: collapse;
-  min-width: 1240px;
+  min-width: 1680px;
   table-layout: fixed;
   width: 100%;
 }
@@ -1622,27 +1623,40 @@ footer span {
   font-size: 13px;
 }
 
-.participants-table th:nth-child(1),
-.participants-table th:nth-child(2) {
-  width: 13%;
+.participants-table th:nth-child(1) {
+  width: 48px;
 }
 
+.participants-table th:nth-child(2),
 .participants-table th:nth-child(3) {
   width: 10%;
 }
 
-.participants-table th:nth-child(4) {
-  width: 14%;
+.participants-table th:nth-child(4),
+.participants-table th:nth-child(6),
+.participants-table th:nth-child(7) {
+  width: 8%;
 }
 
 .participants-table th:nth-child(5),
-.participants-table th:nth-child(6),
-.participants-table th:nth-child(7) {
-  width: 12%;
+.participants-table th:nth-child(8),
+.participants-table th:nth-child(11) {
+  width: 11%;
 }
 
-.participants-table th:nth-child(8) {
+.participants-table th:nth-child(9) {
   width: 15%;
+}
+
+.participants-table th:nth-child(10) {
+  width: 10%;
+}
+
+.row-index,
+.computed-category {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .registration-actions {
@@ -1658,7 +1672,7 @@ footer span {
   }
 
   .participants-table {
-    min-width: 1080px;
+    min-width: 1380px;
   }
 }
 
