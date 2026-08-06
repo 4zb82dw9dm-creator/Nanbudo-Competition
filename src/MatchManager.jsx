@@ -4,7 +4,7 @@ import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 const FUKUSHIN = ["Fukushin 1", "Fukushin 2", "Fukushin 3"];
 const DECISIONS = ["AKA", "SHIRO", "HIKIWAKE"];
 const FINAL_DECISIONS = ["AKA", "SHIRO"];
-const ASSAULTS = Array.from({ length: 7 }, (_, index) => `Assaut ${index + 1}`);
+const ASSAULTS = ["Tsuki 1", "Tsuki 2", "Mae Geri 1", "Mae Geri 2", "Mawashi 1", "Mawashi 2", "Dernier Tsuki"];
 const TIE_BREAK_ASSAULTS = ["Tsuki", "Mae Geri", "Mawashi Geri"];
 const PENALTIES = [
   { id: "keikoku", label: "Keikoku", value: 0 },
@@ -17,8 +17,8 @@ const PENALTY_FLOW = ["keikoku", "fujubun", "chui", "hansoku_chui", "shikaku"];
 const PENALTY_BY_ID = Object.fromEntries(PENALTIES.map((penalty) => [penalty.id, penalty]));
 const MANUAL_PENALTIES = PENALTIES.filter((penalty) => penalty.id !== "shikaku");
 
-function emptyVotes(labels) {
-  return labels.map((label) => ({ label, votes: ["", "", ""] }));
+function relabelVotes(rows, labels) {
+  return labels.map((label, index) => ({ ...(rows?.[index] || { votes: ["", "", ""] }), label }));
 }
 
 function voteResult(votes, allowDraw = true) {
@@ -106,8 +106,8 @@ function removePenaltyFromChain(penalties, penaltyId) {
 function MatchManager({ match, onSave }) {
   const [kataAka, setKataAka] = useState(match?.kataAka || ["", "", ""]);
   const [kataShiro, setKataShiro] = useState(match?.kataShiro || ["", "", ""]);
-  const [assaults, setAssaults] = useState(match?.assaults || emptyVotes(ASSAULTS));
-  const [tieBreakAssaults, setTieBreakAssaults] = useState(match?.tieBreakAssaults || emptyVotes(TIE_BREAK_ASSAULTS));
+  const [assaults, setAssaults] = useState(() => relabelVotes(match?.assaults, ASSAULTS));
+  const [tieBreakAssaults, setTieBreakAssaults] = useState(() => relabelVotes(match?.tieBreakAssaults, TIE_BREAK_ASSAULTS));
   const [finalFlags, setFinalFlags] = useState(match?.finalFlags || ["", "", ""]);
   const [penalties, setPenalties] = useState(match?.penalties || { aka: [], shiro: [] });
   const automaticSaveDone = useRef(false);
