@@ -6,7 +6,7 @@ function App() {
   const [section, setSection] = useState("accueil");
 
   return (
-    <div className="app">
+    <div className={`app ${section === "accueil" ? "home-screen" : ""}`}>
       <header className="header">
         <img src={`${import.meta.env.BASE_URL}assets/logo-afdp.png`} alt="AFDP Nanbudo" className="header-logo" />
         <div className="header-text">
