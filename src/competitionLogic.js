@@ -41,6 +41,7 @@ export function disciplineIdFromRegistrationCategory(registrationCategory = "") 
 }
 
 export function getRegistrationCategories(inscription) {
+  if (inscription.typeInscription === "Arbitre") return [];
   if (Array.isArray(inscription.categoriesInscription) && inscription.categoriesInscription.length > 0) return inscription.categoriesInscription;
   if (inscription.categorieInscription) return [inscription.categorieInscription];
   return getEligibleDisciplines(inscription).map(disciplineLabel);

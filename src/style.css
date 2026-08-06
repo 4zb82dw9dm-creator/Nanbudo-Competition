@@ -1506,3 +1506,155 @@ footer span {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.club-registration-form {
+  display: grid;
+  gap: 18px;
+  margin: 22px 0;
+  width: 100%;
+}
+
+.public-registration,
+.competitors-module {
+  width: min(1500px, 96vw);
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+.club-info-panel {
+  background: white;
+  border: 1px solid #e1e6ef;
+  border-top: 4px solid #c9a227;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(7, 26, 51, 0.08);
+  display: grid;
+  gap: 18px;
+  padding: clamp(22px, 4vw, 34px);
+}
+
+.club-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.club-info-panel label,
+.participants-table td {
+  color: #24324a;
+  font-weight: 800;
+}
+
+.club-info-panel label {
+  display: grid;
+  gap: 8px;
+}
+
+.club-info-panel input,
+.participants-table input,
+.participants-table select,
+.participants-table textarea {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #ccd5e1;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #071a33;
+  font: inherit;
+  padding: 9px 10px;
+}
+
+.participants-table textarea {
+  min-height: 42px;
+  resize: vertical;
+}
+
+.participants-table-wrap {
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+  width: 100%;
+}
+
+.participants-table {
+  border-collapse: collapse;
+  min-width: 1320px;
+  width: 100%;
+}
+
+.participants-table th,
+.participants-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.participants-table th {
+  background: #071a33;
+  color: white;
+  font-size: 13px;
+}
+
+.registration-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 1000px) {
+  .club-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .participants-table {
+    min-width: 1100px;
+  }
+}
+
+@media (max-width: 700px) {
+  .club-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .participants-table,
+  .participants-table thead,
+  .participants-table tbody,
+  .participants-table tr,
+  .participants-table th,
+  .participants-table td {
+    display: block;
+  }
+
+  .participants-table {
+    min-width: 0;
+  }
+
+  .participants-table thead {
+    display: none;
+  }
+
+  .participants-table tr {
+    border: 1px solid #e1e6ef;
+    border-left: 4px solid #c9a227;
+    border-radius: 14px;
+    margin: 12px;
+    overflow: hidden;
+    padding: 10px;
+  }
+
+  .participants-table td {
+    border-bottom: 0;
+    display: grid;
+    gap: 6px;
+    padding: 7px 0;
+  }
+
+  .participants-table td::before {
+    content: attr(data-label);
+    color: #657080;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+}
