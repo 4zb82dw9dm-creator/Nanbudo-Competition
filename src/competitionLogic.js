@@ -83,7 +83,7 @@ export function shuffle(items) {
   return [...items].sort(() => Math.random() - 0.5);
 }
 
-export function generateMatches(competitorIds, category, poolIndex = 0) {
+export function generateMatches(competitorIds, category, poolIndex = 0, tatami = 1) {
   if (competitionRulesEngine.isKataDiscipline(category.discipline)) {
     return competitorIds.map((competitorId, index) => ({
       id: `${Date.now()}-${poolIndex}-kata-${index}`,
@@ -99,7 +99,7 @@ export function generateMatches(competitorIds, category, poolIndex = 0) {
       kataGroup: category.kataGroup || DEFAULT_KATA_GROUP,
       kataScores: [],
       finalScore: null,
-      tatami: (index % 3) + 1,
+      tatami,
       ordre: index + 1,
       horaire: "",
       statut: "À jouer",
@@ -121,7 +121,7 @@ export function generateMatches(competitorIds, category, poolIndex = 0) {
         avertissementsShiro: 0,
         penalitesAka: {},
         penalitesShiro: {},
-        tatami: (matches.length % 3) + 1,
+        tatami,
         ordre: matches.length + 1,
         horaire: "",
         statut: "À jouer",
@@ -131,22 +131,32 @@ export function generateMatches(competitorIds, category, poolIndex = 0) {
   return matches;
 }
 
-export function buildPoolsForCategory(category) {
+export function setPoolTatami(pool, tatami) {
+  return { ...pool, tatami, matches: (pool.matches || []).map((match) => ({ ...match, tatami })) };
+}
+
+export function buildPoolsForCategory(category, options = {}) {
+  const { tatamiCount = 1, startIndex = 0 } = options;
+  const normalizedTatamiCount = Math.max(1, Number(tatamiCount) || 1);
   const shuffled = shuffle(category.competitorIds);
   const poolCount = Math.max(1, Math.ceil(shuffled.length / 4));
   const buckets = Array.from({ length: poolCount }, () => []);
   shuffled.forEach((id, index) => buckets[index % poolCount].push(id));
-  return buckets.filter((ids) => ids.length > 0).map((ids, index) => ({
-    id: `${Date.now()}-${category.id}-${index}`,
-    categoryId: category.id,
-    discipline: category.discipline,
-    nom: `${category.nom} · Poule ${index + 1}`,
-    competitorIds: ids,
-    matches: generateMatches(ids, category, index),
-    statut: "À valider",
-    rankingLocked: [],
-    podium: null,
-  }));
+  return buckets.filter((ids) => ids.length > 0).map((ids, index) => {
+    const tatami = ((startIndex + index) % normalizedTatamiCount) + 1;
+    return {
+      id: `${Date.now()}-${category.id}-${index}`,
+      categoryId: category.id,
+      discipline: category.discipline,
+      nom: `${category.nom} · Poule ${index + 1}`,
+      competitorIds: ids,
+      tatami,
+      matches: generateMatches(ids, category, index, tatami),
+      statut: "À valider",
+      rankingLocked: [],
+      podium: null,
+    };
+  });
 }
 
 export function calculateRanking(pool) {
