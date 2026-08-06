@@ -31,12 +31,19 @@ function CompetitionManager() {
   function updateCompetition(updatedCompetition) { setCompetitions((current) => current.map((competition) => competition.id === updatedCompetition.id ? updatedCompetition : competition)); }
   function deleteCompetition(id) { if (window.confirm("Supprimer cette compétition ?")) setCompetitions((current) => current.filter((competition) => competition.id !== id)); }
   function handleRegistrationClubChange(event) { const { name, value } = event.target; setRegistrationForm((current) => ({ ...current, [name]: value })); }
-  function handleRegistrationParticipantChange(index, field, value) { setRegistrationForm((current) => ({ ...current, participants: current.participants.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row) })); }
-  function addRegistrationRows() { setRegistrationForm((current) => ({ ...current, participants: [...current.participants, ...createEmptyParticipantRows(5)] })); }
+  function handleRegistrationParticipantChange(index, field, value) { setRegistrationForm((current) => ({ ...current, participants: current.participants.map((row, rowIndex) => {
+    if (rowIndex !== index) return row;
+    if (field === "typeInscription") return { ...row, typeInscription: value, discipline: value === "Arbitre" ? "" : row.discipline, kata: value === "Arbitre" ? "" : row.kata, fonctionArbitrage: value === "Arbitre" ? row.fonctionArbitrage : "" };
+    return { ...row, [field]: value };
+  }) })); }
   function clearRegistrationRows() { setRegistrationForm((current) => ({ ...current, participants: createEmptyParticipantRows(15) })); }
 
-  const publicToken = hash.startsWith("#inscription-") ? hash.replace("#inscription-", "") : null;
-  const publicCompetition = competitions.find((competition) => String(competition.publicToken || competition.id) === publicToken);
+  const searchParams = new URLSearchParams(window.location.search);
+  const isInscriptionPath = window.location.pathname.replace(/\/$/, "").endsWith("/inscription");
+  const publicToken = hash.startsWith("#inscription-") ? hash.replace("#inscription-", "") : searchParams.get("competition");
+  const publicCompetition = publicToken
+    ? competitions.find((competition) => String(competition.publicToken || competition.id) === publicToken)
+    : isInscriptionPath ? competitions.find((competition) => competition.statut === "Inscriptions ouvertes") || competitions[0] : null;
   if (publicCompetition) {
     async function submitPublicRegistration(event) {
       event.preventDefault();
@@ -51,7 +58,7 @@ function CompetitionManager() {
         throw error;
       }
     }
-    return <section className="competition-manager public-registration"><p className="surtitle">LIEN PUBLIC SÉCURISÉ CLUB</p><h2>{publicCompetition.nom}</h2><p>Accès limité au formulaire d’inscription : aucune autre fonctionnalité organisateur n’est disponible depuis ce lien.</p><RegistrationForm form={registrationForm} onClubChange={handleRegistrationClubChange} onParticipantChange={handleRegistrationParticipantChange} onAddRows={addRegistrationRows} onClearRows={clearRegistrationRows} onSubmit={submitPublicRegistration} /></section>;
+    return <section className="competition-manager public-registration"><p className="surtitle">LIEN PUBLIC SÉCURISÉ CLUB</p><h2>{publicCompetition.nom}</h2><p>Accès limité au formulaire d’inscription : aucune autre fonctionnalité organisateur n’est disponible depuis ce lien.</p><RegistrationForm form={registrationForm} onClubChange={handleRegistrationClubChange} onParticipantChange={handleRegistrationParticipantChange} onClearRows={clearRegistrationRows} onSubmit={submitPublicRegistration} /></section>;
   }
 
   const selectedCompetition = competitions.find((competition) => competition.id === selectedCompetitionId);
