@@ -16,7 +16,7 @@ export function isValidEmail(email) {
 }
 
 export function isParticipantRowEmpty(row) {
-  return Object.values(row).every((value) => !String(value || "").trim());
+  return Object.values(row).every((value) => Array.isArray(value) ? value.length === 0 : !String(value || "").trim());
 }
 
 export function validateRegistrationForm(form) {
@@ -34,8 +34,8 @@ export function validateRegistrationForm(form) {
 
   for (const [index, row] of filledRows.entries()) {
     if (!row.nom?.trim() || !row.prenom?.trim() || !row.sexe || !row.dateNaissance || !row.ceinture || !row.typeInscription) return `La ligne ${index + 1} est incomplète : nom, prénom, sexe, date de naissance, grade et type d’inscription sont obligatoires.`;
-    if (row.typeInscription === "Compétiteur" && !row.discipline) return `La ligne ${index + 1} est incomplète : choisissez une discipline pour ce compétiteur.`;
-    if (row.typeInscription === "Arbitre" && !row.fonctionArbitrage) return `La ligne ${index + 1} est incomplète : choisissez une fonction d’arbitrage.`;
+    if (row.typeInscription === "Compétiteur" && (Array.isArray(row.discipline) ? row.discipline.length === 0 : !row.discipline)) return `La ligne ${index + 1} est incomplète : choisissez une discipline pour ce compétiteur.`;
+    if (row.typeInscription === "Arbitre" && (Array.isArray(row.fonctionArbitrage) ? row.fonctionArbitrage.length === 0 : !row.fonctionArbitrage)) return `La ligne ${index + 1} est incomplète : choisissez une fonction d’arbitrage.`;
   }
 
   return "";

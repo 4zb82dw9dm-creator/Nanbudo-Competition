@@ -33,10 +33,11 @@ function CompetitionManager() {
   function handleRegistrationClubChange(event) { const { name, value } = event.target; setRegistrationForm((current) => ({ ...current, [name]: value })); }
   function handleRegistrationParticipantChange(index, field, value) { setRegistrationForm((current) => ({ ...current, participants: current.participants.map((row, rowIndex) => {
     if (rowIndex !== index) return row;
-    if (field === "typeInscription") return { ...row, typeInscription: value, discipline: value === "Arbitre" ? "" : row.discipline, kata: value === "Arbitre" ? "" : row.kata, fonctionArbitrage: value === "Arbitre" ? row.fonctionArbitrage : "" };
+    if (field === "typeInscription") return { ...row, typeInscription: value, discipline: value === "Arbitre" ? [] : (Array.isArray(row.discipline) ? row.discipline : row.discipline ? [row.discipline] : []), fonctionArbitrage: value === "Arbitre" ? (Array.isArray(row.fonctionArbitrage) ? row.fonctionArbitrage : row.fonctionArbitrage ? [row.fonctionArbitrage] : []) : [] };
     return { ...row, [field]: value };
   }) })); }
   function clearRegistrationRows() { setRegistrationForm((current) => ({ ...current, participants: createEmptyParticipantRows(15) })); }
+  function addRegistrationRows(count = 5) { setRegistrationForm((current) => ({ ...current, participants: [...current.participants, ...createEmptyParticipantRows(count)] })); }
 
   const searchParams = new URLSearchParams(window.location.search);
   const isInscriptionPath = window.location.pathname.replace(/\/$/, "").endsWith("/inscription");
@@ -58,7 +59,7 @@ function CompetitionManager() {
         throw error;
       }
     }
-    return <section className="competition-manager public-registration"><p className="surtitle">LIEN PUBLIC SÉCURISÉ CLUB</p><h2>{publicCompetition.nom}</h2><p>Accès limité au formulaire d’inscription : aucune autre fonctionnalité organisateur n’est disponible depuis ce lien.</p><RegistrationForm form={registrationForm} onClubChange={handleRegistrationClubChange} onParticipantChange={handleRegistrationParticipantChange} onClearRows={clearRegistrationRows} onSubmit={submitPublicRegistration} /></section>;
+    return <section className="competition-manager public-registration"><p className="surtitle">LIEN PUBLIC SÉCURISÉ CLUB</p><h2>{publicCompetition.nom}</h2><p>Accès limité au formulaire d’inscription : aucune autre fonctionnalité organisateur n’est disponible depuis ce lien.</p><RegistrationForm form={registrationForm} onClubChange={handleRegistrationClubChange} onParticipantChange={handleRegistrationParticipantChange} onClearRows={clearRegistrationRows} onAddRows={addRegistrationRows} onSubmit={submitPublicRegistration} /></section>;
   }
 
   const selectedCompetition = competitions.find((competition) => competition.id === selectedCompetitionId);
