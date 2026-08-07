@@ -17,16 +17,39 @@ export function buildPlanning(competition) {
   const categories = [...groups].map(([categoryId, pools], sourceOrder) => ({ categoryId, pools, sourceOrder,
     name: pools[0].nom?.replace(/ · Poule \d+$/, "") || "Catégorie", discipline: pools[0].discipline,
     competitors: [...new Set(pools.flatMap((pool) => pool.competitorIds || []))], duration: estimateCategoryDuration(pools),
-    tatami: Number(adjustments[categoryId]?.tatami || pools[0].tatami || 1), order: Number(adjustments[categoryId]?.order ?? sourceOrder),
+    requestedTatami: PLANNING_TATAMIS.includes(Number(adjustments[categoryId]?.tatami)) ? Number(adjustments[categoryId].tatami) : null,
+    order: Number(adjustments[categoryId]?.order ?? sourceOrder),
     requestedStart: adjustments[categoryId]?.start == null ? null : Number(adjustments[categoryId].start) }));
-  const busy = new Map();
   const session = (items, sessionStart) => {
     const cursors = { 1: sessionStart, 2: sessionStart, 3: sessionStart };
+    const loads = { 1: 0, 2: 0, 3: 0 };
+    const busy = new Map();
+
+    const firstCompatibleStart = (item, tatami) => {
+      let start = Math.max(cursors[tatami], item.requestedStart ?? sessionStart);
+      let conflict;
+      do {
+        const end = start + item.duration;
+        conflict = item.competitors
+          .flatMap((id) => busy.get(String(id)) || [])
+          .find((slot) => start < slot.end && end > slot.start);
+        if (conflict) start = conflict.end;
+      } while (conflict);
+      return start;
+    };
+
     return [...items].sort((a, b) => a.order - b.order || a.sourceOrder - b.sourceOrder).map((item) => {
-      const tatami = PLANNING_TATAMIS.includes(item.tatami) ? item.tatami : 1;
-      let start = Math.max(cursors[tatami], item.requestedStart ?? sessionStart), end = start + item.duration, conflict;
-      do { conflict = item.competitors.flatMap((id) => busy.get(String(id)) || []).find((slot) => start < slot.end && end > slot.start); if (conflict) { start = conflict.end; end = start + item.duration; } } while (conflict);
-      item.competitors.forEach((id) => busy.set(String(id), [...(busy.get(String(id)) || []), { start, end }])); cursors[tatami] = end;
+      const candidates = item.requestedTatami
+        ? [item.requestedTatami]
+        : [...PLANNING_TATAMIS].sort((a, b) => loads[a] - loads[b] || a - b);
+      const starts = candidates.map((tatami) => ({ tatami, start: firstCompatibleStart(item, tatami) }));
+      const immediatelyAvailable = starts.find(({ tatami, start }) => start === Math.max(cursors[tatami], item.requestedStart ?? sessionStart));
+      const selected = immediatelyAvailable || starts.reduce((best, option) => option.start < best.start ? option : best);
+      const { tatami, start } = selected;
+      const end = start + item.duration;
+      item.competitors.forEach((id) => busy.set(String(id), [...(busy.get(String(id)) || []), { start, end }]));
+      cursors[tatami] = end;
+      loads[tatami] += item.duration;
       return { ...item, tatami, start, end, disciplineLabel: disciplineLabel(item.discipline) };
     });
   };

@@ -1,4 +1,4 @@
-import { CINDA_2025_RULESET } from "./cinda2025RulesConfig";
+import { CINDA_2025_RULESET } from "./cinda2025RulesConfig.js";
 
 export const RULE_STATUS_TO_BE_STRUCTURED = "to_be_structured_from_pdf";
 

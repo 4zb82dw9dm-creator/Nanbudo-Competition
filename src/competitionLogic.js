@@ -1,5 +1,5 @@
-import { DEFAULT_KATA_GROUP, getValidKataGroup } from "./constants/katas";
-import { competitionRulesEngine } from "./rules/competitionRulesEngine";
+import { DEFAULT_KATA_GROUP, getValidKataGroup } from "./constants/katas.js";
+import { competitionRulesEngine } from "./rules/competitionRulesEngine.js";
 
 export const DISCIPLINES = Object.entries(competitionRulesEngine.ruleset.disciplines).map(([id, discipline]) => ({
   id,

@@ -1,4 +1,4 @@
-import { buildAutomaticCategories, buildPoolsForCategory, calculateRanking, podiumFromPool } from "./competitionLogic";
+import { buildAutomaticCategories, buildPoolsForCategory, calculateRanking, podiumFromPool } from "./competitionLogic.js";
 
 const DEMO_COMPETITORS = [
   ["Martin", "Léo", 7, "6e Kyu", "Nanbudo Paris 12", "leo.martin@example.test", "Claire Dubois", ["Kata individuel"]],
