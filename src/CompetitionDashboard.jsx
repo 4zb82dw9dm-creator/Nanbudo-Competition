@@ -11,6 +11,7 @@ export const AGE_OPTIONS = Array.from({ length: 95 }, (_, index) => index + 5);
 export const BELT_OPTIONS = ["6e Kyu", "5e Kyu", "4e Kyu", "3e Kyu", "2e Kyu", "1er Kyu", "1er Dan", "2e Dan", "3e Dan", "4e Dan", "5e Dan", "6e Dan"];
 export const REGISTRATION_CATEGORIES = DISCIPLINES.map((discipline) => discipline.label);
 export const REFEREE_FUNCTION_OPTIONS = ["Arbitre de table", "Fukushin", "Shushin"];
+export const REGISTRATION_TYPE_OPTIONS = ["Compétiteur", "Arbitre", "Compétiteur + Arbitre"];
 export const INITIAL_PARTICIPANT_ROW = { nom: "", prenom: "", sexe: "", dateNaissance: "", ceinture: "", typeInscription: "", discipline: [], fonctionArbitrage: [], observations: "" };
 export const INITIAL_REGISTRATION_FORM = { club: "", email: "", responsableClub: "", telephoneResponsable: "", participants: Array.from({ length: 15 }, () => ({ ...INITIAL_PARTICIPANT_ROW })) };
 
@@ -25,8 +26,25 @@ export function isParticipantRowEmpty(row) {
   return Object.values(row).every((value) => Array.isArray(value) ? value.length === 0 : !String(value || "").trim());
 }
 
+export function hasCompetitorRole(typeInscription) {
+  return typeInscription === "Compétiteur" || typeInscription === "Compétiteur + Arbitre";
+}
+
+export function hasRefereeRole(typeInscription) {
+  return typeInscription === "Arbitre" || typeInscription === "Compétiteur + Arbitre";
+}
+
+export function normalizeParticipantTypeChange(row, typeInscription) {
+  return {
+    ...row,
+    typeInscription,
+    discipline: hasCompetitorRole(typeInscription) ? (Array.isArray(row.discipline) ? row.discipline : row.discipline ? [row.discipline] : []) : [],
+    fonctionArbitrage: hasRefereeRole(typeInscription) ? (Array.isArray(row.fonctionArbitrage) ? row.fonctionArbitrage : row.fonctionArbitrage ? [row.fonctionArbitrage] : []) : [],
+  };
+}
+
 export function categoriesFromParticipant(row) {
-  if (row.typeInscription === "Arbitre") return [];
+  if (!hasCompetitorRole(row.typeInscription)) return [];
   if (Array.isArray(row.discipline)) return row.discipline.filter(Boolean);
   return row.discipline ? [row.discipline] : [];
 }
@@ -42,7 +60,7 @@ export function normalizeCompetitor(form, existingId) {
     responsableClub: form.responsableClub.trim(), telephoneResponsable: form.telephoneResponsable?.trim() || "",
     categoriesInscription, categorieInscription: categoriesInscription.join(", "), discipline: categoriesInscription.length ? competitionDiscipline(categoriesInscription) : "arbitrage",
     sexe: participant.sexe || "Non renseigné", dateNaissance: participant.dateNaissance || "", ligue: "", pays: "",
-    typeInscription: participant.typeInscription || "Compétiteur", roleArbitre: participant.typeInscription === "Arbitre" ? (Array.isArray(participant.fonctionArbitrage) ? participant.fonctionArbitrage.join(", ") : participant.fonctionArbitrage || "Arbitre") : "", fonctionArbitrage: participant.typeInscription === "Arbitre" ? (Array.isArray(participant.fonctionArbitrage) ? participant.fonctionArbitrage.filter(Boolean) : (participant.fonctionArbitrage ? [participant.fonctionArbitrage] : [])) : [], observations: participant.observations || "",
+    typeInscription: participant.typeInscription || "Compétiteur", roleArbitre: hasRefereeRole(participant.typeInscription) ? (Array.isArray(participant.fonctionArbitrage) ? participant.fonctionArbitrage.join(", ") : participant.fonctionArbitrage || "Arbitre") : "", fonctionArbitrage: hasRefereeRole(participant.typeInscription) ? (Array.isArray(participant.fonctionArbitrage) ? participant.fonctionArbitrage.filter(Boolean) : (participant.fonctionArbitrage ? [participant.fonctionArbitrage] : [])) : [], observations: participant.observations || "",
     statutInscription: participant.statutInscription || "À valider",
   };
 }
@@ -75,7 +93,7 @@ function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
   function handleClubChange(event) { const { name, value } = event.target; setForm((current) => ({ ...current, [name]: value })); }
   function handleParticipantChange(index, field, value) { setForm((current) => ({ ...current, participants: current.participants.map((row, rowIndex) => {
     if (rowIndex !== index) return row;
-    if (field === "typeInscription") return { ...row, typeInscription: value, discipline: Array.isArray(row.discipline) ? row.discipline : row.discipline ? [row.discipline] : [], fonctionArbitrage: value === "Arbitre" ? (Array.isArray(row.fonctionArbitrage) ? row.fonctionArbitrage : row.fonctionArbitrage ? [row.fonctionArbitrage] : []) : [] };
+    if (field === "typeInscription") return normalizeParticipantTypeChange(row, value);
     return { ...row, [field]: value };
   }) })); }
   function clearParticipantRows() { if (window.confirm("Effacer toutes les lignes d’inscription ?")) setForm((current) => ({ ...current, participants: createEmptyParticipantRows(15) })); }
@@ -96,7 +114,7 @@ function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
   function exportCompetition() { const blob = new Blob([JSON.stringify(competition, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "nanbudo-competition.json"; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); }
   function sortBy(key) { setSort((current) => ({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" })); }
   const clubs = [...new Set(competitors.map((competitor) => competitor.club).filter(Boolean))];
-  const referees = competitors.filter((competitor) => competitor.typeInscription === "Arbitre" && (competitor.fonctionArbitrage?.length || competitor.roleArbitre));
+  const referees = competitors.filter((competitor) => hasRefereeRole(competitor.typeInscription) && (competitor.fonctionArbitrage?.length || competitor.roleArbitre));
   const publicRegistrationUrl = `${window.location.origin}${import.meta.env.BASE_URL}?competition=${competition.publicToken || competition.id}`;
 
   return <section className="competition-dashboard">
@@ -123,7 +141,7 @@ export function RegistrationForm({ form, onClubChange, onParticipantChange, onCl
     </section>
     <section className="participants-section">
       <div className="form-title"><p className="surtitle">TABLEAU DES PARTICIPANTS</p><h3>{rows.length} lignes d’inscription</h3><p>Choisissez le type d’inscription : les champs compétiteur ou arbitre s’affichent automatiquement sur chaque ligne.</p></div>
-      <div className="participants-table-wrap"><table className="participants-table"><thead><tr>{["#", "Nom", "Prénom", "Sexe", "Date de naissance", "Grade", "Type d’inscription", "Discipline", "Fonction d’arbitrage", "Observations"].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{rows.map((participant, index) => <tr key={index} className={participant.typeInscription === "Arbitre" ? "participant-referee" : ""}><td data-label="#" className="row-index">{index + 1}</td><td data-label="Nom"><input value={participant.nom} onChange={(event) => onParticipantChange(index, "nom", event.target.value)} /></td><td data-label="Prénom"><input value={participant.prenom} onChange={(event) => onParticipantChange(index, "prenom", event.target.value)} /></td><td data-label="Sexe"><select value={participant.sexe} onChange={(event) => onParticipantChange(index, "sexe", event.target.value)}><option value="">Sexe</option><option>Homme</option><option>Femme</option></select></td><td data-label="Date de naissance"><input type="date" value={participant.dateNaissance} onChange={(event) => onParticipantChange(index, "dateNaissance", event.target.value)} /></td><td data-label="Grade"><select value={participant.ceinture} onChange={(event) => onParticipantChange(index, "ceinture", event.target.value)}><option value="">Grade</option>{BELT_OPTIONS.map((belt) => <option key={belt}>{belt}</option>)}</select></td><td data-label="Type d’inscription"><select value={participant.typeInscription} onChange={(event) => onParticipantChange(index, "typeInscription", event.target.value)}><option value="">Type</option><option>Compétiteur</option><option>Arbitre</option></select></td><td data-label="Discipline"><select multiple value={Array.isArray(participant.discipline) ? participant.discipline : (participant.discipline ? [participant.discipline] : [])} onChange={(event) => onParticipantChange(index, "discipline", multiSelectValues(event))}>{REGISTRATION_CATEGORIES.map((option) => <option key={option}>{option}</option>)}</select></td><td data-label="Fonction d’arbitrage">{participant.typeInscription === "Arbitre" ? <select multiple value={Array.isArray(participant.fonctionArbitrage) ? participant.fonctionArbitrage : (participant.fonctionArbitrage ? [participant.fonctionArbitrage] : [])} onChange={(event) => onParticipantChange(index, "fonctionArbitrage", multiSelectValues(event))}>{REFEREE_FUNCTION_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select> : <span className="cell-placeholder">—</span>}</td><td data-label="Observations"><textarea value={participant.observations} onChange={(event) => onParticipantChange(index, "observations", event.target.value)} /></td></tr>)}</tbody></table></div>
+      <div className="participants-table-wrap"><table className="participants-table"><thead><tr>{["#", "Nom", "Prénom", "Sexe", "Date de naissance", "Grade", "Type d’inscription", "Discipline", "Fonction d’arbitrage", "Observations"].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{rows.map((participant, index) => <tr key={index} className={participant.typeInscription === "Arbitre" ? "participant-referee" : ""}><td data-label="#" className="row-index">{index + 1}</td><td data-label="Nom"><input value={participant.nom} onChange={(event) => onParticipantChange(index, "nom", event.target.value)} /></td><td data-label="Prénom"><input value={participant.prenom} onChange={(event) => onParticipantChange(index, "prenom", event.target.value)} /></td><td data-label="Sexe"><select value={participant.sexe} onChange={(event) => onParticipantChange(index, "sexe", event.target.value)}><option value="">Sexe</option><option>Homme</option><option>Femme</option></select></td><td data-label="Date de naissance"><input type="date" value={participant.dateNaissance} onChange={(event) => onParticipantChange(index, "dateNaissance", event.target.value)} /></td><td data-label="Grade"><select value={participant.ceinture} onChange={(event) => onParticipantChange(index, "ceinture", event.target.value)}><option value="">Grade</option>{BELT_OPTIONS.map((belt) => <option key={belt}>{belt}</option>)}</select></td><td data-label="Type d’inscription"><select value={participant.typeInscription} onChange={(event) => onParticipantChange(index, "typeInscription", event.target.value)}><option value="">Type</option>{REGISTRATION_TYPE_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></td><td data-label="Discipline">{hasCompetitorRole(participant.typeInscription) ? <select multiple required value={Array.isArray(participant.discipline) ? participant.discipline : (participant.discipline ? [participant.discipline] : [])} onChange={(event) => onParticipantChange(index, "discipline", multiSelectValues(event))}>{REGISTRATION_CATEGORIES.map((option) => <option key={option}>{option}</option>)}</select> : <span className="cell-placeholder">—</span>}</td><td data-label="Fonction d’arbitrage">{hasRefereeRole(participant.typeInscription) ? <select multiple required value={Array.isArray(participant.fonctionArbitrage) ? participant.fonctionArbitrage : (participant.fonctionArbitrage ? [participant.fonctionArbitrage] : [])} onChange={(event) => onParticipantChange(index, "fonctionArbitrage", multiSelectValues(event))}>{REFEREE_FUNCTION_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select> : <span className="cell-placeholder">—</span>}</td><td data-label="Observations"><textarea value={participant.observations} onChange={(event) => onParticipantChange(index, "observations", event.target.value)} /></td></tr>)}</tbody></table></div>
     </section>
     <div className="registration-actions"><button className="manage-button" type="button" onClick={() => onAddRows?.(5)}>➕ Rajouter 5 lignes</button><button className="delete-button" type="button" onClick={onClearRows}>Effacer les lignes</button><button className="primary" type="submit">{submitLabel}</button></div>
   </form>;
