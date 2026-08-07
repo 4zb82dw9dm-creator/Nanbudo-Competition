@@ -3,6 +3,7 @@ import MatchManager from "./MatchManager";
 import KataSheet from "./KataSheet";
 import { calculateRanking, podiumFromPool, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
+import { nextPassage } from "./competitionFeatures";
 
 const ALL_TATAMIS = "all";
 const FAVORITE_TATAMI_STORAGE_KEY = "nanbudo-favorite-tatami";
@@ -95,7 +96,9 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   if (selectedPool && selectedMatch) {
     const category = getCategory(selectedPool.categoryId);
     const matchProps = { ...selectedMatch, aka: getCompetitor(selectedMatch.akaId), shiro: getCompetitor(selectedMatch.shiroId), competitor: getCompetitor(selectedMatch.competitorId || selectedMatch.akaId), categoryName: category?.nom, poolName: selectedPool.nom, poolId: selectedPool.id };
-    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={selectedMatch.id} match={matchProps} onSave={saveMatch} /> : <MatchManager key={selectedMatch.id} match={matchProps} onSave={saveMatch} />}</div>;
+    const upcoming = nextPassage(competition, selectedPool.id, selectedMatch.id);
+    const nextProps = upcoming ? { ...upcoming.match, aka: getCompetitor(upcoming.match.akaId), shiro: getCompetitor(upcoming.match.shiroId), competitor: getCompetitor(upcoming.match.competitorId || upcoming.match.akaId), competitors: (upcoming.match.competitorIds || []).map(getCompetitor).filter(Boolean) } : null;
+    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={selectedMatch.id} match={matchProps} nextPassage={nextProps} onSave={saveMatch} /> : <MatchManager key={selectedMatch.id} match={matchProps} nextPassage={nextProps} onSave={saveMatch} />}</div>;
   }
 
   const displayedGroups = activeTatami === ALL_TATAMIS ? matchesByTatami : matchesByTatami.filter((group) => group.tatami === activeTatami);
