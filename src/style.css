@@ -2027,10 +2027,7 @@ footer span {
 
 .public-portal { min-height: 100vh; background: #f3f6fa; padding: 24px; }
 .public-portal > header { display: flex; justify-content: center; padding: 12px; }
-.public-portal > header img, .login-card img { max-height: 100px; max-width: 180px; }
+.public-portal > header img { max-height: 100px; max-width: 180px; }
 .public-event { margin: 0 auto 20px; max-width: 1200px; text-align: center; }
 .public-event h1 { color: #102f55; margin: 5px 0; }
 .confirmation { background: #e5f6e9; border: 2px solid #2e7d32; border-radius: 10px; margin: 16px auto; max-width: 1200px; padding: 16px; }
-.login-page { align-items: center; background: #eef3f8; display: flex; justify-content: center; min-height: 100vh; padding: 20px; }
-.login-card { background: white; border-radius: 14px; box-shadow: 0 12px 35px #071a3330; display: grid; gap: 16px; max-width: 420px; padding: 35px; width: 100%; }
-.login-card img { justify-self: center; }.login-card label { display: grid; gap: 6px; font-weight: 700; }.login-error { color: #a51d2d; }.logout-button { margin-left: auto; }.route-loading { padding: 40px; text-align: center; }

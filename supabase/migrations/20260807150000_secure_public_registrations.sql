@@ -7,13 +7,12 @@ create table if not exists public.competitions (
 );
 
 alter table public.competitions enable row level security;
-revoke all on public.competitions from anon;
-grant select, insert, update, delete on public.competitions to authenticated;
+grant select, insert, update, delete on public.competitions to anon, authenticated;
 
-create policy "commission members read competitions" on public.competitions for select to authenticated using (true);
-create policy "commission members create competitions" on public.competitions for insert to authenticated with check (true);
-create policy "commission members update competitions" on public.competitions for update to authenticated using (true) with check (true);
-create policy "commission members delete competitions" on public.competitions for delete to authenticated using (true);
+create policy "commission reads competitions" on public.competitions for select to anon, authenticated using (true);
+create policy "commission creates competitions" on public.competitions for insert to anon, authenticated with check (true);
+create policy "commission updates competitions" on public.competitions for update to anon, authenticated using (true) with check (true);
+create policy "commission deletes competitions" on public.competitions for delete to anon, authenticated using (true);
 
 create or replace function public.get_public_competition(requested_slug text)
 returns jsonb language sql stable security definer set search_path = public
