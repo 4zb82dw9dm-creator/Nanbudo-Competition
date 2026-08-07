@@ -1,5 +1,11 @@
 # Nanbudo Competition
 
+## Configuration sécurisée
+
+L'application utilise Supabase Auth et des routes à hash compatibles avec GitHub Pages. Copiez `.env.example` vers `.env`, renseignez l'URL et la clé anonyme du projet Supabase, puis appliquez la migration `supabase/migrations/20260807150000_secure_public_registrations.sql`. Créez les comptes Commission depuis l'administration Supabase Auth : aucune inscription de compte ni aucun mot de passe n'est exposé dans le client.
+
+Les liens clubs suivent le format `#/inscription/:slug`. Les autres routes passent par la connexion Commission. La clé anonyme est publique par conception ; la protection des données repose sur les politiques RLS et les deux fonctions SQL qui ne renvoient que les informations publiques et n'autorisent que l'ajout atomique d'inscriptions à la compétition identifiée par le slug.
+
 Application exclusivement dédiée à la gestion des compétitions de Nanbudo.
 
 ## Référence règlementaire CINDA 2025

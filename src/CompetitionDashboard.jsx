@@ -118,7 +118,7 @@ function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
   function sortBy(key) { setSort((current) => ({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" })); }
   const clubs = [...new Set(competitors.map((competitor) => competitor.club).filter(Boolean))];
   const referees = competitors.filter((competitor) => hasRefereeRole(competitor.typeInscription) && (competitor.fonctionArbitrage?.length || competitor.roleArbitre));
-  const publicRegistrationUrl = `${window.location.origin}${import.meta.env.BASE_URL}?competition=${competition.publicToken || competition.id}`;
+  const publicRegistrationUrl = `${window.location.origin}${import.meta.env.BASE_URL}#/inscription/${encodeURIComponent(competition.slug)}`;
 
   return <section className="competition-dashboard">
     <button className="back-button" type="button" onClick={onBack}>← Retour aux compétitions</button>
