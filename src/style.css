@@ -2003,3 +2003,24 @@ footer span {
     font-size: 17px;
   }
 }
+
+/* Planning dérivé des poules */
+.planning-manager { display: grid; gap: 18px; }
+.planning-heading { align-items: flex-start; }
+.planning-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.planning-session-label, .planning-break, .planning-ceremony { padding: 10px 16px; text-align: center; font-weight: 800; letter-spacing: .05em; border: 1px solid #b8c6d8; background: #edf4fb; }
+.planning-break { display: flex; justify-content: center; gap: 18px; background: #fff4ce; border-color: #e4bd45; }
+.planning-ceremony { background: #173c69; color: white; }
+.planning-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.tatami-column { min-width: 0; border: 1px solid #c7d2df; background: #f6f8fb; }
+.tatami-column > h3 { margin: 0; padding: 10px; text-align: center; color: white; background: #285f99; }
+.planning-card { margin: 9px; background: white; border: 1px solid #aebdce; box-shadow: 0 2px 5px #1232; }
+.planning-card h4, .planning-card p { margin: 7px 9px; }
+.planning-card-top { display: flex; justify-content: space-between; padding: 7px 9px; background: #dbeafb; }
+.planning-controls { display: flex; gap: 5px; padding: 6px 9px; border-top: 1px solid #dce3eb; }
+.planning-controls label { font-size: 10px; font-weight: 700; }
+.planning-controls input, .planning-controls select { display: block; max-width: 90px; padding: 3px; }
+.planning-card table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.planning-card th { color: white; background: #5189bd; }.planning-card td,.planning-card th { padding: 3px 5px; border: 1px solid #b6c1cc; text-align: left; }
+@media (max-width: 800px) { .planning-grid { display: flex; overflow-x: auto; }.tatami-column { min-width: 310px; } }
+@media print { @page { size: landscape; margin: 8mm; } body * { visibility: hidden; }.planning-manager,.planning-manager * { visibility: visible; }.planning-manager { position: absolute; inset: 0; font-size: 9px; }.planning-heading p,.planning-actions,.planning-controls,.header,.navigation,footer,.competition-dashboard-header,.competition-menu,.back-button { display: none !important; }.planning-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }.planning-card { break-inside: avoid; margin: 4px; }.planning-card table { font-size: 8px; } }
