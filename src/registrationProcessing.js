@@ -34,7 +34,7 @@ export function validateRegistrationForm(form) {
     return "";
   }
 
-  if (!form.club?.trim() || !form.responsableClub?.trim()) return "Veuillez renseigner le nom du club et le responsable du club.";
+  if (!form.club?.trim() || !form.ville?.trim() || !form.responsableClub?.trim()) return "Veuillez renseigner le nom du club, la ville et le responsable du club.";
   if (!isValidEmail(form.email)) return "Veuillez renseigner un e-mail du responsable du club valide.";
 
   const filledRows = (form.participants || []).filter((row) => !isParticipantRowEmpty(row));

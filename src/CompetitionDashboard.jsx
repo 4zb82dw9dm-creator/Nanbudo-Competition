@@ -13,7 +13,7 @@ export const REGISTRATION_CATEGORIES = DISCIPLINES.map((discipline) => disciplin
 export const REFEREE_FUNCTION_OPTIONS = ["Arbitre de table", "Fukushin", "Shushin"];
 export const REGISTRATION_TYPE_OPTIONS = ["Compétiteur", "Arbitre", "Compétiteur + Arbitre"];
 export const INITIAL_PARTICIPANT_ROW = { nom: "", prenom: "", sexe: "", dateNaissance: "", ceinture: "", typeInscription: "", discipline: [], fonctionArbitrage: [], observations: "" };
-export const INITIAL_REGISTRATION_FORM = { club: "", email: "", responsableClub: "", telephoneResponsable: "", participants: Array.from({ length: 15 }, () => ({ ...INITIAL_PARTICIPANT_ROW })) };
+export const INITIAL_REGISTRATION_FORM = { club: "", ville: "", email: "", responsableClub: "", telephoneResponsable: "", participants: Array.from({ length: 15 }, () => ({ ...INITIAL_PARTICIPANT_ROW })) };
 
 export function competitionDiscipline(categoriesInscription = []) {
   const hasKata = categoriesInscription.some((category) => category.toLowerCase().startsWith("kata"));
@@ -56,7 +56,7 @@ export function normalizeCompetitor(form, existingId) {
   return {
     id: existingId || Date.now() + Math.floor(Math.random() * 100000),
     nom: participant.nom.trim().toUpperCase(), prenom: participant.prenom.trim(), age: Number(age),
-    ceinture: participant.ceinture, grade: participant.ceinture, club: form.club.trim(), email: form.email.trim(),
+    ceinture: participant.ceinture, grade: participant.ceinture, club: form.club.trim(), ville: form.ville.trim(), email: form.email.trim(),
     responsableClub: form.responsableClub.trim(), telephoneResponsable: form.telephoneResponsable?.trim() || "",
     categoriesInscription, categorieInscription: categoriesInscription.join(", "), discipline: categoriesInscription.length ? competitionDiscipline(categoriesInscription) : "arbitrage",
     sexe: participant.sexe || "Non renseigné", dateNaissance: participant.dateNaissance || "", ligue: "", pays: "",
@@ -107,7 +107,7 @@ function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
     onUpdateCompetition({ ...competition, competitors: editingId ? competitors.map((item) => item.id === editingId ? { ...newCompetitors[0], id: editingId } : item) : [...competitors, ...newCompetitors] });
     resetForm();
   }
-  function editCompetitor(competitor) { setEditingId(competitor.id); setForm({ club: competitor.club || "", email: competitor.email || "", responsableClub: competitor.responsableClub || "", telephoneResponsable: competitor.telephoneResponsable || "", participants: [{ nom: competitor.nom || "", prenom: competitor.prenom || "", sexe: competitor.sexe || "", dateNaissance: competitor.dateNaissance || "", ceinture: competitor.ceinture || "", typeInscription: competitor.typeInscription || "Compétiteur", discipline: competitor.categoriesInscription || (competitor.categorieInscription ? [competitor.categorieInscription] : []), fonctionArbitrage: Array.isArray(competitor.fonctionArbitrage) ? competitor.fonctionArbitrage : (competitor.fonctionArbitrage || competitor.roleArbitre ? String(competitor.fonctionArbitrage || competitor.roleArbitre).split(",").map((value) => value.trim()).filter(Boolean) : []), observations: competitor.observations || "" }] }); setShowForm(true); }
+  function editCompetitor(competitor) { setEditingId(competitor.id); setForm({ club: competitor.club || "", ville: competitor.ville || "", email: competitor.email || "", responsableClub: competitor.responsableClub || "", telephoneResponsable: competitor.telephoneResponsable || "", participants: [{ nom: competitor.nom || "", prenom: competitor.prenom || "", sexe: competitor.sexe || "", dateNaissance: competitor.dateNaissance || "", ceinture: competitor.ceinture || "", typeInscription: competitor.typeInscription || "Compétiteur", discipline: competitor.categoriesInscription || (competitor.categorieInscription ? [competitor.categorieInscription] : []), fonctionArbitrage: Array.isArray(competitor.fonctionArbitrage) ? competitor.fonctionArbitrage : (competitor.fonctionArbitrage || competitor.roleArbitre ? String(competitor.fonctionArbitrage || competitor.roleArbitre).split(",").map((value) => value.trim()).filter(Boolean) : []), observations: competitor.observations || "" }] }); setShowForm(true); }
   function deleteCompetitor(id) { if (window.confirm("Supprimer cette inscription ?")) onUpdateCompetition({ ...competition, competitors: competitors.filter((competitor) => competitor.id !== id) }); }
   function validateCompetitor(id) { onUpdateCompetition({ ...competition, competitors: competitors.map((competitor) => competitor.id === id ? { ...competitor, statutInscription: "Validée" } : competitor) }); }
   function closeRegistrations() { if (competitors.length === 0) return alert("Ajoutez au moins une inscription avant la clôture."); onUpdateCompetition({ ...competition, statut: "Catégories générées", categories: buildAutomaticCategories(competitors), pools: [] }); setView("categories"); }
@@ -137,7 +137,7 @@ export function RegistrationForm({ form, onClubChange, onParticipantChange, onCl
   return <form className="club-registration-form" onSubmit={onSubmit}>
     <section className="club-info-panel">
       <div className="form-title"><p className="surtitle">FORMULAIRE CLUB</p><h3>Inscription collective par club</h3><p>Renseignez le club une seule fois, puis ajoutez autant de lignes que nécessaire pour inscrire compétiteurs ou arbitres sans revenir en arrière.</p></div>
-      <div className="club-grid"><label>Nom du club *<input name="club" value={form.club} onChange={onClubChange} required /></label><label>Responsable du club *<input name="responsableClub" value={form.responsableClub} onChange={onClubChange} required /></label><label>E-mail du responsable *<input name="email" type="email" value={form.email} onChange={onClubChange} required /></label><label>Téléphone<input name="telephoneResponsable" value={form.telephoneResponsable} onChange={onClubChange} /></label></div>
+      <div className="club-grid"><label>Nom du club *<input name="club" value={form.club} onChange={onClubChange} required /></label><label>Ville *<input name="ville" value={form.ville} onChange={onClubChange} required /></label><label>Responsable du club *<input name="responsableClub" value={form.responsableClub} onChange={onClubChange} required /></label><label>E-mail du responsable *<input name="email" type="email" value={form.email} onChange={onClubChange} required /></label><label>Téléphone<input name="telephoneResponsable" value={form.telephoneResponsable} onChange={onClubChange} /></label></div>
     </section>
     <section className="participants-section">
       <div className="form-title"><p className="surtitle">TABLEAU DES PARTICIPANTS</p><h3>{rows.length} lignes d’inscription</h3><p>Choisissez le type d’inscription : les champs compétiteur ou arbitre s’affichent automatiquement sur chaque ligne.</p></div>
