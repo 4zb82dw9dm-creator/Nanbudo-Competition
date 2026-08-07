@@ -1,41 +1,23 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import CompetitionDashboard from "./CompetitionDashboard";
 import { COMPLETE_TEST_COMPETITION_NAME, createCompleteTestCompetition } from "./demoCompetitionData";
 import { slugify } from "./routing";
+import { createBackup, validateBackup } from "./competitionFeatures";
 
-function CompetitionManager({ competitions, setCompetitions, initialCompetitionId = null, onDeleteCompetition }) {
-  const [showForm, setShowForm] = useState(false);
-  const [selectedCompetitionId, setSelectedCompetitionId] = useState(initialCompetitionId);
+export default function CompetitionManager({ competitions, setCompetitions, initialCompetitionId = null, onDeleteCompetition }) {
+  const [showForm, setShowForm] = useState(false), [showHistory, setShowHistory] = useState(false), [selectedCompetitionId, setSelectedCompetitionId] = useState(initialCompetitionId);
   const [form, setForm] = useState({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
-
-  function createCompetition(event) {
-    event.preventDefault();
-    if (!form.nom.trim()) return alert("Indique le nom de la compétition.");
-    setCompetitions((current) => [...current, { id: crypto.randomUUID(), slug: `${slugify(form.nom)}-${crypto.randomUUID().slice(0, 8)}`, nom: form.nom.trim(), date: form.date, lieu: form.lieu.trim(), tatamis: Number(form.tatamis) || 1, horairesActifs: form.horairesActifs, statut: "Inscriptions ouvertes", competitors: [], categories: [], pools: [] }]);
-    setForm({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
-    setShowForm(false);
-  }
-
-  function createTestCompetition() {
-    if (competitions.some((competition) => competition.nom === COMPLETE_TEST_COMPETITION_NAME)) {
-      alert(`${COMPLETE_TEST_COMPETITION_NAME} existe déjà.`);
-      return;
-    }
-    const testCompetition = createCompleteTestCompetition();
-    setCompetitions((current) => [...current, { ...testCompetition, id: String(testCompetition.id), slug: `${slugify(testCompetition.nom)}-${crypto.randomUUID().slice(0, 8)}` }]);
-  }
-
-  function updateCompetition(updatedCompetition) { setCompetitions((current) => current.map((competition) => competition.id === updatedCompetition.id ? updatedCompetition : competition)); }
-  async function deleteCompetition(id) { if (window.confirm("Supprimer cette compétition ?")) { await onDeleteCompetition?.(id); setCompetitions((current) => current.filter((competition) => competition.id !== id)); } }
-  const selectedCompetition = competitions.find((competition) => competition.id === selectedCompetitionId);
-  if (selectedCompetition) return <CompetitionDashboard competition={selectedCompetition} onBack={() => setSelectedCompetitionId(null)} onUpdateCompetition={updateCompetition} />;
-
-  return (
-    <section className="competition-manager">
-      <div className="manager-header"><div><p className="surtitle">COMPÉTITIONS</p><h2>Gestion des compétitions</h2><p>Créez une compétition puis suivez son cycle complet.</p></div><div className="competition-header-actions"><button className="primary" onClick={() => setShowForm((current) => !current)}>{showForm ? "Annuler" : "+ Nouvelle compétition"}</button><button className="manage-button" type="button" onClick={createTestCompetition}>Créer une compétition test complète</button></div></div>
-      {showForm && <form className="competition-form" onSubmit={createCompetition}><h3>Nouvelle compétition</h3><label>Nom<input name="nom" value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} required /></label><div className="form-row"><label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label>Lieu<input value={form.lieu} onChange={(e) => setForm({ ...form, lieu: e.target.value })} /></label></div><div className="form-row"><label>Tatamis<input type="number" min="1" value={form.tatamis} onChange={(e) => setForm({ ...form, tatamis: e.target.value })} /></label><label className="checkbox-line"><input type="checkbox" checked={form.horairesActifs} onChange={(e) => setForm({ ...form, horairesActifs: e.target.checked })} /> Activer la planification horaire</label></div><button className="primary" type="submit">Créer</button></form>}
-      {competitions.length === 0 ? <div className="empty-state"><span className="empty-number">0</span><h3>Aucune compétition</h3><p>Créez votre première compétition pour recevoir les inscriptions.</p></div> : <div className="managed-competitions">{competitions.map((competition) => <article className="managed-competition" key={competition.id}><div className="competition-main"><span className="status">{competition.statut}</span><h3>{competition.nom}</h3><p>{competition.lieu || "Lieu à définir"} · {competition.date || "Date à définir"}</p></div><div className="competition-stats"><div><strong>{competition.competitors?.length || 0}</strong><span>Inscriptions</span></div><div><strong>{competition.categories?.length || 0}</strong><span>Catégories</span></div></div><div className="competition-actions"><button className="manage-button" onClick={() => setSelectedCompetitionId(competition.id)}>Gérer</button><button className="delete-button" onClick={() => deleteCompetition(competition.id)}>Supprimer</button></div></article>)}</div>}
-    </section>
-  );
+  const restoreInput = useRef(null);
+  function createCompetition(event) { event.preventDefault(); if (!form.nom.trim()) return alert("Indique le nom de la compétition."); setCompetitions((current) => [...current, { id: crypto.randomUUID(), slug: `${slugify(form.nom)}-${crypto.randomUUID().slice(0, 8)}`, ...form, nom: form.nom.trim(), lieu: form.lieu.trim(), tatamis: 3, statut: "Inscriptions ouvertes", competitors: [], categories: [], pools: [], refereeAssignments: {} }]); setForm({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false }); setShowForm(false); }
+  function createTestCompetition() { if (competitions.some((item) => item.nom === COMPLETE_TEST_COMPETITION_NAME)) return alert(`${COMPLETE_TEST_COMPETITION_NAME} existe déjà.`); const item = createCompleteTestCompetition(); setCompetitions((current) => [...current, { ...item, id: String(item.id), slug: `${slugify(item.nom)}-${crypto.randomUUID().slice(0, 8)}` }]); }
+  function updateCompetition(updated) { setCompetitions((current) => current.map((item) => item.id === updated.id ? updated : item)); }
+  async function deleteCompetition(id) { if (window.confirm("Supprimer cette compétition ?")) { await onDeleteCompetition?.(id); setCompetitions((current) => current.filter((item) => item.id !== id)); } }
+  function downloadBackup(competition) { const blob = new Blob([JSON.stringify(createBackup(competition), null, 2)], { type: "application/json" }), url = URL.createObjectURL(blob), link = document.createElement("a"); link.href = url; link.download = `sauvegarde-${slugify(competition.nom)}-${competition.date || "sans-date"}.nanbudo.json`; link.click(); URL.revokeObjectURL(url); }
+  async function restoreBackup(event) { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; try { const found = validateBackup(JSON.parse(await file.text())).competition; const overwrite = competitions.some((item) => item.id === found.id); if (!window.confirm(`Sauvegarde détectée : ${found.nom} (${found.date || "date non renseignée"}).\n\nRestaurer${overwrite ? " et écraser la version existante" : ""} ?`)) return; setCompetitions((current) => overwrite ? current.map((item) => item.id === found.id ? found : item) : [...current, found]); alert("Compétition restaurée avec succès."); } catch (error) { alert(error.message); } }
+  const selected = competitions.find((item) => item.id === selectedCompetitionId);
+  if (selected) { const readOnly = showHistory && String(selected.statut || "").toLowerCase().includes("termin"); return <CompetitionDashboard competition={selected} onBack={() => setSelectedCompetitionId(null)} onUpdateCompetition={readOnly ? () => {} : updateCompetition} readOnly={readOnly}/>; }
+  const visible = showHistory ? competitions.filter((item) => String(item.statut || "").toLowerCase().includes("termin")) : competitions;
+  return <section className="competition-manager"><div className="manager-header"><div><p className="surtitle">COMMISSION COMPÉTITION</p><h2>{showHistory ? "Historique" : "Gestion des compétitions"}</h2><p>{showHistory ? "Compétitions terminées accessibles en consultation seule." : "Créez une compétition puis suivez son cycle complet."}</p></div><div className="competition-header-actions"><button onClick={() => setShowHistory((value) => !value)}>{showHistory ? "Compétitions actives" : "Historique"}</button><button onClick={() => restoreInput.current?.click()}>Restaurer une compétition</button><input ref={restoreInput} hidden type="file" accept="application/json,.json" onChange={restoreBackup}/>{!showHistory && <><button className="primary" onClick={() => setShowForm((value) => !value)}>{showForm ? "Annuler" : "+ Nouvelle compétition"}</button><button className="manage-button" onClick={createTestCompetition}>Créer une compétition test complète</button></>}</div></div>
+  {showForm && !showHistory && <form className="competition-form" onSubmit={createCompetition}><h3>Nouvelle compétition</h3><label>Nom<input value={form.nom} onChange={(event) => setForm({...form, nom:event.target.value})} required/></label><div className="form-row"><label>Date<input type="date" value={form.date} onChange={(event) => setForm({...form,date:event.target.value})}/></label><label>Lieu<input value={form.lieu} onChange={(event) => setForm({...form,lieu:event.target.value})}/></label></div><label className="checkbox-line"><input type="checkbox" checked={form.horairesActifs} onChange={(event) => setForm({...form,horairesActifs:event.target.checked})}/> Activer la planification horaire</label><p>La compétition utilisera les 3 tatamis réglementaires.</p><button className="primary">Créer</button></form>}
+  {visible.length === 0 ? <div className="empty-state"><span className="empty-number">0</span><h3>{showHistory ? "Aucune compétition terminée" : "Aucune compétition"}</h3><p>{showHistory ? "Les compétitions terminées apparaîtront ici." : "Créez votre première compétition."}</p></div> : <div className="managed-competitions">{visible.map((competition) => <article className="managed-competition" key={competition.id}><div className="competition-main"><span className="status">{competition.statut}</span><h3>{competition.nom}</h3><p>{competition.lieu || "Lieu à définir"} · {competition.date || "Date à définir"}</p></div><div className="competition-stats"><div><strong>{competition.competitors?.length || 0}</strong><span>Inscriptions</span></div><div><strong>{new Set((competition.competitors || []).map((item) => item.club).filter(Boolean)).size}</strong><span>Clubs</span></div></div><div className="competition-actions"><button className="manage-button" onClick={() => setSelectedCompetitionId(competition.id)}>{showHistory ? "Ouvrir" : "Gérer"}</button><button onClick={() => downloadBackup(competition)}>Sauvegarder la compétition</button>{!showHistory && <button className="delete-button" onClick={() => deleteCompetition(competition.id)}>Supprimer</button>}</div></article>)}</div>}</section>;
 }
-export default CompetitionManager;
