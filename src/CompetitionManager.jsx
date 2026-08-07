@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import CompetitionDashboard, { INITIAL_REGISTRATION_FORM, RegistrationForm, createEmptyParticipantRows, normalizeCompetitor } from "./CompetitionDashboard";
+import CompetitionDashboard, { INITIAL_REGISTRATION_FORM, RegistrationForm, createEmptyParticipantRows, normalizeCompetitor, normalizeParticipantTypeChange } from "./CompetitionDashboard";
 import { createDemoCompetitionTest30 } from "./demoCompetitionData";
 import { persistCompetitions, processBulkRegistration, reportRegistrationFailure } from "./registrationProcessing";
 
@@ -33,7 +33,7 @@ function CompetitionManager() {
   function handleRegistrationClubChange(event) { const { name, value } = event.target; setRegistrationForm((current) => ({ ...current, [name]: value })); }
   function handleRegistrationParticipantChange(index, field, value) { setRegistrationForm((current) => ({ ...current, participants: current.participants.map((row, rowIndex) => {
     if (rowIndex !== index) return row;
-    if (field === "typeInscription") return { ...row, typeInscription: value, discipline: Array.isArray(row.discipline) ? row.discipline : row.discipline ? [row.discipline] : [], fonctionArbitrage: value === "Arbitre" ? (Array.isArray(row.fonctionArbitrage) ? row.fonctionArbitrage : row.fonctionArbitrage ? [row.fonctionArbitrage] : []) : [] };
+    if (field === "typeInscription") return normalizeParticipantTypeChange(row, value);
     return { ...row, [field]: value };
   }) })); }
   function clearRegistrationRows() { setRegistrationForm((current) => ({ ...current, participants: createEmptyParticipantRows(15) })); }

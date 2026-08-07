@@ -11,6 +11,14 @@ export const REGISTRATION_LOG_STEPS = {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STORAGE_KEY = "nanbudo_competitions";
 
+function hasCompetitorRole(typeInscription) {
+  return typeInscription === "Compétiteur" || typeInscription === "Compétiteur + Arbitre";
+}
+
+function hasRefereeRole(typeInscription) {
+  return typeInscription === "Arbitre" || typeInscription === "Compétiteur + Arbitre";
+}
+
 export function isValidEmail(email) {
   return EMAIL_PATTERN.test(String(email || "").trim());
 }
@@ -34,8 +42,8 @@ export function validateRegistrationForm(form) {
 
   for (const [index, row] of filledRows.entries()) {
     if (!row.nom?.trim() || !row.prenom?.trim() || !row.sexe || !row.dateNaissance || !row.ceinture || !row.typeInscription) return `La ligne ${index + 1} est incomplète : nom, prénom, sexe, date de naissance, grade et type d’inscription sont obligatoires.`;
-    if (row.typeInscription === "Compétiteur" && (Array.isArray(row.discipline) ? row.discipline.length === 0 : !row.discipline)) return `La ligne ${index + 1} est incomplète : choisissez une discipline pour ce compétiteur.`;
-    if (row.typeInscription === "Arbitre" && (Array.isArray(row.fonctionArbitrage) ? row.fonctionArbitrage.length === 0 : !row.fonctionArbitrage)) return `La ligne ${index + 1} est incomplète : choisissez une fonction d’arbitrage.`;
+    if (hasCompetitorRole(row.typeInscription) && (Array.isArray(row.discipline) ? row.discipline.length === 0 : !row.discipline)) return `La ligne ${index + 1} est incomplète : choisissez une discipline pour ce compétiteur.`;
+    if (hasRefereeRole(row.typeInscription) && (Array.isArray(row.fonctionArbitrage) ? row.fonctionArbitrage.length === 0 : !row.fonctionArbitrage)) return `La ligne ${index + 1} est incomplète : choisissez une fonction d’arbitrage.`;
   }
 
   return "";
