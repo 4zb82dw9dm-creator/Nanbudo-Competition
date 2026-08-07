@@ -27,17 +27,7 @@ function App() {
       </nav>
 
       <main className="content">
-        {section === "accueil" && (
-          <>
-            <section className="hero hero-wallpaper"></section>
-
-            <section className="dashboard">
-              <div className="card"><span className="number">1</span><h3>Inscriptions</h3><p>Nom, prénom, sexe, naissance, grade, club, ligue, pays et disciplines uniquement.</p></div>
-              <div className="card"><span className="number">2</span><h3>Organisation</h3><p>Catégories, poules, tirage, tatamis et ordre de passage.</p></div>
-              <div className="card"><span className="number">3</span><h3>Arbitrage</h3><p>Un clic sur un match ouvre directement la feuille officielle adaptée.</p></div>
-            </section>
-          </>
-        )}
+        {section === "accueil" && <section className="hero hero-wallpaper" aria-label="Combattante de Nanbudo en action"></section>}
         {section === "competitions" && <CompetitionManager />}
       </main>
 
