@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import CompetitionDashboard, { INITIAL_REGISTRATION_FORM, RegistrationForm, createEmptyParticipantRows, normalizeCompetitor, normalizeParticipantTypeChange } from "./CompetitionDashboard";
 import { processBulkRegistration, reportRegistrationFailure } from "./registrationProcessing";
+import { createDemoCompetition, DEMO_COMPETITION_NAME } from "./demoCompetitionData";
 
 function CompetitionManager({ competitions, setCompetitions, initialCompetitionId = null }) {
   const [showForm, setShowForm] = useState(false);
@@ -17,6 +18,17 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
     setCompetitions((current) => [...current, { id: Date.now(), publicToken: crypto.randomUUID(), nom: form.nom.trim(), date: form.date, lieu: form.lieu.trim(), tatamis: Number(form.tatamis) || 1, horairesActifs: form.horairesActifs, statut: "Inscriptions ouvertes", competitors: [], categories: [], pools: [] }]);
     setForm({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
     setShowForm(false);
+  }
+
+  function createCompleteTestCompetition() {
+    if (competitions.some((competition) => competition.nom.trim().toLowerCase() === DEMO_COMPETITION_NAME.toLowerCase())) {
+      alert(`La compétition « ${DEMO_COMPETITION_NAME} » existe déjà.`);
+      return;
+    }
+    const demoCompetition = createDemoCompetition();
+    setCompetitions((current) => [...current, demoCompetition]);
+    setSelectedCompetitionId(demoCompetition.id);
+    alert("La compétition test complète a été créée.");
   }
 
   function updateCompetition(updatedCompetition) { setCompetitions((current) => current.map((competition) => competition.id === updatedCompetition.id ? updatedCompetition : competition)); }
@@ -58,7 +70,7 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
 
   return (
     <section className="competition-manager">
-      <div className="manager-header"><div><p className="surtitle">COMPÉTITIONS</p><h2>Gestion des compétitions</h2><p>Créez une compétition puis suivez son cycle complet.</p></div><button className="primary" onClick={() => setShowForm((current) => !current)}>{showForm ? "Annuler" : "+ Nouvelle compétition"}</button></div>
+      <div className="manager-header"><div><p className="surtitle">COMPÉTITIONS</p><h2>Gestion des compétitions</h2><p>Créez une compétition puis suivez son cycle complet.</p></div><div className="competition-actions"><button className="manage-button" type="button" onClick={createCompleteTestCompetition}>Créer une compétition test complète</button><button className="primary" onClick={() => setShowForm((current) => !current)}>{showForm ? "Annuler" : "+ Nouvelle compétition"}</button></div></div>
       {showForm && <form className="competition-form" onSubmit={createCompetition}><h3>Nouvelle compétition</h3><label>Nom<input name="nom" value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} required /></label><div className="form-row"><label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label>Lieu<input value={form.lieu} onChange={(e) => setForm({ ...form, lieu: e.target.value })} /></label></div><div className="form-row"><label>Tatamis<input type="number" min="1" value={form.tatamis} onChange={(e) => setForm({ ...form, tatamis: e.target.value })} /></label><label className="checkbox-line"><input type="checkbox" checked={form.horairesActifs} onChange={(e) => setForm({ ...form, horairesActifs: e.target.checked })} /> Activer la planification horaire</label></div><button className="primary" type="submit">Créer</button></form>}
       {competitions.length === 0 ? <div className="empty-state"><span className="empty-number">0</span><h3>Aucune compétition</h3><p>Créez votre première compétition pour recevoir les inscriptions.</p></div> : <div className="managed-competitions">{competitions.map((competition) => <article className="managed-competition" key={competition.id}><div className="competition-main"><span className="status">{competition.statut}</span><h3>{competition.nom}</h3><p>{competition.lieu || "Lieu à définir"} · {competition.date || "Date à définir"}</p></div><div className="competition-stats"><div><strong>{competition.competitors?.length || 0}</strong><span>Inscriptions</span></div><div><strong>{competition.categories?.length || 0}</strong><span>Catégories</span></div></div><div className="competition-actions"><button className="manage-button" onClick={() => setSelectedCompetitionId(competition.id)}>Gérer</button><button className="delete-button" onClick={() => deleteCompetition(competition.id)}>Supprimer</button></div></article>)}</div>}
     </section>
