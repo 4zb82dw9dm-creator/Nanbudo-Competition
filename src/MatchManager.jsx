@@ -103,19 +103,32 @@ function removePenaltyFromChain(penalties, penaltyId) {
   return updatedPenalties;
 }
 
+function createScoreSheetState(match) {
+  return {
+    kataAka: match?.kataAka || ["", "", ""],
+    kataShiro: match?.kataShiro || ["", "", ""],
+    assaults: relabelVotes(match?.assaults, ASSAULTS),
+    tieBreakAssaults: relabelVotes(match?.tieBreakAssaults, TIE_BREAK_ASSAULTS),
+    finalFlags: match?.finalFlags || ["", "", ""],
+    penalties: match?.penalties || { aka: [], shiro: [] },
+  };
+}
+
 function MatchManager({ match, onSave }) {
-  const [kataAka, setKataAka] = useState(match?.kataAka || ["", "", ""]);
-  const [kataShiro, setKataShiro] = useState(match?.kataShiro || ["", "", ""]);
-  const [assaults, setAssaults] = useState(() => relabelVotes(match?.assaults, ASSAULTS));
-  const [tieBreakAssaults, setTieBreakAssaults] = useState(() => relabelVotes(match?.tieBreakAssaults, TIE_BREAK_ASSAULTS));
-  const [finalFlags, setFinalFlags] = useState(match?.finalFlags || ["", "", ""]);
-  const [penalties, setPenalties] = useState(match?.penalties || { aka: [], shiro: [] });
+  const initialScoreSheet = createScoreSheetState(match);
+  const [kataAka, setKataAka] = useState(initialScoreSheet.kataAka);
+  const [kataShiro, setKataShiro] = useState(initialScoreSheet.kataShiro);
+  const [assaults, setAssaults] = useState(initialScoreSheet.assaults);
+  const [tieBreakAssaults, setTieBreakAssaults] = useState(initialScoreSheet.tieBreakAssaults);
+  const [finalFlags, setFinalFlags] = useState(initialScoreSheet.finalFlags);
+  const [penalties, setPenalties] = useState(initialScoreSheet.penalties);
   const automaticSaveDone = useRef(false);
   const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
   const isLocked = match.statut === "Terminé";
   const sum = (values) => values.reduce((total, value) => total + Number(value || 0), 0);
   const kataScoreAka = sum(kataAka);
   const kataScoreShiro = sum(kataShiro);
+  const kataReady = kataAka.every((value) => value !== "") && kataShiro.every((value) => value !== "") && kataScoreAka !== kataScoreShiro;
 
   const randoriScore = useMemo(() => {
     const main = scoreRows(assaults);
@@ -185,10 +198,25 @@ function MatchManager({ match, onSave }) {
   }
 
   function save() {
-    if (isKata) return onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : kataScoreShiro > kataScoreAka ? "shiro" : null });
+    if (isKata) {
+      if (!kataReady) return alert("Saisissez toutes les notes et départagez le match avant de valider.");
+      return onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : "shiro" });
+    }
     if (isLocked) return;
+    if (!randoriScore.winner) return alert("Saisissez un score complet et désignez un vainqueur avant de valider.");
     onSave({ assaults, tieBreakAssaults, finalFlags, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) });
   }
+
+  useEffect(() => {
+    const nextScoreSheet = createScoreSheetState(match);
+    setKataAka(nextScoreSheet.kataAka);
+    setKataShiro(nextScoreSheet.kataShiro);
+    setAssaults(nextScoreSheet.assaults);
+    setTieBreakAssaults(nextScoreSheet.tieBreakAssaults);
+    setFinalFlags(nextScoreSheet.finalFlags);
+    setPenalties(nextScoreSheet.penalties);
+    automaticSaveDone.current = false;
+  }, [match.id]);
 
   useEffect(() => {
     if (isKata || isLocked || automaticSaveDone.current) return;
@@ -197,9 +225,9 @@ function MatchManager({ match, onSave }) {
     save();
   }, [isKata, isLocked, penalties, randoriScore.winner]);
 
-  if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save}>Valider le résultat</button></div></section>;
+  if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save} disabled={!kataReady}>Valider le résultat</button></div></section>;
 
-  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} disabled={isLocked} /><AssaultCards title="Les 7 assauts" rows={assaults} disabled={isLocked} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} />{randoriScore.phase === "tieBreak" && <AssaultCards title="Départage automatique" rows={tieBreakAssaults} disabled={isLocked} onVote={(rowIndex, judgeIndex, value) => setVote("tie", rowIndex, judgeIndex, value)} />}{randoriScore.phase === "finalFlags" && <div className="final-flags"><h3>Décision finale aux drapeaux</h3><div className="final-flag-cards">{finalFlags.map((vote, index) => <article className="final-flag-card" key={index}><strong>{FUKUSHIN[index]}</strong><DecisionButtons value={vote} options={FINAL_DECISIONS} disabled={isLocked} onChange={(value) => !isLocked && setFinalFlags((current) => current.map((item, itemIndex) => itemIndex === index ? value : item))} /></article>)}</div></div>}<div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>Vainqueur</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / départage en cours"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked}>{isLocked ? "Combat validé" : "Valider le combat"}</button></div></section>;
+  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} disabled={isLocked} /><AssaultCards title="Les 7 assauts" rows={assaults} disabled={isLocked} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} />{randoriScore.phase === "tieBreak" && <AssaultCards title="Départage automatique" rows={tieBreakAssaults} disabled={isLocked} onVote={(rowIndex, judgeIndex, value) => setVote("tie", rowIndex, judgeIndex, value)} />}{randoriScore.phase === "finalFlags" && <div className="final-flags"><h3>Décision finale aux drapeaux</h3><div className="final-flag-cards">{finalFlags.map((vote, index) => <article className="final-flag-card" key={index}><strong>{FUKUSHIN[index]}</strong><DecisionButtons value={vote} options={FINAL_DECISIONS} disabled={isLocked} onChange={(value) => !isLocked && setFinalFlags((current) => current.map((item, itemIndex) => itemIndex === index ? value : item))} /></article>)}</div></div>}<div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>Vainqueur</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / départage en cours"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked || !randoriScore.winner}>{isLocked ? "Combat validé" : "Valider le combat"}</button></div></section>;
 }
 
 function ControlPanel({ match, score, penalties, onAddPenalty, onRemovePenalty, disabled }) { return <div className="randori-control-zone" aria-label="Console de pilotage du combat">{["aka", "shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} onAddPenalty={(penalty) => onAddPenalty(side, penalty)} onRemovePenalty={(penaltyId) => onRemovePenalty(side, penaltyId)} disabled={disabled} />)}</div>; }
