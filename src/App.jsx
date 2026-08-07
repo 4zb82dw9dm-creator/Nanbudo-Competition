@@ -2,8 +2,13 @@ import { useState } from "react";
 import "./style.css";
 import CompetitionManager from "./CompetitionManager";
 
+function shouldOpenCompetitionSection() {
+  const searchParams = new URLSearchParams(window.location.search);
+  return window.location.hash.startsWith("#inscription-") || searchParams.has("competition") || window.location.pathname.replace(/\/$/, "").endsWith("/inscription");
+}
+
 function App() {
-  const [section, setSection] = useState("accueil");
+  const [section, setSection] = useState(() => shouldOpenCompetitionSection() ? "competitions" : "accueil");
 
   return (
     <div className={`app ${section === "accueil" ? "home-screen" : ""}`}>
