@@ -61,19 +61,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   const selectedPool = pools.find((pool) => pool.id === selected?.poolId);
   const selectedMatch = selectedPool?.matches.find((match) => match.id === selected?.matchId);
 
-  function findNextMatch(currentPoolId, currentMatchId) {
-    const list = activeTatami === ALL_TATAMIS
-      ? matchesByTatami.flatMap((group) => group.matches)
-      : matchesByTatami.find((group) => group.tatami === activeTatami)?.matches || [];
-    const currentIndex = list.findIndex(({ pool, match }) => pool.id === currentPoolId && match.id === currentMatchId);
-    const candidates = currentIndex >= 0 ? list.slice(currentIndex + 1) : list;
-    return candidates.find(({ match }) => match.statut !== "Terminé");
-  }
-
   function saveMatch(result) {
-    const currentPoolId = selectedPool.id;
-    const currentMatchId = selectedMatch.id;
-    const nextMatch = findNextMatch(currentPoolId, currentMatchId);
     const winnerId = competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? selectedMatch.akaId : result.vainqueur === "aka" ? selectedMatch.akaId : result.vainqueur === "shiro" ? selectedMatch.shiroId : null;
     const updatedPools = pools.map((pool) => {
       if (pool.id !== selectedPool.id) return pool;
@@ -82,7 +70,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
       return { ...pool, matches, rankingLocked: complete ? calculateRanking({ ...pool, matches }) : pool.rankingLocked, podium: complete ? podiumFromPool({ ...pool, matches }) : pool.podium, statut: complete ? "Terminée" : pool.statut };
     });
     onUpdateCompetition({ ...competition, pools: updatedPools, statut: "Résultats disponibles" });
-    setSelected(nextMatch ? { poolId: nextMatch.pool.id, matchId: nextMatch.match.id } : null);
+    setSelected(null);
   }
 
   function tatamiProgress(matches) {
