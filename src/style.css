@@ -1574,6 +1574,10 @@ footer span {
   cursor: pointer;
 }
 
+.participants-table select[multiple] {
+  min-height: 96px;
+}
+
 .participants-table tr:nth-child(even) td {
   background: #fbfcff;
 }
@@ -1604,7 +1608,7 @@ footer span {
 
 .participants-table {
   border-collapse: collapse;
-  min-width: 1680px;
+  min-width: 1500px;
   table-layout: fixed;
   width: 100%;
 }
@@ -1639,17 +1643,16 @@ footer span {
 }
 
 .participants-table th:nth-child(5),
-.participants-table th:nth-child(8),
-.participants-table th:nth-child(11) {
-  width: 11%;
+.participants-table th:nth-child(8) {
+  width: 13%;
 }
 
 .participants-table th:nth-child(9) {
-  width: 15%;
+  width: 14%;
 }
 
 .participants-table th:nth-child(10) {
-  width: 10%;
+  width: 12%;
 }
 
 .row-index,
