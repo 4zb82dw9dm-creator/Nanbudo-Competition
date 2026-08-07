@@ -1859,3 +1859,18 @@ footer span {
     font-size: 17px;
   }
 }
+
+.export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.referees-manager .registrations-table select {
+  min-width: 130px;
+}
+
+.referees-manager .filters {
+  justify-content: flex-end;
+}
