@@ -32,8 +32,7 @@ button {
 }
 
 .app.home-screen {
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   color: white;
   background: #071a33;
 }
@@ -168,17 +167,16 @@ button {
 .home-screen .hero {
   position: relative;
   width: 100%;
-  height: 100%;
-  min-height: 0;
+  min-height: calc(100vh - 205px);
   border-radius: 0;
   box-shadow: none;
 }
 
-.home-screen .hero::after {
+.home-screen .hero::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: linear-gradient(110deg, rgba(2, 12, 28, 0.55), rgba(2, 12, 28, 0.22) 55%, rgba(2, 12, 28, 0.48));
   pointer-events: none;
 }
 
@@ -192,6 +190,141 @@ button {
 .home-screen .hero-wallpaper {
   background-position: 58% 25%;
 }
+
+.home-competitions {
+  display: grid;
+  place-items: center;
+  padding: clamp(36px, 6vw, 80px) 6%;
+}
+
+.home-competition-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(16px, 2vw, 24px);
+  width: min(1200px, 100%);
+}
+
+.home-competition-grid.single {
+  grid-template-columns: minmax(280px, 520px);
+  justify-content: center;
+}
+
+.home-competition-card,
+.home-empty-state {
+  color: white;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.09));
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.home-competition-card {
+  min-height: 290px;
+  padding: clamp(22px, 3vw, 30px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.home-competition-card:hover,
+.home-competition-card:focus-visible {
+  transform: translateY(-5px) scale(1.025);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.29), rgba(255, 255, 255, 0.14));
+  border-color: rgba(255, 255, 255, 0.52);
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.32);
+  outline: none;
+}
+
+.home-competition-card:focus-visible {
+  box-shadow: 0 0 0 3px #c9a227, 0 24px 55px rgba(0, 0, 0, 0.32);
+}
+
+.home-card-heading {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: clamp(20px, 2.2vw, 26px);
+  line-height: 1.2;
+}
+
+.home-card-details {
+  display: grid;
+  gap: 10px;
+  margin: 24px 0 20px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.home-card-details > span {
+  display: grid;
+  grid-template-columns: 25px 1fr;
+  gap: 4px;
+  align-items: center;
+}
+
+.home-card-status {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(3, 12, 28, 0.32);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.home-card-status i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #5ee68a;
+  box-shadow: 0 0 10px rgba(94, 230, 138, 0.8);
+}
+
+.home-card-status.ongoing i { background: #f7c948; box-shadow: 0 0 10px rgba(247, 201, 72, 0.8); }
+.home-card-status.finished i { background: #b8c1cc; box-shadow: none; }
+
+.home-card-action {
+  display: flex;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 18px;
+  color: #f4d56d;
+  font-weight: 800;
+}
+
+.home-empty-state {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: min(520px, 100%);
+  padding: clamp(30px, 5vw, 48px);
+  text-align: center;
+}
+
+.home-empty-icon { font-size: 42px; }
+.home-empty-state h2 { margin: 14px 0 8px; font-size: clamp(24px, 4vw, 34px); }
+.home-empty-state p { margin: 0; color: rgba(255, 255, 255, 0.78); line-height: 1.5; }
+
+.home-create-button {
+  margin-top: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 10px;
+  background: #c9a227;
+  color: #071a33;
+  cursor: pointer;
+  font-weight: 900;
+  padding: 13px 20px;
+  transition: transform 150ms ease, filter 150ms ease;
+}
+
+.home-create-button:hover { transform: translateY(-2px); filter: brightness(1.12); }
 
 .primary {
   margin-top: 20px;
@@ -397,6 +530,14 @@ footer span {
     background-position: 64% 24%;
   }
 
+  .home-competition-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-competition-card {
+    min-height: 270px;
+  }
+
   .dashboard,
   .action-grid,
   .documents {
@@ -411,6 +552,17 @@ footer span {
   footer {
     flex-direction: column;
   }
+}
+
+@media (min-width: 701px) and (max-width: 1024px) {
+  .home-competition-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-competition-grid.single { grid-template-columns: minmax(280px, 520px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-competition-card,
+  .home-create-button { transition: none; }
+  .home-competition-card:hover { transform: none; }
 }
 /* Sélection des votes d'arbitrage */
 
