@@ -1,4 +1,4 @@
-import { buildAutomaticCategories } from "./competitionLogic";
+import { buildAutomaticCategories, buildPoolsForCategory, calculateRanking, podiumFromPool } from "./competitionLogic";
 
 const DEMO_COMPETITORS = [
   ["Martin", "Léo", 7, "6e Kyu", "Nanbudo Paris 12", "leo.martin@example.test", "Claire Dubois", ["Kata individuel"]],
@@ -65,6 +65,70 @@ export function createDemoCompetitionTest30() {
     competitors,
     categories: buildAutomaticCategories(competitors),
     pools: [],
+    availableKatas: ["Kata 0", "Kata 1", "Kata 2"],
+    katas: ["Kata 0", "Kata 1", "Kata 2"],
+  };
+}
+
+export const COMPLETE_TEST_COMPETITION_NAME = "Coupe Test Nanbudo 2026";
+
+export function createCompleteTestCompetition() {
+  const competitors = DEMO_COMPETITORS.slice(0, 12).map(([nom, prenom, age, ceinture, club, email, responsableClub, categoriesInscription], index) => {
+    const isRefereeOnly = index === 10;
+    const isCompetitorAndReferee = index === 4 || index === 8;
+    const typeInscription = isRefereeOnly ? "Arbitre" : isCompetitorAndReferee ? "Compétiteur + Arbitre" : "Compétiteur";
+    const registeredCategories = isRefereeOnly ? [] : categoriesInscription;
+    return {
+      id: 202608070001 + index,
+      nom: nom.toUpperCase(), prenom, age, ceinture, grade: ceinture, club, email, responsableClub,
+      ville: "Paris", telephoneResponsable: "06 00 00 00 00", sexe: index % 2 ? "Femme" : "Homme",
+      dateNaissance: `${2026 - age}-01-15`, ligue: "Île-de-France", pays: "France",
+      categoriesInscription: registeredCategories, categorieInscription: registeredCategories.join(", "),
+      discipline: isRefereeOnly ? "arbitrage" : registeredCategories.some((category) => !category.startsWith("Kata")) ? "both" : "kata",
+      typeInscription,
+      fonctionArbitrage: isRefereeOnly || isCompetitorAndReferee ? [index % 2 ? "Fukushin" : "Shushin"] : [],
+      roleArbitre: isRefereeOnly || isCompetitorAndReferee ? (index % 2 ? "Fukushin" : "Shushin") : "",
+      observations: "Donnée de démonstration", statutInscription: "Validée",
+    };
+  });
+
+  const categories = buildAutomaticCategories(competitors).map((category, index) => ({
+    ...category,
+    id: `test-category-${index + 1}`,
+    statut: "Validée",
+  }));
+  let poolIndex = 0;
+  const pools = categories.flatMap((category) => {
+    const generated = buildPoolsForCategory(category, { tatamiCount: 3, startIndex: poolIndex });
+    poolIndex += generated.length;
+    return generated;
+  }).map((pool, index) => {
+    const matches = pool.matches.map((match, matchIndex) => {
+      if (matchIndex > 0) return { ...match, id: `test-match-${index + 1}-${matchIndex + 1}`, ordre: matchIndex + 1, horaire: `10:${String((index * 10 + matchIndex * 5) % 60).padStart(2, "0")}` };
+      const isKata = match.shiroId == null;
+      return {
+        ...match, id: `test-match-${index + 1}-1`, ordre: 1, horaire: `10:${String((index * 10) % 60).padStart(2, "0")}`,
+        akaScore: isKata ? 24.5 : 3, shiroScore: isKata ? null : 1, finalScore: isKata ? 24.5 : null,
+        winnerId: match.akaId, statut: "Terminé",
+      };
+    });
+    const updatedPool = { ...pool, id: `test-pool-${index + 1}`, matches, statut: "En cours" };
+    const isFinished = matches.length === 1;
+    return isFinished ? { ...updatedPool, statut: "Terminée", rankingLocked: calculateRanking(updatedPool), podium: podiumFromPool(updatedPool) } : updatedPool;
+  });
+
+  return {
+    id: 202608072026,
+    publicToken: "coupe-test-nanbudo-2026",
+    nom: COMPLETE_TEST_COMPETITION_NAME,
+    date: "2026-10-17",
+    lieu: "Paris",
+    tatamis: 3,
+    horairesActifs: true,
+    statut: "Compétition en cours",
+    competitors,
+    categories,
+    pools,
     availableKatas: ["Kata 0", "Kata 1", "Kata 2"],
     katas: ["Kata 0", "Kata 1", "Kata 2"],
   };

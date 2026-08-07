@@ -706,6 +706,13 @@ footer span {
   margin-bottom: 22px;
 }
 
+.competition-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .competition-menu {
   display: flex;
   gap: 8px;
