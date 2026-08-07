@@ -32,36 +32,10 @@ button {
 }
 
 .app.home-screen {
-  position: relative;
-  isolation: isolate;
+  height: 100vh;
+  overflow: hidden;
   color: white;
   background: #071a33;
-}
-
-.app.home-screen::before,
-.app.home-screen::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-}
-
-.app.home-screen::before {
-  z-index: -2;
-  background-image: url('/assets/home-background.jpg');
-  background-attachment: fixed;
-  background-position: center 38%;
-  background-repeat: no-repeat;
-  background-size: cover;
-  filter: brightness(1.18) contrast(1.08) saturate(1.04);
-  transform: scale(1.01);
-}
-
-.app.home-screen::after {
-  z-index: -1;
-  background:
-    linear-gradient(180deg, rgba(3, 12, 28, 0.1) 0%, rgba(3, 12, 28, 0.22) 44%, rgba(3, 12, 28, 0.76) 100%),
-    radial-gradient(circle at center 42%, rgba(3, 12, 28, 0.08) 0%, rgba(3, 12, 28, 0.18) 38%, rgba(3, 12, 28, 0.62) 100%);
 }
 
 .header {
@@ -170,23 +144,18 @@ button {
 }
 
 .home-screen .content {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  min-height: clamp(420px, calc(100vh - 270px), 720px);
-  padding-top: clamp(28px, 6vh, 72px);
+  flex: 1;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
 }
 
 .home-screen .header,
 .home-screen .navigation,
-.home-screen .content,
-.home-screen footer {
+.home-screen .content {
   position: relative;
   z-index: 1;
-}
-
-.home-screen .hero {
-  display: none;
 }
 
 .hero {
@@ -196,11 +165,32 @@ button {
   box-shadow: 0 12px 35px rgba(7, 26, 51, 0.15);
 }
 
+.home-screen .hero {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.home-screen .hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
 .hero-wallpaper {
   background-image: url('/assets/home-background.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.home-screen .hero-wallpaper {
+  background-position: 58% 25%;
 }
 
 .primary {
@@ -228,18 +218,6 @@ button {
   border-radius: 14px;
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.06);
   border-top: 3px solid #c9a227;
-}
-
-.home-screen .card {
-  background: rgba(10, 20, 40, 0.75);
-  border: 1px solid rgba(212, 175, 55, 0.52);
-  border-top: 3px solid #d4af37;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(212, 175, 55, 0.16);
-  backdrop-filter: blur(10px);
-}
-
-.home-screen .card p {
-  color: rgba(255, 255, 255, 0.82);
 }
 
 .card h3,
@@ -376,9 +354,7 @@ footer {
 }
 
 .home-screen footer {
-  background: rgba(3, 12, 28, 0.7);
-  border-top-color: rgba(201, 162, 39, 0.86);
-  backdrop-filter: blur(8px);
+  display: none;
 }
 
 footer span {
@@ -410,6 +386,15 @@ footer span {
   .content {
     width: 90%;
     padding-top: 25px;
+  }
+
+  .home-screen .content {
+    width: 100%;
+    padding: 0;
+  }
+
+  .home-screen .hero-wallpaper {
+    background-position: 64% 24%;
   }
 
   .dashboard,
