@@ -1,4 +1,5 @@
 import { buildPoolsForCategory, calculateRanking, podiumFromPool, disciplineLabel, setPoolTatami } from "./competitionLogic";
+import { balancedTatamiAssignments } from "./planningLogic";
 
 function PoolsManager({ competition, onUpdateCompetition }) {
   const categories = competition.categories || [];
@@ -7,13 +8,15 @@ function PoolsManager({ competition, onUpdateCompetition }) {
   const tatamiCount = Math.max(1, Number(competition.tatamis) || 1);
   function getCompetitor(id) { return competitors.find((competitor) => competitor.id === id); }
   function generateAllPools() {
+    const assignments = balancedTatamiAssignments(categories, tatamiCount);
     let nextPoolIndex = 0;
     const generatedPools = categories.flatMap((category) => {
-      const categoryPools = buildPoolsForCategory(category, { tatamiCount, startIndex: nextPoolIndex });
+      const assignedTatami = assignments.get(String(category.id)) || 1;
+      const categoryPools = buildPoolsForCategory(category, { tatamiCount, startIndex: nextPoolIndex }).map((pool) => setPoolTatami(pool, assignedTatami));
       nextPoolIndex += categoryPools.length;
       return categoryPools;
     });
-    onUpdateCompetition({ ...competition, pools: generatedPools, statut: "Poules générées" });
+    onUpdateCompetition({ ...competition, pools: generatedPools, planningAdjustments: {}, statut: "Poules générées" });
   }
   function validatePool(poolId) {
     onUpdateCompetition({
@@ -38,7 +41,8 @@ function PoolsManager({ competition, onUpdateCompetition }) {
   }
   function changePoolTatami(poolId, tatami) {
     const selectedTatami = Number(tatami) || 1;
-    onUpdateCompetition({ ...competition, pools: pools.map((pool) => pool.id === poolId ? setPoolTatami(pool, selectedTatami) : pool) });
+    const categoryId = pools.find((pool) => pool.id === poolId)?.categoryId;
+    onUpdateCompetition({ ...competition, pools: pools.map((pool) => pool.categoryId === categoryId ? setPoolTatami(pool, selectedTatami) : pool), planningAdjustments: {} });
   }
   function closePool(pool) { onUpdateCompetition({ ...competition, pools: pools.map((item) => item.id === pool.id ? { ...item, rankingLocked: calculateRanking(item), podium: podiumFromPool(item), statut: "Terminée" } : item), statut: "Résultats disponibles" }); }
 
