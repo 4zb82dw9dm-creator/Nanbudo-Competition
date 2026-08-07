@@ -1,23 +1,14 @@
 import { useEffect, useState } from "react";
 import CompetitionDashboard, { INITIAL_REGISTRATION_FORM, RegistrationForm, createEmptyParticipantRows, normalizeCompetitor, normalizeParticipantTypeChange } from "./CompetitionDashboard";
-import { createDemoCompetitionTest30 } from "./demoCompetitionData";
-import { persistCompetitions, processBulkRegistration, reportRegistrationFailure } from "./registrationProcessing";
+import { processBulkRegistration, reportRegistrationFailure } from "./registrationProcessing";
 
-function CompetitionManager() {
-  const [competitions, setCompetitions] = useState(() => {
-    const savedCompetitions = JSON.parse(localStorage.getItem("nanbudo_competitions") || "[]");
-    return savedCompetitions.some((competition) => competition.nom === "Compétition Test 30")
-      ? savedCompetitions
-      : [...savedCompetitions, createDemoCompetitionTest30()];
-  });
+function CompetitionManager({ competitions, setCompetitions, initialCompetitionId = null }) {
   const [showForm, setShowForm] = useState(false);
-  const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState(initialCompetitionId);
   const [hash, setHash] = useState(window.location.hash);
   const [form, setForm] = useState({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
   const [registrationForm, setRegistrationForm] = useState(INITIAL_REGISTRATION_FORM);
 
-  useEffect(() => { persistCompetitions(competitions); }, [competitions]);
-  useEffect(() => { const listener = (event) => { if (Array.isArray(event.detail)) setCompetitions(event.detail); }; window.addEventListener("nanbudo:competitions-updated", listener); return () => window.removeEventListener("nanbudo:competitions-updated", listener); }, []);
   useEffect(() => { const listener = () => setHash(window.location.hash); window.addEventListener("hashchange", listener); return () => window.removeEventListener("hashchange", listener); }, []);
 
   function createCompetition(event) {
