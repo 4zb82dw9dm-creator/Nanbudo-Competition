@@ -1,3 +1,5 @@
+import { downloadPdfWithDejaVu } from "./pdfExport.js";
+
 function ResultsManager({ competition }) {
   const pools = competition.pools || [];
   const competitors = competition.competitors || [];
@@ -31,11 +33,7 @@ function printResults() {
   window.print();
 }
 
-function escapePdfText(value) {
-  return String(value || "").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-}
-
-function exportResultsPdf() {
+async function exportResultsPdf() {
   const lines = [
     `Résultats - ${competition.nom || "Compétition"}`,
     competition.date || competition.lieu ? `${competition.lieu || "Lieu à définir"} - ${competition.date || "Date à définir"}` : "",
@@ -56,37 +54,10 @@ function exportResultsPdf() {
     });
   }
 
-  const content = ["BT", "/F1 16 Tf", "50 790 Td", "18 TL", ...lines.flatMap((line, index) => {
-    const font = index === 0 ? ["/F1 16 Tf"] : index === 2 ? ["/F1 11 Tf"] : [];
-    return [...font, `(${escapePdfText(line)}) Tj`, "T*"];
-  }), "ET"].join("\n");
-  const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
-  ];
-  let pdf = "%PDF-1.4\n";
-  const offsets = [0];
-  objects.forEach((object, index) => {
-    offsets.push(pdf.length);
-    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  await downloadPdfWithDejaVu({
+    lines,
+    filename: `resultats-${competition.nom || "competition"}.pdf`.replace(/[^a-z0-9._-]+/gi, "-"),
   });
-  const xrefOffset = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  offsets.slice(1).forEach((offset) => { pdf += `${String(offset).padStart(10, "0")} 00000 n \n`; });
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-
-  const blob = new Blob([pdf], { type: "application/pdf" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `resultats-${competition.nom || "competition"}.pdf`.replace(/[^a-z0-9._-]+/gi, "-");
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }
   return (
     <div className="results-manager">
