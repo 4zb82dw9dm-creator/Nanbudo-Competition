@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { buildPoolsForCategory, calculateRanking, podiumFromPool, disciplineLabel, setPoolTatami, unresolvedPoolTieGroups } from "./competitionLogic";
+import { buildPoolsForCategory, calculateRanking, podiumFromPool, disciplineLabel, finalizePoolResults, setPoolTatami, unresolvedPoolTieGroups } from "./competitionLogic";
 import { balancedTatamiAssignments } from "./planningLogic";
 import { PoolTieBreakManager } from "./MatchManager";
 
@@ -48,7 +48,7 @@ function PoolsManager({ competition, onUpdateCompetition }) {
     onUpdateCompetition({ ...competition, pools: pools.map((pool) => pool.categoryId === categoryId ? setPoolTatami(pool, selectedTatami) : pool), planningAdjustments: {} });
   }
   function finishPool(pool) {
-    onUpdateCompetition({ ...competition, pools: pools.map((item) => item.id === pool.id ? { ...item, rankingLocked: calculateRanking(item), podium: podiumFromPool(item), statut: "Terminée" } : item), statut: "Résultats disponibles" });
+    onUpdateCompetition({ ...competition, pools: pools.map((item) => item.id === pool.id ? finalizePoolResults(item) : item), statut: "Résultats disponibles" });
     setPendingTieBreak(null);
   }
   function closePool(pool) {
