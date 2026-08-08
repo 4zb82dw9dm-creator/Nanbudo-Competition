@@ -1,5 +1,5 @@
-import { DEFAULT_KATA_GROUP, getValidKataGroup } from "./constants/katas";
-import { competitionRulesEngine } from "./rules/competitionRulesEngine";
+import { DEFAULT_KATA_GROUP, getValidKataGroup } from "./constants/katas.js";
+import { competitionRulesEngine } from "./rules/competitionRulesEngine.js";
 
 export const DISCIPLINES = Object.entries(competitionRulesEngine.ruleset.disciplines).map(([id, discipline]) => ({
   id,
@@ -27,6 +27,18 @@ export function gradeBand(grade = "") {
 
 export function disciplineLabel(discipline) {
   return competitionRulesEngine.disciplineLabel(discipline);
+}
+
+export function determineIndividualMatchWinner({ akaTotal, shiroTotal, akaShikaku = false, shiroShikaku = false }) {
+  if (akaShikaku !== shiroShikaku) return akaShikaku ? "shiro" : "aka";
+  if (akaTotal > shiroTotal) return "aka";
+  if (shiroTotal > akaTotal) return "shiro";
+  return null;
+}
+
+export function nextPoolTieBreakStep(stageIndex, result) {
+  if (result === "AKA" || result === "SHIRO") return { winner: result.toLowerCase(), stageIndex };
+  return { winner: null, stageIndex: stageIndex + 1 };
 }
 
 
@@ -168,7 +180,7 @@ export function calculateRanking(pool) {
       return { competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: score, scoreAgainst: 0, difference: score, finalScore: score };
     }).sort((a, b) => b.finalScore - a.finalScore);
   }
-  const ranking = pool.competitorIds.map((id) => ({ competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: 0, scoreAgainst: 0, difference: 0 }));
+  const ranking = pool.competitorIds.map((id) => ({ competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: 0, scoreAgainst: 0, difference: 0, negativePoints: 0 }));
   (pool.matches || []).forEach((match) => {
     if (match.statut !== "Terminé") return;
     const aka = ranking.find((item) => item.competitorId === match.akaId);
@@ -176,12 +188,44 @@ export function calculateRanking(pool) {
     if (!aka || !shiro) return;
     aka.scoreFor += match.akaScore || 0; aka.scoreAgainst += match.shiroScore || 0;
     shiro.scoreFor += match.shiroScore || 0; shiro.scoreAgainst += match.akaScore || 0;
+    aka.negativePoints += match.akaNegative ?? (match.penalties?.aka || []).reduce((total, penalty) => total + Number(penalty.value || 0), 0);
+    shiro.negativePoints += match.shiroNegative ?? (match.penalties?.shiro || []).reduce((total, penalty) => total + Number(penalty.value || 0), 0);
     if (match.winnerId === match.akaId) { aka.victories += 1; shiro.defeats += 1; }
     else if (match.winnerId === match.shiroId) { shiro.victories += 1; aka.defeats += 1; }
     else { aka.draws += 1; shiro.draws += 1; }
   });
   ranking.forEach((item) => { item.difference = item.scoreFor - item.scoreAgainst; });
-  return ranking.sort((a, b) => b.victories - a.victories || b.difference - a.difference || b.scoreFor - a.scoreFor);
+  const tieBreakPositions = new Map((pool.poolTieBreakOrder || []).map((competitorId, index) => [competitorId, index]));
+  return ranking.sort((a, b) => b.victories - a.victories
+    || b.difference - a.difference
+    || b.scoreFor - a.scoreFor
+    || a.negativePoints - b.negativePoints
+    || (tieBreakPositions.get(a.competitorId) ?? Number.MAX_SAFE_INTEGER) - (tieBreakPositions.get(b.competitorId) ?? Number.MAX_SAFE_INTEGER));
+}
+
+function samePoolResult(a, b) {
+  return a.victories === b.victories && a.difference === b.difference && a.scoreFor === b.scoreFor;
+}
+
+export function unresolvedPoolTieGroups(pool) {
+  if (competitionRulesEngine.isKataDiscipline(pool.discipline)) return [];
+  const ranking = calculateRanking({ ...pool, poolTieBreakOrder: [] });
+  const resolved = new Set(pool.poolTieBreakOrder || []);
+  const groups = [];
+  for (let start = 0; start < ranking.length;) {
+    let end = start + 1;
+    while (end < ranking.length && samePoolResult(ranking[start], ranking[end])) end += 1;
+    const resultGroup = ranking.slice(start, end);
+    for (let negativeStart = 0; negativeStart < resultGroup.length;) {
+      let negativeEnd = negativeStart + 1;
+      while (negativeEnd < resultGroup.length && resultGroup[negativeEnd].negativePoints === resultGroup[negativeStart].negativePoints) negativeEnd += 1;
+      const competitorIds = resultGroup.slice(negativeStart, negativeEnd).map((item) => item.competitorId);
+      if (competitorIds.length > 1 && competitorIds.some((id) => !resolved.has(id))) groups.push(competitorIds);
+      negativeStart = negativeEnd;
+    }
+    start = end;
+  }
+  return groups;
 }
 
 export function podiumFromPool(pool) {
