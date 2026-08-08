@@ -3,20 +3,13 @@ import MatchManager, { PoolTieBreakManager } from "./MatchManager";
 import KataSheet from "./KataSheet";
 import { calculatePoolPodium, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
+import { sortArbitrationMatches } from "./arbitrationSorting";
 
 const ALL_TATAMIS = "all";
 const FAVORITE_TATAMI_STORAGE_KEY = "nanbudo-favorite-tatami";
 
-function matchOrder(match) {
-  return Number(match.ordre) || 0;
-}
-
 function tatamiOrder(tatami) {
   return Number(tatami) || 0;
-}
-
-function sortMatchesByPassage(a, b) {
-  return matchOrder(a.match) - matchOrder(b.match) || tatamiOrder(a.match.tatami) - tatamiOrder(b.match.tatami) || String(a.match.id).localeCompare(String(b.match.id));
 }
 
 function ArbitrationManager({ competition, onUpdateCompetition }) {
@@ -40,7 +33,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     });
     return Array.from(grouped.entries())
       .sort(([tatamiA], [tatamiB]) => tatamiOrder(tatamiA) - tatamiOrder(tatamiB) || String(tatamiA).localeCompare(String(tatamiB)))
-      .map(([tatami, matches]) => ({ tatami, matches: matches.sort(sortMatchesByPassage) }));
+      .map(([tatami, matches]) => ({ tatami, matches: matches.sort(sortArbitrationMatches) }));
   }, [pools]);
   const tatamis = matchesByTatami.map((group) => group.tatami);
 
