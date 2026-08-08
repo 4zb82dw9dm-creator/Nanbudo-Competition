@@ -125,7 +125,9 @@ function MatchManager({ match, onSave }) {
   const [penalties, setPenalties] = useState(initialScoreSheet.penalties);
   const automaticSaveDone = useRef(false);
   const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
-  const isLocked = match.statut === "Terminé";
+  const isEditing = match.statut === "Terminé";
+  // A completed result can be reopened through “Modifier”, then saved and ranked again.
+  const isLocked = false;
   const sum = (values) => values.reduce((total, value) => total + Number(value || 0), 0);
   const kataScoreAka = sum(kataAka);
   const kataScoreShiro = sum(kataShiro);
@@ -198,11 +200,11 @@ function MatchManager({ match, onSave }) {
   }, [match.id]);
 
   useEffect(() => {
-    if (isKata || isLocked || automaticSaveDone.current) return;
+    if (isKata || isEditing || automaticSaveDone.current) return;
     if (!hasShikaku(penalties.aka) && !hasShikaku(penalties.shiro)) return;
     automaticSaveDone.current = true;
     save();
-  }, [isKata, isLocked, penalties, randoriScore.winner]);
+  }, [isEditing, isKata, penalties, randoriScore.winner]);
 
   if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save} disabled={!kataReady}>Valider le résultat</button></div></section>;
 
