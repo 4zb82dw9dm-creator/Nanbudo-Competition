@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import MatchManager from "./MatchManager";
 import KataSheet from "./KataSheet";
-import { disciplineLabel } from "./competitionLogic";
+import { disciplineLabel, finalizePoolResults } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 
 const ALL_TATAMIS = "all";
@@ -66,8 +66,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     const updatedPools = pools.map((pool) => {
       if (pool.id !== selectedPool.id) return pool;
       const matches = pool.matches.map((match) => match.id === selectedMatch.id ? { ...match, ...result, akaScore: result.scoreAka, shiroScore: result.scoreShiro, winnerId, statut: "Terminé" } : match);
-      const complete = matches.length > 0 && matches.every((match) => match.statut === "Terminé");
-      return { ...pool, matches, statut: complete ? "Combats terminés" : pool.statut };
+      return finalizePoolResults({ ...pool, matches });
     });
     onUpdateCompetition({ ...competition, pools: updatedPools, statut: "Résultats disponibles" });
     setSelected(null);

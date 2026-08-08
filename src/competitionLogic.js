@@ -232,3 +232,27 @@ export function podiumFromPool(pool) {
   const ranking = calculateRanking(pool);
   return { firstId: ranking[0]?.competitorId || null, secondId: ranking[1]?.competitorId || null, thirdId: ranking[2]?.competitorId || null };
 }
+
+export function isPoolComplete(pool) {
+  return (pool.matches || []).length > 0 && pool.matches.every((match) => match.statut === "Terminé");
+}
+
+export function finalizePoolResults(pool) {
+  if (!isPoolComplete(pool)) return pool;
+  const tieGroups = unresolvedPoolTieGroups(pool);
+  if (tieGroups.length > 0) {
+    return { ...pool, rankingLocked: [], podium: null, statut: "Départage requis" };
+  }
+  const rankingLocked = calculateRanking(pool);
+  return {
+    ...pool,
+    rankingLocked,
+    podium: {
+      firstId: rankingLocked[0]?.competitorId || null,
+      secondId: rankingLocked[1]?.competitorId || null,
+      thirdId: rankingLocked[2]?.competitorId || null,
+      fourthId: rankingLocked[3]?.competitorId || null,
+    },
+    statut: "Terminée",
+  };
+}
