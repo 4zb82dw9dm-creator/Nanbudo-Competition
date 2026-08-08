@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import MatchManager from "./MatchManager";
+import MatchManager, { PoolTieBreakManager } from "./MatchManager";
 import KataSheet from "./KataSheet";
-import { disciplineLabel } from "./competitionLogic";
+import { calculatePoolPodium, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 
 const ALL_TATAMIS = "all";
@@ -25,6 +25,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   const categories = competition.categories || [];
   const [selected, setSelected] = useState(null);
   const [historyMatch, setHistoryMatch] = useState(null);
+  const [pendingTieBreak, setPendingTieBreak] = useState(null);
   const [activeTatami, setActiveTatami] = useState(() => localStorage.getItem(FAVORITE_TATAMI_STORAGE_KEY) || ALL_TATAMIS);
   function getCompetitor(id) { return competitors.find((competitor) => competitor.id === id); }
   function getCategory(id) { return categories.find((category) => category.id === id); }
@@ -66,11 +67,25 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     const updatedPools = pools.map((pool) => {
       if (pool.id !== selectedPool.id) return pool;
       const matches = pool.matches.map((match) => match.id === selectedMatch.id ? { ...match, ...result, akaScore: result.scoreAka, shiroScore: result.scoreShiro, winnerId, statut: "Terminé" } : match);
-      const complete = matches.length > 0 && matches.every((match) => match.statut === "Terminé");
-      return { ...pool, matches, statut: complete ? "Combats terminés" : pool.statut };
+      const changedPool = { ...pool, matches, poolTieBreakOrder: [], rankingLocked: [], podium: null };
+      const calculation = calculatePoolPodium(changedPool);
+      if (calculation.tieGroups.length) setPendingTieBreak({ poolId: pool.id, tieGroups: calculation.tieGroups, groupIndex: 0, order: [] });
+      return calculation.pool;
     });
     onUpdateCompetition({ ...competition, pools: updatedPools, statut: "Résultats disponibles" });
     setSelected(null);
+  }
+
+  function completeTieGroup(groupOrder) {
+    const pool = pools.find((item) => item.id === pendingTieBreak.poolId);
+    const order = [...pendingTieBreak.order, ...groupOrder];
+    if (pendingTieBreak.groupIndex + 1 < pendingTieBreak.tieGroups.length) {
+      setPendingTieBreak({ ...pendingTieBreak, groupIndex: pendingTieBreak.groupIndex + 1, order });
+      return;
+    }
+    const resolvedPool = calculatePoolPodium({ ...pool, poolTieBreakOrder: order }).pool;
+    onUpdateCompetition({ ...competition, pools: pools.map((item) => item.id === pool.id ? resolvedPool : item), statut: "Résultats disponibles" });
+    setPendingTieBreak(null);
   }
 
   function tatamiProgress(matches) {
@@ -87,6 +102,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     return <article className={`competition arbitration-match-card ${match.statut === "Terminé" ? "competition-terminee" : ""} ${isCurrent ? "competition-current" : ""}`} key={`${pool.id}-${match.id}`}><div className="match-card-main"><p className="surtitle">{disciplineLabel(match.discipline)} · {category?.nom}</p><h3>#{match.ordre} Tatami {match.tatami} {match.horaire && `· ${match.horaire}`}</h3>{isKata ? <p>Passage : {competitor?.nom} {competitor?.prenom} · {competitor?.club || "Club non renseigné"}{match.finalScore ? ` · Note ${Number(match.finalScore).toFixed(2)}` : ""}</p> : <p>AKA {getCompetitor(match.akaId)?.nom} {getCompetitor(match.akaId)?.prenom} vs SHIRO {getCompetitor(match.shiroId)?.nom} {getCompetitor(match.shiroId)?.prenom}</p>}{winner && !isKata && <p>Vainqueur : {winner.nom} {winner.prenom}</p>}{isCurrent && <span className="current-match-badge">Combat en cours</span>}</div><div className="arbitration-card-actions"><button className="manage-button" onClick={() => setSelected({ poolId: pool.id, matchId: match.id })}>{match.statut === "Terminé" ? "Modifier" : "Arbitrer"}</button>{!isKata && <button className="manage-button" onClick={() => setHistoryMatch({ poolId: pool.id, matchId: match.id })}>Historique</button>}</div></article>;
   }
 
+  if (pendingTieBreak) return <div className="arbitration-manager"><PoolTieBreakManager key={`${pendingTieBreak.poolId}-${pendingTieBreak.groupIndex}`} competitorIds={pendingTieBreak.tieGroups[pendingTieBreak.groupIndex]} getCompetitor={getCompetitor} onComplete={completeTieGroup} /></div>;
   if (historyMatch) {
     const pool = pools.find((item) => item.id === historyMatch.poolId);
     const match = pool?.matches.find((item) => item.id === historyMatch.matchId);

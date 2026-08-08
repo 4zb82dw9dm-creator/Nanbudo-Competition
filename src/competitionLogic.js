@@ -232,3 +232,18 @@ export function podiumFromPool(pool) {
   const ranking = calculateRanking(pool);
   return { firstId: ranking[0]?.competitorId || null, secondId: ranking[1]?.competitorId || null, thirdId: ranking[2]?.competitorId || null };
 }
+
+export function isPoolComplete(pool) {
+  return (pool.matches || []).length > 0 && pool.matches.every((match) => match.statut === "Terminé");
+}
+
+// Unique entry point used by the manual fallback button and automatic closing.
+export function calculatePoolPodium(pool) {
+  if (!isPoolComplete(pool)) return { pool, tieGroups: [] };
+  const tieGroups = unresolvedPoolTieGroups(pool);
+  if (tieGroups.length) return { pool: { ...pool, rankingLocked: [], podium: null, statut: "En attente de départage" }, tieGroups };
+  return {
+    pool: { ...pool, rankingLocked: calculateRanking(pool), podium: podiumFromPool(pool), statut: "Terminée" },
+    tieGroups: [],
+  };
+}
