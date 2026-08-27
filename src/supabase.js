@@ -8,11 +8,18 @@ function headers(token, extra = {}) {
 }
 
 async function request(path, options = {}, token) {
-  if (!isSupabaseConfigured) throw new Error("Le service d’inscription en ligne est indisponible.");
+  if (!isSupabaseConfigured) throw new SupabaseUnavailableError("Configuration Supabase absente");
   const response = await fetch(`${url}${path}`, { ...options, headers: headers(token, options.headers) });
   const body = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) throw new Error(body?.msg || body?.message || body?.error_description || "Erreur Supabase");
   return body;
+}
+
+export class SupabaseUnavailableError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "SupabaseUnavailableError";
+  }
 }
 
 export async function loadCompetitions() {
@@ -29,7 +36,10 @@ export async function removeCompetition(id) {
 }
 
 export async function getPublicCompetition(slug) {
-  return request("/rest/v1/rpc/get_public_competition", { method: "POST", body: JSON.stringify({ requested_slug: slug }) });
+  const result = await request("/rest/v1/rpc/get_public_competition", { method: "POST", body: JSON.stringify({ requested_slug: slug }) });
+  // Compatibility with the first RPC version, which returned the competition directly.
+  if (result && !result.availability) return { availability: "open", competition: result };
+  return result || { availability: "missing" };
 }
 
 export async function submitPublicRegistration(slug, competitors) {

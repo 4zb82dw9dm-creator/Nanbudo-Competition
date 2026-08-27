@@ -15,24 +15,31 @@ function prepareCompetitions(items) {
 
 export default function App() {
   const [route, setRoute] = useState(currentRoute);
-  const [section, setSection] = useState("accueil");
-  const [competitions, setCompetitions] = useState(() => prepareCompetitions(JSON.parse(localStorage.getItem("nanbudo_competitions") || "[]")));
-  const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
-
   useEffect(() => {
     const listener = () => setRoute(currentRoute());
     addEventListener("hashchange", listener);
     return () => removeEventListener("hashchange", listener);
   }, []);
 
+  const publicMatch = route.match(/^\/inscription\/([^/]+)$/);
+  if (publicMatch) return <PublicRegistration slug={decodeURIComponent(publicMatch[1])} />;
+  return <CommissionApp />;
+}
+
+function CommissionApp() {
+  const [section, setSection] = useState("accueil");
+  const [competitions, setCompetitions] = useState(() => prepareCompetitions(JSON.parse(localStorage.getItem("nanbudo_competitions") || "[]")));
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
+  const [supabaseLoaded, setSupabaseLoaded] = useState(!isSupabaseConfigured);
+
   useEffect(() => {
     persistCompetitions(competitions);
-    if (isSupabaseConfigured) Promise.all(competitions.map(saveCompetition)).catch((error) => console.error("Synchronisation impossible", error));
-  }, [competitions]);
+    if (isSupabaseConfigured && supabaseLoaded) Promise.all(competitions.map(saveCompetition)).catch((error) => console.error("Synchronisation impossible", error));
+  }, [competitions, supabaseLoaded]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
-    const refresh = () => loadCompetitions().then((items) => setCompetitions(prepareCompetitions(items))).catch((error) => console.error("Chargement Supabase impossible", error));
+    const refresh = () => loadCompetitions().then((items) => setCompetitions(prepareCompetitions(items))).catch((error) => console.error("Chargement Supabase impossible", error)).finally(() => setSupabaseLoaded(true));
     refresh();
     addEventListener("focus", refresh);
     return () => removeEventListener("focus", refresh);
@@ -43,9 +50,6 @@ export default function App() {
     addEventListener("nanbudo:competitions-updated", listener);
     return () => removeEventListener("nanbudo:competitions-updated", listener);
   }, []);
-
-  const publicMatch = route.match(/^\/inscription\/([^/]+)$/);
-  if (publicMatch) return <PublicRegistration slug={decodeURIComponent(publicMatch[1])} />;
 
   function showCompetitions(competitionId = null) { setSelectedCompetitionId(competitionId); setSection("competitions"); }
   async function deleteCompetition(id) { if (isSupabaseConfigured) await removeCompetition(id); }
