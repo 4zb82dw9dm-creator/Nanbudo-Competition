@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { COMPLETE_TEST_COMPETITION_NAME, createCompleteTestCompetition, simulateCompleteTestCompetition } from "../src/demoCompetitionData.js";
 import { calculateRanking, unresolvedPoolTieGroups } from "../src/competitionLogic.js";
+import { prepareCategoriesForPools } from "../src/categoryRules.js";
 
 test("the complete demo has 100 competitors, 30 referees and broad age coverage", () => {
   const demo = createCompleteTestCompetition();
@@ -20,6 +21,39 @@ test("the complete demo has 100 competitors, 30 referees and broad age coverage"
   assert.ok(Math.max(...competitors.map(({ age }) => age)) >= 65);
   assert.equal(Object.keys(demo.refereeAssignments).length, 3);
   assert.ok(Object.values(demo.refereeAssignments).every((team) => Object.keys(team).length === 8));
+});
+
+test("automatic demo categories never mix sexes and child disciplines stop at 12", () => {
+  const demo = createCompleteTestCompetition();
+  const competitors = demo.competitors.filter(({ typeInscription }) => typeInscription === "Compétiteur");
+  for (const category of demo.categories) {
+    const members = competitors.filter((competitor) => category.competitorIds.includes(competitor.id));
+    assert.equal(new Set(members.map(({ sexe }) => sexe)).size, 1);
+    const maxAge = Math.max(...members.map(({ age }) => age));
+    if (category.discipline === "randori") assert.ok(maxAge <= 12);
+    if (["Kata 0", "Kata 1"].includes(category.kataGroup)) assert.ok(maxAge <= 12);
+  }
+});
+
+test("pool preparation splits mixed automatic categories but preserves a manual mixed category", () => {
+  const competitors = [
+    { id: "h1", sexe: "Homme", age: 10 }, { id: "h2", sexe: "Homme", age: 10 },
+    { id: "f1", sexe: "Femme", age: 10 }, { id: "f2", sexe: "Femme", age: 10 },
+  ];
+  const category = { id: "mixed", nom: "Randori · Mixte", discipline: "randori", competitorIds: competitors.map(({ id }) => id) };
+  const split = prepareCategoriesForPools([category], competitors);
+  assert.equal(split.length, 2);
+  assert.ok(split.every((item) => new Set(item.competitorIds.map((id) => competitors.find((competitor) => competitor.id === id).sexe)).size === 1));
+  assert.equal(prepareCategoriesForPools([{ ...category, manualMixed: true }], competitors).length, 1);
+});
+
+test("pool preparation converts Randori and Kata 0/1 above 12", () => {
+  const competitors = [{ id: "adult", sexe: "Homme", age: 18 }];
+  const [combat] = prepareCategoriesForPools([{ id: "r", nom: "Randori · Seniors · Homme", discipline: "randori", registrationCategory: "Randori", competitorIds: ["adult"] }], competitors);
+  const [kata] = prepareCategoriesForPools([{ id: "k", nom: "Kata 1 · Seniors · Homme", discipline: "kata_individuel", kataGroup: "Kata 1", competitorIds: ["adult"] }], competitors);
+  assert.equal(combat.discipline, "ju_randori");
+  assert.equal(combat.registrationCategory, "Ju Randori");
+  assert.equal(kata.kataGroup, "Kata 2");
 });
 
 test("one category always remains on one tatami and planning disciplines are session-ready", () => {
