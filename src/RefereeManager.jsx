@@ -1,6 +1,6 @@
 import { PLANNING_TATAMIS } from "./planningLogic";
 
-const REFEREE_SLOTS = ["Shushin", "Fukushin 1", "Fukushin 2", "Fukushin 3", "Fukushin 4", "Arbitre de table"];
+const REFEREE_SLOTS = ["Shushin", "Fukushin 1", "Fukushin 2", "Fukushin 3", "Fukushin 4", "Arbitre de table 1", "Arbitre de table 2", "Arbitre de table 3"];
 
 function refereeLabel(referee) {
   return `${referee.nom || ""} ${referee.prenom || ""}`.trim();
@@ -30,11 +30,18 @@ function RefereeManager({ competition, referees, onUpdateCompetition }) {
     updateSlot(tatami, slot, { refereeId: "", manualName: "" });
   }
 
+  function tableRefereeCount(tatami) {
+    return ["Arbitre de table 1", "Arbitre de table 2", "Arbitre de table 3"].filter((slot) => {
+      const assignment = assignments[tatami]?.[slot] || {};
+      return assignment.refereeId || assignment.manualName;
+    }).length;
+  }
+
   return <div className="competitors-module">
-    <div className="manager-header"><div><p className="surtitle">AFFECTATION FIXE</p><h2>Arbitres par tatami</h2><p>Chaque arbitre reste affecté à son tatami pour toute la compétition. Un remplacement manuel reste possible à tout moment.</p></div><div className="category-total"><strong>{referees.length}</strong><span>arbitres disponibles</span></div></div>
+    <div className="manager-header"><div><p className="surtitle">AFFECTATION FIXE</p><h2>Arbitres par tatami</h2><p>Chaque arbitre reste affecté à son tatami pour toute la compétition. Un remplacement manuel reste possible à tout moment. Pour la table : 2 arbitres minimum, 3 idéalement.</p></div><div className="category-total"><strong>{referees.length}</strong><span>arbitres disponibles</span></div></div>
     <div className="tatami-groups">
-      {PLANNING_TATAMIS.map((tatami) => <section className="tatami-group" key={tatami}>
-        <div className="tatami-group-header"><div><p className="surtitle">TATAMI {tatami}</p><h3>Équipe d’arbitrage</h3></div></div>
+      {PLANNING_TATAMIS.map((tatami) => { const tableCount = tableRefereeCount(tatami); return <section className="tatami-group" key={tatami}>
+        <div className="tatami-group-header"><div><p className="surtitle">TATAMI {tatami}</p><h3>Équipe d’arbitrage</h3><p><strong>Table :</strong> {tableCount}/3 · {tableCount < 2 ? "⚠️ minimum non atteint" : tableCount === 2 ? "minimum atteint" : "équipe idéale"}</p></div></div>
         <div className="competition-list">
           {REFEREE_SLOTS.map((slot) => {
             const assignment = assignments[tatami]?.[slot] || {};
@@ -64,7 +71,7 @@ function RefereeManager({ competition, referees, onUpdateCompetition }) {
             </article>;
           })}
         </div>
-      </section>)}
+      </section>; })}
     </div>
     <div className="registrations-table" style={{ marginTop: "24px" }}><table><thead><tr>{["Nom", "Prénom", "Club", "Grade", "Fonctions d’arbitrage", "Affectation"].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{referees.map((referee) => {
       const id = String(referee.id);
