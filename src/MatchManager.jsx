@@ -112,6 +112,7 @@ function createScoreSheetState(match) {
     tieBreakAssaults: relabelVotes(match?.tieBreakAssaults, TIE_BREAK_ASSAULTS),
     finalFlags: match?.finalFlags || ["", "", ""],
     penalties: match?.penalties || { aka: [], shiro: [] },
+    maiWarnings: match?.maiWarnings || { aka: [], shiro: [] },
   };
 }
 
@@ -123,8 +124,11 @@ function MatchManager({ match, onSave }) {
   const [tieBreakAssaults, setTieBreakAssaults] = useState(initialScoreSheet.tieBreakAssaults);
   const [finalFlags, setFinalFlags] = useState(initialScoreSheet.finalFlags);
   const [penalties, setPenalties] = useState(initialScoreSheet.penalties);
+  const [maiWarnings, setMaiWarnings] = useState(initialScoreSheet.maiWarnings);
+  const [maiHistory, setMaiHistory] = useState(() => (match?.matchHistory || []).filter((event) => event.type === "mai" || event.type === "mai_conversion" || event.type === "mai_removed"));
   const automaticSaveDone = useRef(false);
   const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
+  const hasMai = match.discipline === "ju_randori" || match.discipline === "ju_randori_equipe";
   const isEditing = match.statut === "Terminé";
   // A completed result can be reopened through “Modifier”, then saved and ranked again.
   const isLocked = false;
@@ -169,10 +173,53 @@ function MatchManager({ match, onSave }) {
     });
   }
 
+  function addMai(side) {
+    if (isLocked || !hasMai) return;
+    const assaultIndex = assaults.findIndex((row) => !voteResult(row.votes));
+    const resolvedIndex = assaultIndex < 0 ? ASSAULTS.length - 1 : assaultIndex;
+    const at = new Date().toISOString();
+    const warning = { assaultIndex: resolvedIndex, assaultLabel: assaults[resolvedIndex]?.label || ASSAULTS[resolvedIndex], at };
+    const conversions = [];
+    let active = [...maiWarnings[side], warning];
+
+    // Same-assault pairs always have priority over global groups of three.
+    for (const index of ASSAULTS.keys()) {
+      while (active.filter((mai) => mai.assaultIndex === index).length >= 2) {
+        const consumed = active.filter((mai) => mai.assaultIndex === index).slice(0, 2);
+        const consumedSet = new Set(consumed);
+        active = active.filter((mai) => !consumedSet.has(mai));
+        conversions.push({ at, consumed, rule: "same_assault" });
+      }
+    }
+    while (active.length >= 3) conversions.push({ at, consumed: active.splice(0, 3), rule: "global" });
+    setMaiWarnings((current) => ({ ...current, [side]: active }));
+
+    setPenalties((current) => ({
+      ...current,
+      [side]: [
+        ...current[side],
+        ...conversions.map((conversion) => ({ ...PENALTY_BY_ID.fujubun, at, automatic: true, source: "mai", maiConversion: conversion })),
+      ],
+    }));
+    setMaiHistory((current) => [
+      ...current,
+      { type: "mai", label: `Maï ${side.toUpperCase()}`, detail: warning.assaultLabel, at },
+      ...conversions.map((conversion) => ({ type: "mai_conversion", label: `Conversion Maï ${side.toUpperCase()}`, detail: `${conversion.consumed.map((mai) => mai.assaultLabel).join(" + ")} → Fujubun`, at })),
+    ]);
+  }
+
+  function removeLastMai(side) {
+    if (isLocked || !hasMai || !maiWarnings[side].length) return;
+    const removed = maiWarnings[side][maiWarnings[side].length - 1];
+    setMaiWarnings((current) => ({ ...current, [side]: current[side].slice(0, -1) }));
+    setMaiHistory((current) => [...current, { type: "mai_removed", label: `Maï retiré ${side.toUpperCase()}`, detail: removed.assaultLabel, at: new Date().toISOString() }]);
+  }
+
   function buildHistory(winner) {
     return [
       { type: "start", label: "Début du combat", detail: `${match.aka?.nom || "AKA"} vs ${match.shiro?.nom || "SHIRO"}` },
       ...assaults.map((row) => ({ type: "assault", label: row.label, detail: voteResult(row.votes) || "En attente", votes: row.votes })),
+      ...maiHistory,
       ...["aka", "shiro"].flatMap((side) => normalizePenalties(penalties[side]).map((penalty) => ({ type: "penalty", label: `Pénalité ${side.toUpperCase()}`, detail: penalty.label }))),
       { type: "final", label: "Résultat final", detail: winner ? winner.toUpperCase() : "Égalité" },
     ];
@@ -185,7 +232,7 @@ function MatchManager({ match, onSave }) {
     }
     if (isLocked) return;
     if (!randoriScore.complete) return alert("Saisissez le résultat des sept assauts avant de valider.");
-    onSave({ assaults, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, akaNegative: randoriScore.akaNegative, shiroNegative: randoriScore.shiroNegative, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) });
+    onSave({ assaults, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, maiWarnings, akaNegative: randoriScore.akaNegative, shiroNegative: randoriScore.shiroNegative, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) });
   }
 
   useEffect(() => {
@@ -196,6 +243,8 @@ function MatchManager({ match, onSave }) {
     setTieBreakAssaults(nextScoreSheet.tieBreakAssaults);
     setFinalFlags(nextScoreSheet.finalFlags);
     setPenalties(nextScoreSheet.penalties);
+    setMaiWarnings(nextScoreSheet.maiWarnings);
+    setMaiHistory((match?.matchHistory || []).filter((event) => event.type === "mai" || event.type === "mai_conversion" || event.type === "mai_removed"));
     automaticSaveDone.current = false;
   }, [match.id]);
 
@@ -208,11 +257,11 @@ function MatchManager({ match, onSave }) {
 
   if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save} disabled={!kataReady}>Valider le résultat</button></div></section>;
 
-  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} disabled={isLocked} /><AssaultCards title="Les 7 assauts" rows={assaults} disabled={isLocked} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} /><div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>Résultat du combat</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked || !randoriScore.complete}>{isLocked ? "Combat validé" : "Valider le combat"}</button></div></section>;
+  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} maiWarnings={maiWarnings} hasMai={hasMai} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} onAddMai={addMai} onRemoveMai={removeLastMai} disabled={isLocked} /><AssaultCards title="Les 7 assauts" rows={assaults} disabled={isLocked} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} /><div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>Résultat du combat</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked || !randoriScore.complete}>{isLocked ? "Combat validé" : "Valider le combat"}</button></div></section>;
 }
 
-function ControlPanel({ match, score, penalties, onAddPenalty, onRemovePenalty, disabled }) { return <div className="randori-control-zone" aria-label="Console de pilotage du combat">{["aka", "shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} onAddPenalty={(penalty) => onAddPenalty(side, penalty)} onRemovePenalty={(penaltyId) => onRemovePenalty(side, penaltyId)} disabled={disabled} />)}</div>; }
-function CompetitorControlCard({ side, competitor, score, penalties, onAddPenalty, onRemovePenalty, disabled }) { const visiblePenalties = groupedPenalties(penalties); return <article className={`control-card ${side}`}><div className="control-fighter"><h2>{side.toUpperCase()} <span>{side === "aka" ? "Rouge" : "Blanc"}</span></h2><p><strong>{competitor?.nom || "-"} {competitor?.prenom || ""}</strong><span>{competitor?.club || "Club non renseigné"}</span></p></div><div className="control-score-values"><p><span>Points +</span><strong>{score[`${side}Positive`]}</strong></p><p><span>Points -</span><strong>{score[`${side}Negative`]}</strong></p><p><span>Total</span><strong>{score[`${side}Total`]}</strong></p></div><div className="penalty-actions"><span className="penalty-title">Pénalités</span>{MANUAL_PENALTIES.map((penalty) => <button className={`penalty-button ${penalty.id}`} key={penalty.id} type="button" disabled={disabled} onClick={() => onAddPenalty(penalty)}>{penalty.label}</button>)}</div><div className="penalty-list" aria-live="polite">{visiblePenalties.map((penalty) => <button key={penalty.id} type="button" disabled={disabled} onClick={() => onRemovePenalty(penalty.id)}>{penalty.label} ×{penalty.count} <span aria-hidden="true">[-]</span></button>)}</div></article>; }
+function ControlPanel({ match, score, penalties, maiWarnings, hasMai, onAddPenalty, onRemovePenalty, onAddMai, onRemoveMai, disabled }) { return <div className="randori-control-zone" aria-label="Console de pilotage du combat">{["aka", "shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} maiWarnings={maiWarnings[side]} hasMai={hasMai} onAddPenalty={(penalty) => onAddPenalty(side, penalty)} onRemovePenalty={(penaltyId) => onRemovePenalty(side, penaltyId)} onAddMai={() => onAddMai(side)} onRemoveMai={() => onRemoveMai(side)} disabled={disabled} />)}</div>; }
+function CompetitorControlCard({ side, competitor, score, penalties, maiWarnings, hasMai, onAddPenalty, onRemovePenalty, onAddMai, onRemoveMai, disabled }) { const visiblePenalties = groupedPenalties(penalties); return <article className={`control-card ${side}`}><div className="control-fighter"><h2>{side.toUpperCase()} <span>{side === "aka" ? "Rouge" : "Blanc"}</span></h2><p><strong>{competitor?.nom || "-"} {competitor?.prenom || ""}</strong><span>{competitor?.club || "Club non renseigné"}</span></p></div><div className="control-score-values"><p><span>Points +</span><strong>{score[`${side}Positive`]}</strong></p><p><span>Points -</span><strong>{score[`${side}Negative`]}</strong></p><p><span>Total</span><strong>{score[`${side}Total`]}</strong></p></div><div className="penalty-actions"><span className="penalty-title">Pénalités</span>{MANUAL_PENALTIES.map((penalty) => <span key={penalty.id}>{<button className={`penalty-button ${penalty.id}`} type="button" disabled={disabled} onClick={() => onAddPenalty(penalty)}>{penalty.label}</button>}{hasMai && penalty.id === "keikoku" && <button className="penalty-button mai" type="button" disabled={disabled} onClick={onAddMai}>Maï</button>}</span>)}</div><div className="penalty-list" aria-live="polite">{hasMai && maiWarnings.length > 0 && <button type="button" disabled={disabled} onClick={onRemoveMai} title={`Dernier Maï : ${maiWarnings[maiWarnings.length - 1].assaultLabel}`}>Maï ×{maiWarnings.length} <span aria-hidden="true">[-]</span></button>}{visiblePenalties.map((penalty) => <button key={penalty.id} type="button" disabled={disabled} onClick={() => onRemovePenalty(penalty.id)}>{penalty.label} ×{penalty.count} <span aria-hidden="true">[-]</span></button>)}</div></article>; }
 function DecisionButtons({ value, options = DECISIONS, onChange, disabled = false }) { return <div className="decision-buttons">{options.map((option) => <button key={option} type="button" disabled={disabled} className={`vote-button ${value === option ? `selected ${option.toLowerCase()}` : ""}`} onClick={() => onChange(option)}>{option}</button>)}</div>; }
 function AssaultCards({ title, rows, onVote, disabled = false }) { return <div className="assaults-section"><h3>{title}</h3>{rows.map((row, rowIndex) => <article className="assault-card" key={row.label}><div className="assault-card-header"><span className="assault-label">{row.label}</span><strong className={`result-pill ${voteResult(row.votes).toLowerCase()}`}>{voteResult(row.votes) || "En attente"}</strong></div><div className="judge-vote-grid">{FUKUSHIN.map((judge, judgeIndex) => <div className="judge-vote-card" key={`${row.label}-${judge}`}><strong>{judge}</strong><DecisionButtons value={row.votes[judgeIndex]} disabled={disabled} onChange={(value) => onVote(rowIndex, judgeIndex, value)} /></div>)}</div></article>)}</div>; }
 
