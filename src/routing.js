@@ -18,3 +18,12 @@ export function publicRegistrationUrl(origin, basePath, slug) {
 export function slugify(value) {
   return String(value || "competition").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
+
+export function competitionPublicSlug(competition) {
+  if (competition?.slug) return competition.slug;
+  return `${slugify(competition?.nom)}-${String(competition?.publicToken || competition?.id).slice(0, 8)}`;
+}
+
+export function findCompetitionByPublicSlug(competitions, slug) {
+  return competitions.find((competition) => competition.slug === slug || competitionPublicSlug(competition) === slug) || null;
+}

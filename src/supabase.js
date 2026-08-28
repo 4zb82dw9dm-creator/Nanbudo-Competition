@@ -23,8 +23,8 @@ export class SupabaseUnavailableError extends Error {
 }
 
 export async function loadCompetitions() {
-  const rows = await request("/rest/v1/competitions?select=data&order=created_at.asc");
-  return rows.map((row) => row.data);
+  const rows = await request("/rest/v1/competitions?select=slug,data&order=created_at.asc");
+  return rows.map((row) => ({ ...row.data, slug: row.data?.slug || row.slug }));
 }
 
 export async function saveCompetition(competition) {
