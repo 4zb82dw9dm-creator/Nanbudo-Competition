@@ -1,4 +1,4 @@
-const FONT_URL = "/assets/DejaVuSans.ttf";
+const FONT_URL = `${import.meta.env.BASE_URL}assets/DejaVuSans.ttf`;
 
 function readCmap(font) {
   const view = new DataView(font.buffer, font.byteOffset, font.byteLength);
