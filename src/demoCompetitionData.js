@@ -35,6 +35,18 @@ const DEMO_CATEGORIES = [
   { key: "jur2-65", name: "Ju-Randori 2 · Vétérans 65 ans · Mixte", discipline: "ju_randori", registrationCategory: "Ju Randori", age: 65, grade: "5e Dan", scenario: "A" },
 ];
 
+function normalizeDemoDefinition(definition, index) {
+  const sex = index % 2 === 0 ? "Homme" : "Femme";
+  let normalized = { ...definition, sex, name: definition.name.replace("Mixte", sex) };
+  if (normalized.age > 12 && normalized.discipline === "randori") {
+    normalized = { ...normalized, discipline: "ju_randori", registrationCategory: "Ju Randori", name: normalized.name.replace(/^Randori\b/, "Ju Randori") };
+  }
+  if (normalized.age > 12 && ["Kata 0", "Kata 1"].includes(normalized.kataGroup)) {
+    normalized = { ...normalized, kataGroup: "Kata 2", name: normalized.name.replace(/^Kata [01]\b/, "Kata 2") };
+  }
+  return normalized;
+}
+
 function makeCompetitor(category, categoryIndex, memberIndex) {
   const index = categoryIndex * 4 + memberIndex;
   const id = `demo-competitor-${index + 1}`;
@@ -44,7 +56,7 @@ function makeCompetitor(category, categoryIndex, memberIndex) {
     nom: `${LAST_NAMES[index % LAST_NAMES.length].toUpperCase()}-${String(index + 1).padStart(3, "0")}`,
     prenom: FIRST_NAMES[index % FIRST_NAMES.length],
     age: category.age,
-    sexe: memberIndex % 2 ? "Femme" : "Homme",
+    sexe: category.sex,
     ceinture: category.grade,
     grade: category.grade,
     dateNaissance: `${year}-${String((index % 12) + 1).padStart(2, "0")}-15`,
@@ -67,14 +79,7 @@ function makeCompetitor(category, categoryIndex, memberIndex) {
 }
 
 function makeReferees() {
-  const roles = [
-    ["Arbitre de table"],
-    ["Shushin"],
-    ["Fukushin"],
-    ["Arbitre de table", "Shushin"],
-    ["Shushin", "Fukushin"],
-    ["Arbitre de table", "Fukushin"],
-  ];
+  const roles = [["Arbitre de table"], ["Shushin"], ["Fukushin"], ["Arbitre de table", "Shushin"], ["Shushin", "Fukushin"], ["Arbitre de table", "Fukushin"]];
   return Array.from({ length: 30 }, (_, index) => {
     const fonctionArbitrage = roles[index % roles.length];
     return {
@@ -92,15 +97,9 @@ function makeReferees() {
       email: `arbitre.demo.${index + 1}@example.test`,
       responsableClub: "Commission arbitrage",
       telephoneResponsable: `06 10 20 ${String(Math.floor(index / 10)).padStart(2, "0")} ${String(index % 10).padStart(2, "0")}`,
-      categoriesInscription: [],
-      categorieInscription: "",
-      discipline: "arbitrage",
-      typeInscription: "Arbitre",
-      fonctionArbitrage,
-      roleArbitre: fonctionArbitrage.join(", "),
-      affectationTatami: index < 24 ? Math.floor(index / 8) + 1 : null,
-      observations: index < 24 ? `Affecté au Tatami ${Math.floor(index / 8) + 1}` : "Arbitre de réserve",
-      statutInscription: "Validée",
+      categoriesInscription: [], categorieInscription: "", discipline: "arbitrage", typeInscription: "Arbitre",
+      fonctionArbitrage, roleArbitre: fonctionArbitrage.join(", "), affectationTatami: index < 24 ? Math.floor(index / 8) + 1 : null,
+      observations: index < 24 ? `Affecté au Tatami ${Math.floor(index / 8) + 1}` : "Arbitre de réserve", statutInscription: "Validée",
     };
   });
 }
@@ -119,14 +118,9 @@ function buildDemoPools(categories) {
     const tatami = (index % 3) + 1;
     const sessionStart = category.discipline.startsWith("kata") ? 9 * 60 : 14 * 60;
     return setPoolTatami({
-      ...pool,
-      id: `demo-pool-${index + 1}`,
-      nom: `${category.nom} · Poule 1`,
-      scenario: category.scenario,
+      ...pool, id: `demo-pool-${index + 1}`, nom: `${category.nom} · Poule 1`, scenario: category.scenario,
       matches: pool.matches.map((match, matchIndex) => ({
-        ...match,
-        id: `demo-match-${index + 1}-${matchIndex + 1}`,
-        ordre: matchIndex + 1,
+        ...match, id: `demo-match-${index + 1}-${matchIndex + 1}`, ordre: matchIndex + 1,
         horaire: `${String(Math.floor((sessionStart + index * 10 + matchIndex * 5) / 60)).padStart(2, "0")}:${String((sessionStart + index * 10 + matchIndex * 5) % 60).padStart(2, "0")}`,
       })),
     }, tatami);
@@ -134,20 +128,22 @@ function buildDemoPools(categories) {
 }
 
 export function createCompleteTestCompetition() {
-  const competitors = DEMO_CATEGORIES.flatMap((category, categoryIndex) => Array.from({ length: 4 }, (_, memberIndex) => makeCompetitor(category, categoryIndex, memberIndex)));
-  const categories = DEMO_CATEGORIES.map((definition, index) => ({
+  const definitions = DEMO_CATEGORIES.map(normalizeDemoDefinition);
+  const competitors = definitions.flatMap((category, categoryIndex) => Array.from({ length: 4 }, (_, memberIndex) => makeCompetitor(category, categoryIndex, memberIndex)));
+  const categories = definitions.map((definition, index) => ({
     id: `demo-category-${index + 1}`,
     nom: definition.name,
     discipline: definition.discipline,
     registrationCategory: definition.registrationCategory,
     kataGroup: definition.kataGroup || "",
     ageGroup: definition.age <= 10 ? "7–10 ans" : definition.age <= 15 ? "10–15 ans" : definition.age < 18 ? "Juniors" : definition.age < 40 ? "Seniors" : "Vétérans",
-    sexe: "Mixte",
+    sexe: definition.sex,
     gradeGroup: definition.grade.includes("Dan") ? "Dan" : "Kyu",
     scenario: definition.scenario,
     competitorIds: competitors.slice(index * 4, index * 4 + 4).map(({ id }) => id),
     statut: "Prête",
-    manual: true,
+    manual: false,
+    manualMixed: false,
   }));
   const referees = makeReferees();
   return {
