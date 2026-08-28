@@ -3,15 +3,23 @@ import assert from "node:assert/strict";
 import { COMPLETE_TEST_COMPETITION_NAME, createCompleteTestCompetition, simulateCompleteTestCompetition } from "../src/demoCompetitionData.js";
 import { calculateRanking, unresolvedPoolTieGroups } from "../src/competitionLogic.js";
 
-test("the complete demo is isolated and has four unique competitors in every category", () => {
+test("the complete demo has 100 competitors, 30 referees and broad age coverage", () => {
   const demo = createCompleteTestCompetition();
+  const competitors = demo.competitors.filter(({ typeInscription }) => typeInscription === "Compétiteur");
+  const referees = demo.competitors.filter(({ typeInscription }) => typeInscription === "Arbitre");
   assert.equal(demo.nom, COMPLETE_TEST_COMPETITION_NAME);
   assert.equal(demo.tatamis, 3);
-  assert.equal(demo.categories.length, 6);
+  assert.equal(demo.categories.length, 25);
   assert.ok(demo.isDemoCompetition);
+  assert.equal(competitors.length, 100);
+  assert.equal(referees.length, 30);
   assert.ok(demo.categories.every((category) => category.competitorIds.length === 4));
-  assert.equal(new Set(demo.categories.flatMap((category) => category.competitorIds)).size, 24);
-  assert.equal(new Set(demo.competitors.filter(({ typeInscription }) => typeInscription === "Compétiteur").map(({ nom, prenom }) => `${nom} ${prenom}`)).size, 24);
+  assert.equal(new Set(demo.categories.flatMap((category) => category.competitorIds)).size, 100);
+  assert.equal(new Set(competitors.map(({ nom, prenom }) => `${nom} ${prenom}`)).size, 100);
+  assert.ok(Math.min(...competitors.map(({ age }) => age)) <= 7);
+  assert.ok(Math.max(...competitors.map(({ age }) => age)) >= 65);
+  assert.equal(Object.keys(demo.refereeAssignments).length, 3);
+  assert.ok(Object.values(demo.refereeAssignments).every((team) => Object.keys(team).length === 8));
 });
 
 test("one category always remains on one tatami and planning disciplines are session-ready", () => {
