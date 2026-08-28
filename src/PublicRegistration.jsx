@@ -1,7 +1,21 @@
 import { useEffect, useState } from "react";
 import { INITIAL_REGISTRATION_FORM, RegistrationForm, createEmptyParticipantRows, isParticipantRowEmpty, normalizeCompetitor, normalizeParticipantTypeChange } from "./CompetitionDashboard";
 import { validateRegistrationForm } from "./registrationProcessing";
-import { getPublicCompetition, submitPublicRegistration, SupabaseUnavailableError } from "./supabase";
+import { findCompetitionByPublicSlug } from "./routing";
+import { isSupabaseConfigured, loadCompetitions, submitPublicRegistration, SupabaseUnavailableError } from "./supabase";
+
+function locallyStoredCompetitions() {
+  try {
+    const competitions = JSON.parse(localStorage.getItem("nanbudo_competitions") || "[]");
+    return Array.isArray(competitions) ? competitions : [];
+  } catch {
+    return [];
+  }
+}
+
+function registrationsAreOpen(competition) {
+  return String(competition?.statut || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("fr") === "inscriptions ouvertes";
+}
 
 export default function PublicRegistration({ slug }) {
   const [competition, setCompetition] = useState(null);
@@ -9,13 +23,30 @@ export default function PublicRegistration({ slug }) {
   const [status, setStatus] = useState("loading");
   useEffect(() => {
     let active = true;
+    setCompetition(null);
     setStatus("loading");
-    getPublicCompetition(slug).then((result) => {
+
+    async function resolveCompetition() {
+      const localCompetitions = locallyStoredCompetitions();
+      let competitions = localCompetitions;
+
+      if (isSupabaseConfigured) {
+        try {
+          competitions = await loadCompetitions();
+        } catch (error) {
+          const localMatch = findCompetitionByPublicSlug(localCompetitions, slug);
+          if (!localMatch) throw error;
+        }
+      }
+
       if (!active) return;
-      if (result.availability !== "open") return setStatus(result.availability === "closed" ? "closed" : "missing");
-      setCompetition(result.competition);
-      setStatus("ready");
-    }).catch((error) => {
+      const foundCompetition = findCompetitionByPublicSlug(competitions, slug);
+      if (!foundCompetition) return setStatus("missing");
+      setCompetition(foundCompetition);
+      setStatus(registrationsAreOpen(foundCompetition) ? "ready" : "closed");
+    }
+
+    resolveCompetition().catch((error) => {
       console.error("Impossible de charger la compétition publique", error);
       if (active) setStatus("unavailable");
     });

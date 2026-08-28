@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import "./style.css";
 import CompetitionManager from "./CompetitionManager";
 import PublicRegistration from "./PublicRegistration";
-import { currentRoute, publicRegistrationSlug, slugify } from "./routing";
+import { competitionPublicSlug, currentRoute, publicRegistrationSlug } from "./routing";
 import { persistCompetitions } from "./registrationProcessing";
 import { isSupabaseConfigured, loadCompetitions, removeCompetition, saveCompetition } from "./supabase";
 
 function prepareCompetitions(items) {
   return items.map((competition) => ({
     ...competition,
-    slug: competition.slug || `${slugify(competition.nom)}-${String(competition.publicToken || competition.id).slice(0, 8)}`,
+    slug: competitionPublicSlug(competition),
   }));
 }
 
