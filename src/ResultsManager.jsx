@@ -30,6 +30,18 @@ function ResultsManager({ competition }) {
 }
 
 function printResults() {
+  const pageStyle = document.createElement("style");
+  pageStyle.dataset.resultsPrintPage = "true";
+  pageStyle.textContent = "@page { size: A4 portrait; margin: 14mm; }";
+
+  const finishPrinting = () => {
+    document.body.classList.remove("printing-results");
+    pageStyle.remove();
+  };
+
+  document.head.appendChild(pageStyle);
+  document.body.classList.add("printing-results");
+  window.addEventListener("afterprint", finishPrinting, { once: true });
   window.print();
 }
 
@@ -57,6 +69,37 @@ async function exportResultsPdf() {
 }
   return (
     <div className="results-manager">
+      <section className="results-print-view" aria-label="Résultats officiels à imprimer">
+        <header className="results-print-header">
+          <p>RÉSULTATS OFFICIELS</p>
+          <h1>{competition.nom || "Compétition"}</h1>
+          <p>{competition.lieu || "Lieu à définir"} · {competition.date || "Date à définir"}</p>
+        </header>
+
+        {finishedPools.length === 0 ? (
+          <p className="results-print-empty">Aucun résultat définitif.</p>
+        ) : (
+          <div className="results-print-categories">
+            {finishedPools.map((pool) => {
+              const category = getCategory(pool.categoryId);
+              return (
+                <article className="results-print-category" key={pool.id}>
+                  <p className="results-print-discipline">
+                    {category?.discipline === "kata" ? "KATA" : "COMBAT"}
+                  </p>
+                  <h2>{category?.nom || pool.nom || "Catégorie"}</h2>
+                  <ol>
+                    <li><strong>1er</strong><span>{competitorName(pool.podium.firstId)}</span></li>
+                    <li><strong>2e</strong><span>{competitorName(pool.podium.secondId)}</span></li>
+                    <li><strong>3e</strong><span>{competitorName(pool.podium.thirdId)}</span></li>
+                  </ol>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
       <div className="manager-header">
         <div>
           <p className="surtitle">

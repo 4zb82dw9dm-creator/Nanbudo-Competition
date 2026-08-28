@@ -645,6 +645,10 @@ footer span {
   font-weight: 700;
 }
 
+.results-print-view {
+  display: none;
+}
+
 @media (max-width: 700px) {
   .ranking-table {
     overflow-x: auto;
@@ -2024,6 +2028,117 @@ footer span {
 .planning-card th { color: white; background: #5189bd; }.planning-card td,.planning-card th { padding: 3px 5px; border: 1px solid #b6c1cc; text-align: left; }
 @media (max-width: 800px) { .planning-grid { display: flex; overflow-x: auto; }.tatami-column { min-width: 310px; } }
 @media print { @page { size: landscape; margin: 8mm; } body * { visibility: hidden; }.planning-manager,.planning-manager * { visibility: visible; }.planning-manager { position: absolute; inset: 0; font-size: 9px; }.planning-heading p,.planning-actions,.planning-controls,.header,.navigation,footer,.competition-dashboard-header,.competition-menu,.back-button { display: none !important; }.planning-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }.planning-card { break-inside: avoid; margin: 4px; }.planning-card table { font-size: 8px; } }
+
+/* Vue autonome utilisée uniquement par « Imprimer les résultats ». La classe sur
+   body neutralise notamment les règles d'impression du planning placées ci-dessus. */
+@media print {
+  body.printing-results,
+  body.printing-results #root,
+  body.printing-results .app,
+  body.printing-results .content,
+  body.printing-results .competition-dashboard,
+  body.printing-results .results-manager {
+    background: #fff !important;
+    display: block !important;
+    margin: 0 !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.printing-results * {
+    visibility: hidden !important;
+  }
+
+  body.printing-results .results-print-view,
+  body.printing-results .results-print-view * {
+    visibility: visible !important;
+  }
+
+  body.printing-results .results-print-view {
+    color: #000;
+    display: block !important;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11pt;
+    line-height: 1.35;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+
+  body.printing-results .results-manager > :not(.results-print-view) {
+    display: none !important;
+  }
+
+  body.printing-results .results-print-header {
+    border-bottom: 2px solid #173c69;
+    margin-bottom: 9mm;
+    padding-bottom: 5mm;
+    text-align: center;
+  }
+
+  body.printing-results .results-print-header h1 {
+    color: #102f55;
+    font-size: 23pt;
+    line-height: 1.15;
+    margin: 2mm 0;
+  }
+
+  body.printing-results .results-print-header p {
+    font-size: 11pt;
+    font-weight: 700;
+    letter-spacing: .04em;
+    margin: 0;
+  }
+
+  body.printing-results .results-print-categories {
+    display: block !important;
+  }
+
+  body.printing-results .results-print-category {
+    border: 1px solid #7b8794;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin: 0 0 6mm;
+    padding: 4mm 5mm;
+  }
+
+  body.printing-results .results-print-discipline {
+    color: #334155;
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: .12em;
+    margin: 0 0 1mm;
+  }
+
+  body.printing-results .results-print-category h2 {
+    color: #000;
+    font-size: 15pt;
+    margin: 0 0 3mm;
+  }
+
+  body.printing-results .results-print-category ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  body.printing-results .results-print-category li {
+    border-top: 1px solid #d1d5db;
+    display: grid !important;
+    grid-template-columns: 18mm 1fr;
+    padding: 2.2mm 0;
+  }
+
+  body.printing-results .results-print-category li:first-child {
+    border-top: 0;
+  }
+
+  body.printing-results .results-print-empty {
+    font-size: 13pt;
+    text-align: center;
+  }
+}
 
 .public-portal { min-height: 100vh; background: #f3f6fa; padding: 24px; }
 .public-portal > header { display: flex; justify-content: center; padding: 12px; }
