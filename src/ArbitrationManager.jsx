@@ -55,6 +55,24 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   const selectedPool = pools.find((pool) => pool.id === selected?.poolId);
   const selectedMatch = selectedPool?.matches.find((match) => match.id === selected?.matchId);
 
+  function nextPassageFor(match) {
+    const group = matchesByTatami.find((item) => item.tatami === String(match.tatami || "Non affecté"));
+    if (!group) return null;
+    const currentIndex = group.matches.findIndex(({ match: item }) => item.id === match.id);
+    if (currentIndex < 0) return null;
+    return group.matches.slice(currentIndex + 1).find(({ match: item }) => item.statut !== "Terminé") || null;
+  }
+
+  function renderNextPassage(match) {
+    const next = nextPassageFor(match);
+    if (!next) return <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #d7dde5", borderRadius: "12px", background: "#f7f9fb" }}><strong>À SUIVRE · TATAMI {match.tatami}</strong><div style={{ marginTop: "6px" }}>Dernier passage prévu sur ce tatami.</div></div>;
+    const nextMatch = next.match;
+    const category = getCategory(next.pool.categoryId);
+    const isKata = competitionRulesEngine.isKataDiscipline(nextMatch.discipline);
+    const competitor = getCompetitor(nextMatch.competitorId || nextMatch.akaId);
+    return <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #1f5f99", borderRadius: "12px", background: "#eef6ff" }}><strong>À SUIVRE · TATAMI {nextMatch.tatami}</strong><div style={{ marginTop: "6px" }}>{disciplineLabel(nextMatch.discipline)}{category?.nom ? ` · ${category.nom}` : ""}</div>{isKata ? <div style={{ marginTop: "4px", fontWeight: 700 }}>Passage : {competitor?.nom || "-"} {competitor?.prenom || ""}</div> : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}><div style={{ padding: "8px 10px", borderRadius: "8px", background: "#b3261e", color: "white", fontWeight: 700 }}>AKA · {getCompetitor(nextMatch.akaId)?.nom || "-"} {getCompetitor(nextMatch.akaId)?.prenom || ""}</div><div style={{ padding: "8px 10px", borderRadius: "8px", background: "white", color: "#1f2937", border: "1px solid #9ca3af", fontWeight: 700 }}>SHIRO · {getCompetitor(nextMatch.shiroId)?.nom || "-"} {getCompetitor(nextMatch.shiroId)?.prenom || ""}</div></div>}</div>;
+  }
+
   function saveMatch(result) {
     const winnerId = competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? selectedMatch.akaId : result.vainqueur === "aka" ? selectedMatch.akaId : result.vainqueur === "shiro" ? selectedMatch.shiroId : null;
     const updatedPools = pools.map((pool) => {
@@ -104,7 +122,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   if (selectedPool && selectedMatch) {
     const category = getCategory(selectedPool.categoryId);
     const matchProps = { ...selectedMatch, aka: getCompetitor(selectedMatch.akaId), shiro: getCompetitor(selectedMatch.shiroId), competitor: getCompetitor(selectedMatch.competitorId || selectedMatch.akaId), categoryName: category?.nom, poolName: selectedPool.nom, poolId: selectedPool.id };
-    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={selectedMatch.id} match={matchProps} onSave={saveMatch} /> : <MatchManager key={selectedMatch.id} match={matchProps} onSave={saveMatch} />}</div>;
+    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderNextPassage(selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={selectedMatch.id} match={matchProps} onSave={saveMatch} /> : <MatchManager key={selectedMatch.id} match={matchProps} onSave={saveMatch} />}</div>;
   }
 
   const displayedGroups = activeTatami === ALL_TATAMIS ? matchesByTatami : matchesByTatami.filter((group) => group.tatami === activeTatami);
