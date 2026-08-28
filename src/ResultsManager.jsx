@@ -29,20 +29,112 @@ function ResultsManager({ competition }) {
   return `${competitor.nom} ${competitor.prenom}`;
 }
 
-function printResults() {
-  const pageStyle = document.createElement("style");
-  pageStyle.dataset.resultsPrintPage = "true";
-  pageStyle.textContent = "@page { size: A4 portrait; margin: 14mm; }";
+async function printResults() {
+  // Open the window synchronously from the click so Safari does not treat it as
+  // an unsolicited popup. Its document remains independent from the app while
+  // AirPrint builds its preview (notably when Safari fires `afterprint` early).
+  const printWindow = window.open("", "_blank");
 
-  const finishPrinting = () => {
-    document.body.classList.remove("printing-results");
-    pageStyle.remove();
-  };
+  if (!printWindow) {
+    window.alert("La fenêtre d’impression a été bloquée. Autorisez les fenêtres surgissantes puis réessayez.");
+    return;
+  }
 
-  document.head.appendChild(pageStyle);
-  document.body.classList.add("printing-results");
-  window.addEventListener("afterprint", finishPrinting, { once: true });
-  window.print();
+  const escapeHtml = (value) => String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+  const competitionName = competition.nom || "Compétition";
+  const location = competition.lieu || "Lieu à définir";
+  const date = competition.date || "Date à définir";
+  const categoriesHtml = finishedPools.length === 0
+    ? '<p class="empty">Aucun résultat définitif.</p>'
+    : finishedPools.map((pool) => {
+      const category = getCategory(pool.categoryId);
+      const rankings = [
+        ["1er", pool.podium.firstId],
+        ["2e", pool.podium.secondId],
+        ["3e", pool.podium.thirdId],
+      ];
+
+      if (pool.podium.fourthId) rankings.push(["4e", pool.podium.fourthId]);
+
+      return `
+        <article class="category">
+          <p class="discipline">${category?.discipline === "kata" ? "KATA" : "COMBAT"}</p>
+          <h2>${escapeHtml(category?.nom || pool.nom || "Catégorie")}</h2>
+          <ol>
+            ${rankings.map(([rank, competitorId]) => `
+              <li><strong>${rank}</strong><span>${escapeHtml(competitorName(competitorId))}</span></li>
+            `).join("")}
+          </ol>
+        </article>
+      `;
+    }).join("");
+
+  const documentLoaded = new Promise((resolve) => {
+    printWindow.addEventListener("load", resolve, { once: true });
+  });
+
+  printWindow.document.open();
+  printWindow.document.write(`<!doctype html>
+    <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Résultats - ${escapeHtml(competitionName)}</title>
+        <style>
+          @page { size: A4 portrait; margin: 14mm; }
+          * { box-sizing: border-box; }
+          html, body { margin: 0; padding: 0; background: #fff; color: #111827; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; font-size: 11pt; }
+          header { margin-bottom: 10mm; padding-bottom: 5mm; border-bottom: 2px solid #111827; }
+          header p { margin: 0; }
+          .eyebrow, .discipline { color: #6b7280; font-size: 9pt; font-weight: 700; letter-spacing: .12em; }
+          h1 { margin: 2mm 0; font-size: 24pt; line-height: 1.15; }
+          .categories { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; align-items: start; }
+          .category { break-inside: avoid; page-break-inside: avoid; border: 1px solid #d1d5db; border-radius: 2mm; padding: 5mm; }
+          .category h2 { margin: 1.5mm 0 4mm; font-size: 15pt; line-height: 1.2; }
+          .discipline { margin: 0; }
+          ol { margin: 0; padding: 0; list-style: none; }
+          li { display: grid; grid-template-columns: 13mm 1fr; gap: 3mm; padding: 2.5mm 0; border-top: 1px solid #e5e7eb; }
+          li strong { white-space: nowrap; }
+          .empty { font-size: 13pt; }
+          @media print {
+            html, body { width: 100%; min-height: 100%; }
+            .category { box-shadow: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <header>
+          <p class="eyebrow">RÉSULTATS OFFICIELS</p>
+          <h1>${escapeHtml(competitionName)}</h1>
+          <p>${escapeHtml(location)} · ${escapeHtml(date)}</p>
+        </header>
+        <main class="categories">${categoriesHtml}</main>
+      </body>
+    </html>`);
+  printWindow.document.close();
+
+  if (printWindow.document.readyState !== "complete") await documentLoaded;
+  if (printWindow.document.fonts?.ready) await printWindow.document.fonts.ready;
+
+  // Let Safari complete layout after fonts resolve before requesting AirPrint.
+  await new Promise((resolve) => printWindow.requestAnimationFrame(
+    () => printWindow.requestAnimationFrame(resolve)
+  ));
+  printWindow.focus();
+  printWindow.print();
+
+  // Do not use `afterprint`: iPad Safari may emit it while generating preview.
+  // Keep this self-contained document alive long enough for AirPrint to finish.
+  window.setTimeout(() => {
+    if (!printWindow.closed) printWindow.close();
+  }, 5 * 60 * 1000);
 }
 
 async function exportResultsPdf() {
