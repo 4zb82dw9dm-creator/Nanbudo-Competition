@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { determineIndividualMatchWinner, nextPoolTieBreakStep } from "./competitionLogic";
+import { applyMaiWarning } from "./maiRules";
 
 const FUKUSHIN = ["Fukushin 1", "Fukushin 2", "Fukushin 3"];
 const DECISIONS = ["AKA", "SHIRO", "HIKIWAKE"];
@@ -179,20 +180,9 @@ function MatchManager({ match, onSave }) {
     const resolvedIndex = assaultIndex < 0 ? ASSAULTS.length - 1 : assaultIndex;
     const at = new Date().toISOString();
     const warning = { assaultIndex: resolvedIndex, assaultLabel: assaults[resolvedIndex]?.label || ASSAULTS[resolvedIndex], at };
-    const conversions = [];
-    let active = [...maiWarnings[side], warning];
-
-    // Same-assault pairs always have priority over global groups of three.
-    for (const index of ASSAULTS.keys()) {
-      while (active.filter((mai) => mai.assaultIndex === index).length >= 2) {
-        const consumed = active.filter((mai) => mai.assaultIndex === index).slice(0, 2);
-        const consumedSet = new Set(consumed);
-        active = active.filter((mai) => !consumedSet.has(mai));
-        conversions.push({ at, consumed, rule: "same_assault" });
-      }
-    }
-    while (active.length >= 3) conversions.push({ at, consumed: active.splice(0, 3), rule: "global" });
-    setMaiWarnings((current) => ({ ...current, [side]: active }));
+    const { activeWarnings, conversion } = applyMaiWarning(maiWarnings[side], warning);
+    const conversions = conversion ? [{ ...conversion, at }] : [];
+    setMaiWarnings((current) => ({ ...current, [side]: activeWarnings }));
 
     setPenalties((current) => ({
       ...current,
