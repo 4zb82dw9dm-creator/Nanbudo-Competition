@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import "./style.css";
 import CompetitionManager from "./CompetitionManager";
 import PublicRegistration from "./PublicRegistration";
-import { currentRoute, slugify } from "./routing";
+import { currentRoute, publicRegistrationSlug, slugify } from "./routing";
 import { persistCompetitions } from "./registrationProcessing";
 import { isSupabaseConfigured, loadCompetitions, removeCompetition, saveCompetition } from "./supabase";
 
@@ -14,15 +14,18 @@ function prepareCompetitions(items) {
 }
 
 export default function App() {
-  const [route, setRoute] = useState(currentRoute);
+  const [publicSlug, setPublicSlug] = useState(() => publicRegistrationSlug(currentRoute()));
   useEffect(() => {
-    const listener = () => setRoute(currentRoute());
+    const listener = () => {
+      const nextRoute = currentRoute();
+      const nextPublicSlug = publicRegistrationSlug(nextRoute);
+      if (nextPublicSlug) setPublicSlug(nextPublicSlug);
+    };
     addEventListener("hashchange", listener);
     return () => removeEventListener("hashchange", listener);
   }, []);
 
-  const publicMatch = route.match(/^\/inscription\/([^/]+)$/);
-  if (publicMatch) return <PublicRegistration slug={decodeURIComponent(publicMatch[1])} />;
+  if (publicSlug) return <PublicRegistration slug={publicSlug} />;
   return <CommissionApp />;
 }
 
