@@ -9,6 +9,9 @@ export const KATA_2_KATAS = [
   "Ikkyoku",
   "Hyaku Hachi",
   "Seienchin",
+  "Sampo Sho",
+  "Seipai",
+  "Shin Tajima",
 ];
 
 export const KATA_GROUPS = {
