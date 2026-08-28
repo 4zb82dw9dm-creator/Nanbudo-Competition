@@ -10,6 +10,22 @@ export function estimateCategoryDuration(pools = []) {
   return Math.max(15, Math.ceil((isKata(pools[0]?.discipline) ? competitors * 4 : matches * 5) / 5) * 5) + 5;
 }
 
+function categoryLoad(category) {
+  const count = category.competitorIds?.length || 0;
+  return isKata(category.discipline) ? count * 4 + 5 : Math.max(15, count * (count - 1) / 2 * 5) + 5;
+}
+
+function assignPhase(categories, tatamiCount, result) {
+  const loads = Array.from({ length: tatamiCount }, () => 0);
+  [...categories]
+    .sort((a, b) => categoryLoad(b) - categoryLoad(a))
+    .forEach((category) => {
+      const index = loads.indexOf(Math.min(...loads));
+      result.set(String(category.id), index + 1);
+      loads[index] += categoryLoad(category);
+    });
+}
+
 export function buildPlanning(competition) {
   const groups = new Map();
   (competition.pools || []).forEach((pool) => { const key = String(pool.categoryId || pool.id); groups.set(key, [...(groups.get(key) || []), pool]); });
@@ -30,15 +46,17 @@ export function buildPlanning(competition) {
       return { ...item, tatami, start, end, disciplineLabel: disciplineLabel(item.discipline) };
     });
   };
-  const morning = session(categories.filter((item) => isKata(item.discipline)), 540);
-  const morningEnd = Math.max(750, ...morning.map((item) => item.end));
-  const afternoonStart = Math.max(840, morningEnd + (morningEnd > 750 ? 60 : 0));
-  const afternoon = session(categories.filter((item) => !isKata(item.discipline)), afternoonStart);
-  return { entries: [...morning, ...afternoon], morningEnd, afternoonStart, ceremonyStart: Math.max(afternoonStart, ...afternoon.map((item) => item.end)) };
+  const kataEntries = session(categories.filter((item) => isKata(item.discipline)), 540);
+  const kataEnd = Math.max(540, ...kataEntries.map((item) => item.end));
+  const combatStart = kataEnd;
+  const combatEntries = session(categories.filter((item) => !isKata(item.discipline)), combatStart);
+  const ceremonyStart = Math.max(combatStart, ...combatEntries.map((item) => item.end));
+  return { entries: [...kataEntries, ...combatEntries], kataEnd, combatStart, morningEnd: kataEnd, afternoonStart: combatStart, ceremonyStart };
 }
 
 export function balancedTatamiAssignments(categories, tatamiCount = 3) {
-  const loads = Array.from({ length: tatamiCount }, () => 0), result = new Map();
-  categories.forEach((category) => { const index = loads.indexOf(Math.min(...loads)); result.set(String(category.id), index + 1); const count = category.competitorIds?.length || 0; loads[index] += isKata(category.discipline) ? count * 4 + 5 : Math.max(15, count * (count - 1) / 2 * 5) + 5; });
+  const result = new Map();
+  assignPhase(categories.filter((category) => isKata(category.discipline)), tatamiCount, result);
+  assignPhase(categories.filter((category) => !isKata(category.discipline)), tatamiCount, result);
   return result;
 }
