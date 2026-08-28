@@ -7,6 +7,7 @@ import { sortArbitrationMatches } from "./arbitrationSorting";
 
 const ALL_TATAMIS = "all";
 const FAVORITE_TATAMI_STORAGE_KEY = "nanbudo-favorite-tatami";
+const REFEREE_SLOTS = ["Shushin", "Fukushin 1", "Fukushin 2", "Fukushin 3", "Fukushin 4", "Arbitre de table 1", "Arbitre de table 2", "Arbitre de table 3"];
 
 function tatamiOrder(tatami) {
   return Number(tatami) || 0;
@@ -73,6 +74,22 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     return <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #1f5f99", borderRadius: "12px", background: "#eef6ff" }}><strong>À SUIVRE · TATAMI {nextMatch.tatami}</strong><div style={{ marginTop: "6px" }}>{disciplineLabel(nextMatch.discipline)}{category?.nom ? ` · ${category.nom}` : ""}</div>{isKata ? <div style={{ marginTop: "4px", fontWeight: 700 }}>Passage : {competitor?.nom || "-"} {competitor?.prenom || ""}</div> : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}><div style={{ padding: "8px 10px", borderRadius: "8px", background: "#b3261e", color: "white", fontWeight: 700 }}>AKA · {getCompetitor(nextMatch.akaId)?.nom || "-"} {getCompetitor(nextMatch.akaId)?.prenom || ""}</div><div style={{ padding: "8px 10px", borderRadius: "8px", background: "white", color: "#1f2937", border: "1px solid #9ca3af", fontWeight: 700 }}>SHIRO · {getCompetitor(nextMatch.shiroId)?.nom || "-"} {getCompetitor(nextMatch.shiroId)?.prenom || ""}</div></div>}</div>;
   }
 
+  function refereeName(assignment) {
+    if (!assignment) return "Non affecté";
+    if (assignment.manualName) return assignment.manualName;
+    const referee = getCompetitor(assignment.refereeId);
+    return referee ? `${referee.nom || ""} ${referee.prenom || ""}`.trim() : "Non affecté";
+  }
+
+  function renderRefereeTeam(tatami) {
+    const team = competition.refereeAssignments?.[tatami] || {};
+    const tableCount = ["Arbitre de table 1", "Arbitre de table 2", "Arbitre de table 3"].filter((slot) => refereeName(team[slot]) !== "Non affecté").length;
+    return <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #d7dde5", borderRadius: "12px", background: "#ffffff" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center" }}><strong>ÉQUIPE D’ARBITRAGE · TATAMI {tatami}</strong><span style={{ fontWeight: 700 }}>{tableCount >= 3 ? "Table complète · 3 arbitres" : tableCount >= 2 ? "Table opérationnelle · 2 arbitres minimum" : `Table incomplète · ${tableCount}/2 minimum`}</span></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "8px", marginTop: "10px" }}>{REFEREE_SLOTS.map((slot) => <div key={slot} style={{ padding: "8px 10px", borderRadius: "8px", background: "#f7f9fb", border: "1px solid #d7dde5" }}><div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase" }}>{slot}</div><div style={{ marginTop: "3px", fontWeight: 700 }}>{refereeName(team[slot])}</div></div>)}</div>
+    </div>;
+  }
+
   function saveMatch(result) {
     const winnerId = competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? selectedMatch.akaId : result.vainqueur === "aka" ? selectedMatch.akaId : result.vainqueur === "shiro" ? selectedMatch.shiroId : null;
     const updatedPools = pools.map((pool) => {
@@ -122,10 +139,10 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   if (selectedPool && selectedMatch) {
     const category = getCategory(selectedPool.categoryId);
     const matchProps = { ...selectedMatch, aka: getCompetitor(selectedMatch.akaId), shiro: getCompetitor(selectedMatch.shiroId), competitor: getCompetitor(selectedMatch.competitorId || selectedMatch.akaId), categoryName: category?.nom, poolName: selectedPool.nom, poolId: selectedPool.id };
-    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderNextPassage(selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={selectedMatch.id} match={matchProps} onSave={saveMatch} /> : <MatchManager key={selectedMatch.id} match={matchProps} onSave={saveMatch} />}</div>;
+    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami)}{renderNextPassage(selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={selectedMatch.id} match={matchProps} onSave={saveMatch} /> : <MatchManager key={selectedMatch.id} match={matchProps} onSave={saveMatch} />}</div>;
   }
 
   const displayedGroups = activeTatami === ALL_TATAMIS ? matchesByTatami : matchesByTatami.filter((group) => group.tatami === activeTatami);
-  return <div className="arbitration-manager"><div className="manager-header"><div><p className="surtitle">ARBITRAGE DIRECT</p><h2>Arbitrage par tatami</h2><p>Sélectionnez un tatami pour ouvrir la liste de passage dédiée. Le choix est mémorisé sur cette tablette.</p></div></div>{pools.length === 0 ? <div className="empty-state"><h3>Aucun match disponible</h3><p>Générez et validez les poules avant l'arbitrage.</p></div> : <><div className="tatami-tabs" role="tablist" aria-label="Sélection du tatami"><button className={activeTatami === ALL_TATAMIS ? "active" : ""} onClick={() => handleTatamiSelection(ALL_TATAMIS)}>Tous</button>{tatamis.map((tatami) => <button key={tatami} className={activeTatami === tatami ? "active" : ""} onClick={() => handleTatamiSelection(tatami)}>Tatami {tatami}</button>)}</div><div className="tatami-groups">{displayedGroups.map((group) => { const progress = tatamiProgress(group.matches); const current = group.matches.find(({ match }) => match.statut !== "Terminé"); return <section className="tatami-group" key={group.tatami}><div className="tatami-group-header"><div><p className="surtitle">TATAMI {group.tatami}</p><h3>{progress.finished} terminés · {progress.remaining} restants</h3></div><div className="tatami-progress" aria-label={`${progress.finished} combats terminés sur ${progress.total}`}><span style={{ width: `${progress.total ? (progress.finished / progress.total) * 100 : 0}%` }} /></div></div><div className="competition-list">{group.matches.map(({ pool, match }) => renderMatchCard(pool, match, current?.match.id))}</div></section>; })}</div></>}</div>;
+  return <div className="arbitration-manager"><div className="manager-header"><div><p className="surtitle">ARBITRAGE DIRECT</p><h2>Arbitrage par tatami</h2><p>Sélectionnez un tatami pour ouvrir la liste de passage dédiée. Le choix est mémorisé sur cette tablette.</p></div></div>{pools.length === 0 ? <div className="empty-state"><h3>Aucun match disponible</h3><p>Générez et validez les poules avant l'arbitrage.</p></div> : <><div className="tatami-tabs" role="tablist" aria-label="Sélection du tatami"><button className={activeTatami === ALL_TATAMIS ? "active" : ""} onClick={() => handleTatamiSelection(ALL_TATAMIS)}>Tous</button>{tatamis.map((tatami) => <button key={tatami} className={activeTatami === tatami ? "active" : ""} onClick={() => handleTatamiSelection(tatami)}>Tatami {tatami}</button>)}</div><div className="tatami-groups">{displayedGroups.map((group) => { const progress = tatamiProgress(group.matches); const current = group.matches.find(({ match }) => match.statut !== "Terminé"); return <section className="tatami-group" key={group.tatami}><div className="tatami-group-header"><div><p className="surtitle">TATAMI {group.tatami}</p><h3>{progress.finished} terminés · {progress.remaining} restants</h3></div><div className="tatami-progress" aria-label={`${progress.finished} combats terminés sur ${progress.total}`}><span style={{ width: `${progress.total ? (progress.finished / progress.total) * 100 : 0}%` }} /></div></div>{renderRefereeTeam(group.tatami)}<div className="competition-list">{group.matches.map(({ pool, match }) => renderMatchCard(pool, match, current?.match.id))}</div></section>; })}</div></>}</div>;
 }
 export default ArbitrationManager;
