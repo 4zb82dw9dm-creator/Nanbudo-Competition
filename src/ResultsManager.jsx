@@ -34,28 +34,24 @@ function printResults() {
 }
 
 async function exportResultsPdf() {
-  const lines = [
-    `Résultats - ${competition.nom || "Compétition"}`,
-    competition.date || competition.lieu ? `${competition.lieu || "Lieu à définir"} - ${competition.date || "Date à définir"}` : "",
-    "",
-  ];
-
-  if (finishedPools.length === 0) {
-    lines.push("Aucun résultat définitif.");
-  } else {
-    finishedPools.forEach((pool) => {
+  const pdfDocument = {
+    title: `Résultats - ${competition.nom || "Compétition"}`,
+    subtitle: `${competition.lieu || "Lieu à définir"} - ${competition.date || "Date à définir"}`,
+    emptyMessage: "Aucun résultat définitif.",
+    categories: finishedPools.map((pool) => {
       const category = getCategory(pool.categoryId);
-      lines.push(category?.nom || pool.nom || "Catégorie");
-      lines.push(`1er : ${competitorName(pool.podium.firstId)}`);
-      lines.push(`2e : ${competitorName(pool.podium.secondId)}`);
-      lines.push(`3e : ${competitorName(pool.podium.thirdId)}`);
-      if (pool.podium.fourthId) lines.push(`4e : ${competitorName(pool.podium.fourthId)}`);
-      lines.push("");
-    });
-  }
+      const rankings = [
+        { label: "1er :", name: competitorName(pool.podium.firstId) },
+        { label: "2e :", name: competitorName(pool.podium.secondId) },
+        { label: "3e :", name: competitorName(pool.podium.thirdId) },
+      ];
+      if (pool.podium.fourthId) rankings.push({ label: "4e :", name: competitorName(pool.podium.fourthId) });
+      return { title: category?.nom || pool.nom || "Catégorie", rankings };
+    }),
+  };
 
   await downloadPdfWithDejaVu({
-    lines,
+    document: pdfDocument,
     filename: `resultats-${competition.nom || "competition"}.pdf`.replace(/[^a-z0-9._-]+/gi, "-"),
   });
 }
