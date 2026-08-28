@@ -26,6 +26,10 @@ function assignPhase(categories, tatamiCount, result) {
     });
 }
 
+function combatDisciplinePriority(discipline = "") {
+  return discipline === "randori" ? 0 : 1;
+}
+
 export function buildPlanning(competition) {
   const groups = new Map();
   (competition.pools || []).forEach((pool) => { const key = String(pool.categoryId || pool.id); groups.set(key, [...(groups.get(key) || []), pool]); });
@@ -36,9 +40,9 @@ export function buildPlanning(competition) {
     tatami: Number(adjustments[categoryId]?.tatami || pools[0].tatami || 1), order: Number(adjustments[categoryId]?.order ?? sourceOrder),
     requestedStart: adjustments[categoryId]?.start == null ? null : Number(adjustments[categoryId].start) }));
   const busy = new Map();
-  const session = (items, sessionStart) => {
+  const session = (items, sessionStart, priority = () => 0) => {
     const cursors = { 1: sessionStart, 2: sessionStart, 3: sessionStart };
-    return [...items].sort((a, b) => a.order - b.order || a.sourceOrder - b.sourceOrder).map((item) => {
+    return [...items].sort((a, b) => priority(a) - priority(b) || a.order - b.order || a.sourceOrder - b.sourceOrder).map((item) => {
       const tatami = PLANNING_TATAMIS.includes(item.tatami) ? item.tatami : 1;
       let start = Math.max(cursors[tatami], item.requestedStart ?? sessionStart), end = start + item.duration, conflict;
       do { conflict = item.competitors.flatMap((id) => busy.get(String(id)) || []).find((slot) => start < slot.end && end > slot.start); if (conflict) { start = conflict.end; end = start + item.duration; } } while (conflict);
@@ -49,7 +53,7 @@ export function buildPlanning(competition) {
   const kataEntries = session(categories.filter((item) => isKata(item.discipline)), 540);
   const kataEnd = Math.max(540, ...kataEntries.map((item) => item.end));
   const combatStart = kataEnd;
-  const combatEntries = session(categories.filter((item) => !isKata(item.discipline)), combatStart);
+  const combatEntries = session(categories.filter((item) => !isKata(item.discipline)), combatStart, (item) => combatDisciplinePriority(item.discipline));
   const ceremonyStart = Math.max(combatStart, ...combatEntries.map((item) => item.end));
   return { entries: [...kataEntries, ...combatEntries], kataEnd, combatStart, morningEnd: kataEnd, afternoonStart: combatStart, ceremonyStart };
 }
