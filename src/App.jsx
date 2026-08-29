@@ -6,11 +6,22 @@ import { competitionPublicSlug, currentRoute, publicRegistrationSlug } from "./r
 import { persistCompetitions } from "./registrationProcessing";
 import { isSupabaseConfigured, loadCompetitions, removeCompetition, saveCompetition } from "./supabase";
 
+const LOCAL_COMPETITIONS_KEY = "nanbudo_competitions";
+const SUPABASE_MIGRATION_KEY = "nanbudo_supabase_migration_v1";
+
 function prepareCompetitions(items) {
   return items.map((competition) => ({
     ...competition,
     slug: competitionPublicSlug(competition),
   }));
+}
+
+function readLocalCompetitions() {
+  try {
+    return prepareCompetitions(JSON.parse(localStorage.getItem(LOCAL_COMPETITIONS_KEY) || "[]"));
+  } catch {
+    return [];
+  }
 }
 
 export default function App() {
@@ -31,7 +42,7 @@ export default function App() {
 
 function CommissionApp() {
   const [section, setSection] = useState("accueil");
-  const [competitions, setCompetitions] = useState(() => prepareCompetitions(JSON.parse(localStorage.getItem("nanbudo_competitions") || "[]")));
+  const [competitions, setCompetitions] = useState(readLocalCompetitions);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
   const [supabaseLoaded, setSupabaseLoaded] = useState(!isSupabaseConfigured);
 
@@ -42,7 +53,31 @@ function CommissionApp() {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
-    const refresh = () => loadCompetitions().then((items) => setCompetitions(prepareCompetitions(items))).catch((error) => console.error("Chargement Supabase impossible", error)).finally(() => setSupabaseLoaded(true));
+
+    const refresh = async () => {
+      try {
+        const remoteItems = prepareCompetitions(await loadCompetitions());
+        const migrationDone = localStorage.getItem(SUPABASE_MIGRATION_KEY) === "done";
+
+        if (!migrationDone && remoteItems.length === 0) {
+          const localItems = readLocalCompetitions();
+          if (localItems.length > 0) {
+            await Promise.all(localItems.map(saveCompetition));
+            localStorage.setItem(SUPABASE_MIGRATION_KEY, "done");
+            setCompetitions(localItems);
+            return;
+          }
+        }
+
+        localStorage.setItem(SUPABASE_MIGRATION_KEY, "done");
+        setCompetitions(remoteItems);
+      } catch (error) {
+        console.error("Chargement Supabase impossible", error);
+      } finally {
+        setSupabaseLoaded(true);
+      }
+    };
+
     refresh();
     addEventListener("focus", refresh);
     return () => removeEventListener("focus", refresh);
