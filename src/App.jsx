@@ -29,6 +29,73 @@ function snapshot(items) {
   return JSON.stringify(items);
 }
 
+function isFinishedMatch(match) {
+  return match?.statut === "Terminé";
+}
+
+function mergeMatches(localMatches = [], remoteMatches = []) {
+  const localById = new Map(localMatches.map((match) => [String(match.id), match]));
+  const remoteById = new Map(remoteMatches.map((match) => [String(match.id), match]));
+  const ids = [...new Set([...localById.keys(), ...remoteById.keys()])];
+
+  return ids.map((id) => {
+    const localMatch = localById.get(id);
+    const remoteMatch = remoteById.get(id);
+    if (!localMatch) return remoteMatch;
+    if (!remoteMatch) return localMatch;
+
+    // A completed result must never disappear because another tatami saved
+    // an older whole-competition snapshot at nearly the same time.
+    if (isFinishedMatch(localMatch) && !isFinishedMatch(remoteMatch)) return localMatch;
+    if (isFinishedMatch(remoteMatch) && !isFinishedMatch(localMatch)) return remoteMatch;
+
+    // If both versions are completed, Supabase is authoritative. This avoids
+    // a stale tablet undoing a deliberate later correction of the same match.
+    return remoteMatch;
+  });
+}
+
+function mergePools(localPools = [], remotePools = []) {
+  const localById = new Map(localPools.map((pool) => [String(pool.id), pool]));
+  const remoteById = new Map(remotePools.map((pool) => [String(pool.id), pool]));
+  const ids = [...new Set([...localById.keys(), ...remoteById.keys()])];
+
+  return ids.map((id) => {
+    const localPool = localById.get(id);
+    const remotePool = remoteById.get(id);
+    if (!localPool) return remotePool;
+    if (!remotePool) return localPool;
+
+    const localHasResultMissingRemotely = (localPool.matches || []).some((localMatch) => {
+      if (!isFinishedMatch(localMatch)) return false;
+      const remoteMatch = (remotePool.matches || []).find((match) => String(match.id) === String(localMatch.id));
+      return !isFinishedMatch(remoteMatch);
+    });
+
+    const basePool = localHasResultMissingRemotely ? localPool : remotePool;
+    return {
+      ...basePool,
+      matches: mergeMatches(localPool.matches || [], remotePool.matches || []),
+    };
+  });
+}
+
+function mergeCompetition(localCompetition, remoteCompetition) {
+  if (!localCompetition) return remoteCompetition;
+  if (!remoteCompetition) return localCompetition;
+  return {
+    ...remoteCompetition,
+    pools: mergePools(localCompetition.pools || [], remoteCompetition.pools || []),
+  };
+}
+
+function mergeCompetitionLists(localItems, remoteItems) {
+  const localById = new Map(localItems.map((competition) => [String(competition.id), competition]));
+  const remoteById = new Map(remoteItems.map((competition) => [String(competition.id), competition]));
+  const ids = [...new Set([...remoteById.keys(), ...localById.keys()])];
+  return ids.map((id) => mergeCompetition(localById.get(id), remoteById.get(id)));
+}
+
 export default function App() {
   const [publicSlug, setPublicSlug] = useState(() => publicRegistrationSlug(currentRoute()));
   useEffect(() => {
@@ -87,10 +154,18 @@ function CommissionApp() {
           }
         }
 
-        const remoteSnapshot = snapshot(remoteItems);
-        remoteSnapshotRef.current = remoteSnapshot;
         localStorage.setItem(SUPABASE_MIGRATION_KEY, "done");
-        setCompetitions((current) => snapshot(current) === remoteSnapshot ? current : remoteItems);
+        setCompetitions((current) => {
+          const mergedItems = prepareCompetitions(mergeCompetitionLists(current, remoteItems));
+          const remoteSnapshot = snapshot(remoteItems);
+          const mergedSnapshot = snapshot(mergedItems);
+
+          // Remember exactly what Supabase contained. If the merge rescued a
+          // result from this tablet, the normal save effect will write the
+          // converged version back so every other tablet receives it.
+          remoteSnapshotRef.current = remoteSnapshot;
+          return snapshot(current) === mergedSnapshot ? current : mergedItems;
+        });
       } catch (error) {
         console.error("Chargement Supabase impossible", error);
       } finally {
