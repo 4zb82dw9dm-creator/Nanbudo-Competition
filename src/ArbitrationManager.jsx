@@ -5,6 +5,7 @@ import CompetitionControl from "./CompetitionControl";
 import { calculatePoolPodium, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { sortArbitrationMatches } from "./arbitrationSorting";
+import { saveMatchResult } from "./supabase";
 
 const ALL_TATAMIS = "all";
 const FAVORITE_TATAMI_STORAGE_KEY = "nanbudo-favorite-tatami";
@@ -92,11 +93,21 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     </div>;
   }
 
-  function saveMatch(result) {
+  async function saveMatch(result) {
     const winnerId = competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? selectedMatch.akaId : result.vainqueur === "aka" ? selectedMatch.akaId : result.vainqueur === "shiro" ? selectedMatch.shiroId : null;
+    const completedMatch = { ...selectedMatch, ...result, akaScore: result.scoreAka, shiroScore: result.scoreShiro, winnerId, statut: "Terminé" };
+
+    try {
+      await saveMatchResult(competition.id, selectedPool.id, completedMatch);
+    } catch (error) {
+      console.error("Enregistrement indépendant du résultat impossible", error);
+      alert("Le résultat n'a pas pu être synchronisé. Vérifiez la connexion puis réessayez.");
+      return;
+    }
+
     const updatedPools = pools.map((pool) => {
       if (pool.id !== selectedPool.id) return pool;
-      const matches = pool.matches.map((match) => match.id === selectedMatch.id ? { ...match, ...result, akaScore: result.scoreAka, shiroScore: result.scoreShiro, winnerId, statut: "Terminé" } : match);
+      const matches = pool.matches.map((match) => match.id === selectedMatch.id ? completedMatch : match);
       const changedPool = { ...pool, matches, poolTieBreakOrder: [], rankingLocked: [], podium: null };
       const calculation = calculatePoolPodium(changedPool);
       if (calculation.tieGroups.length) setPendingTieBreak({ poolId: pool.id, tieGroups: calculation.tieGroups, groupIndex: 0, order: [] });
