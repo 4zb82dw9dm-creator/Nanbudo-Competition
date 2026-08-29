@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { determineIndividualMatchWinner, nextPoolTieBreakStep } from "./competitionLogic";
 import { applyMaiWarning } from "./maiRules";
+import { DraftRecoveryNotice, useArbitrationDraft } from "./arbitrationDrafts";
 
 const FUKUSHIN = ["Fukushin 1", "Fukushin 2", "Fukushin 3"];
 const DECISIONS = ["AKA", "SHIRO", "HIKIWAKE"];
@@ -127,6 +128,14 @@ function MatchManager({ match, onSave }) {
   const [penalties, setPenalties] = useState(initialScoreSheet.penalties);
   const [maiWarnings, setMaiWarnings] = useState(initialScoreSheet.maiWarnings);
   const [maiHistory, setMaiHistory] = useState(() => (match?.matchHistory || []).filter((event) => event.type === "mai" || event.type === "mai_conversion" || event.type === "mai_removed"));
+  const draftPayload = useMemo(() => ({ kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory }), [kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory]);
+  const draft = useArbitrationDraft(match, draftPayload, (saved) => {
+    setKataAka(saved.kataAka || ["", "", ""]); setKataShiro(saved.kataShiro || ["", "", ""]);
+    setAssaults(relabelVotes(saved.assaults, ASSAULTS)); setTieBreakAssaults(relabelVotes(saved.tieBreakAssaults, TIE_BREAK_ASSAULTS));
+    setFinalFlags(saved.finalFlags || ["", "", ""]); setPenalties(saved.penalties || { aka: [], shiro: [] });
+    setMaiWarnings(saved.maiWarnings || { aka: [], shiro: [] }); setMaiHistory(saved.maiHistory || []);
+  });
+  const draftMounted = useRef(false);
   const automaticSaveDone = useRef(false);
   const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
   const hasMai = match.discipline === "ju_randori" || match.discipline === "ju_randori_equipe";
@@ -216,14 +225,14 @@ function MatchManager({ match, onSave }) {
     ];
   }
 
-  function save() {
+  async function save() {
     if (isKata) {
       if (!kataReady) return alert("Saisissez toutes les notes et départagez le match avant de valider.");
-      return onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : "shiro" });
+      return draft.finalize(() => onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : "shiro" }));
     }
     if (isLocked) return;
     if (!randoriScore.complete) return alert("Saisissez le résultat des sept assauts avant de valider.");
-    onSave({ assaults, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, maiWarnings, akaNegative: randoriScore.akaNegative, shiroNegative: randoriScore.shiroNegative, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) });
+    return draft.finalize(() => onSave({ assaults, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, maiWarnings, akaNegative: randoriScore.akaNegative, shiroNegative: randoriScore.shiroNegative, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) }));
   }
 
   useEffect(() => {
@@ -240,11 +249,18 @@ function MatchManager({ match, onSave }) {
   }, [match.id]);
 
   useEffect(() => {
+    if (!draftMounted.current) { draftMounted.current = true; return; }
+    draft.markChanged();
+  }, [draftPayload]);
+
+  useEffect(() => {
     if (isKata || isEditing || automaticSaveDone.current) return;
     if (!hasShikaku(penalties.aka) && !hasShikaku(penalties.shiro)) return;
     automaticSaveDone.current = true;
     save();
   }, [isEditing, isKata, penalties, randoriScore.winner]);
+
+  if (draft.pendingDraft) return <section className="match-manager"><DraftRecoveryNotice draft={draft.pendingDraft} onResume={draft.resume} onAbandon={draft.abandon} /></section>;
 
   if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save} disabled={!kataReady}>Valider le résultat</button></div></section>;
 

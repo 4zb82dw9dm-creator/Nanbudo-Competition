@@ -102,7 +102,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     } catch (error) {
       console.error("Enregistrement indépendant du résultat impossible", error);
       alert("Le résultat n'a pas pu être synchronisé. Vérifiez la connexion puis réessayez.");
-      return;
+      return false;
     }
 
     const updatedPools = pools.map((pool) => {
@@ -115,6 +115,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     });
     onUpdateCompetition({ ...competition, pools: updatedPools, statut: "Résultats disponibles" });
     setSelected(null);
+    return true;
   }
 
   function completeTieGroup(groupOrder) {
@@ -151,7 +152,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   }
   if (selectedPool && selectedMatch) {
     const category = getCategory(selectedPool.categoryId);
-    const matchProps = { ...selectedMatch, aka: getCompetitor(selectedMatch.akaId), shiro: getCompetitor(selectedMatch.shiroId), competitor: getCompetitor(selectedMatch.competitorId || selectedMatch.akaId), categoryName: category?.nom, poolName: selectedPool.nom, poolId: selectedPool.id };
+    const matchProps = { ...selectedMatch, aka: getCompetitor(selectedMatch.akaId), shiro: getCompetitor(selectedMatch.shiroId), competitor: getCompetitor(selectedMatch.competitorId || selectedMatch.akaId), categoryName: category?.nom, poolName: selectedPool.nom, poolId: selectedPool.id, competitionId: competition.id };
     return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami)}{renderNextPassage(selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={selectedMatch.id} match={matchProps} onSave={saveMatch} /> : <MatchManager key={selectedMatch.id} match={matchProps} onSave={saveMatch} />}</div>;
   }
 
