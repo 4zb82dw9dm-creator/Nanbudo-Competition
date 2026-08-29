@@ -1,40 +1,49 @@
-import { useEffect, useState } from "react";
-
-const STORAGE_PREFIX = "nanbudo-arbitration-draft:v1";
-const draftKey = (match) => [STORAGE_PREFIX, match.competitionId, match.discipline, match.poolId, match.id, match.tatami || "none"].map(encodeURIComponent).join(":");
-
-function readDraft(match) {
-  if (match.statut === "Terminé") return null;
-  try {
-    const draft = JSON.parse(localStorage.getItem(draftKey(match)));
-    return draft?.version === 1 && draft.payload ? draft : null;
-  } catch { return null; }
-}
-
-function removeDraft(match) {
-  try { localStorage.removeItem(draftKey(match)); }
-  catch (error) { console.error("Suppression de la sauvegarde locale impossible", error); }
-}
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { arbitrationDraftKey, deleteArbitrationDraft, hasDraftIdentity, loadArbitrationDraft, saveArbitrationDraft } from "./arbitrationDraftStorage";
 
 export function useArbitrationDraft(match, payload, restore) {
-  const [pendingDraft, setPendingDraft] = useState(() => readDraft(match));
-  const [editingEnabled, setEditingEnabled] = useState(() => !readDraft(match));
+  const identityKey = useMemo(() => hasDraftIdentity(match) ? arbitrationDraftKey(match) : "", [match.competitionId, match.discipline, match.poolId, match.id, match.tatami]);
+  const [pendingDraft, setPendingDraft] = useState(null);
+  const [editingEnabled, setEditingEnabled] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const payloadRef = useRef(payload);
+
+  function writeNow(nextPayload) {
+    if (!editingEnabled || !hasDraftIdentity(match) || match.statut === "Terminé") return;
+    try { saveArbitrationDraft(localStorage, match, nextPayload); }
+    catch (error) { console.error("Sauvegarde locale de la feuille d’arbitrage impossible", error); }
+  }
 
   useEffect(() => {
-    if (!editingEnabled || !dirty || match.statut === "Terminé") return;
-    try { localStorage.setItem(draftKey(match), JSON.stringify({ version: 1, savedAt: new Date().toISOString(), payload })); }
-    catch (error) { console.error("Sauvegarde locale de la feuille d’arbitrage impossible", error); }
-  }, [dirty, editingEnabled, match, payload]);
+    if (!identityKey) return;
+    const saved = loadArbitrationDraft(localStorage, match);
+    setPendingDraft(saved);
+    setEditingEnabled(!saved);
+    setDirty(false);
+  }, [identityKey, match.statut]);
+
+  useLayoutEffect(() => {
+    payloadRef.current = payload;
+    if (dirty) writeNow(payload);
+  }, [payload, dirty, editingEnabled, identityKey]);
+
+  useEffect(() => {
+    function flush() { if (dirty) writeNow(payloadRef.current); }
+    function flushWhenHidden() { if (document.visibilityState === "hidden") flush(); }
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", flushWhenHidden);
+    return () => { window.removeEventListener("pagehide", flush); document.removeEventListener("visibilitychange", flushWhenHidden); };
+  }, [dirty, editingEnabled, identityKey]);
 
   function resume() { restore(pendingDraft.payload); setPendingDraft(null); setEditingEnabled(true); setDirty(true); }
-  function abandon() { removeDraft(match); setPendingDraft(null); setEditingEnabled(true); setDirty(false); }
+  function abandon() { deleteArbitrationDraft(localStorage, match); setPendingDraft(null); setEditingEnabled(true); setDirty(false); }
   async function finalize(save) {
     const saved = await save();
-    if (saved === true) { removeDraft(match); setDirty(false); }
+    if (saved === true) { deleteArbitrationDraft(localStorage, match); setDirty(false); }
     return saved;
   }
-  return { pendingDraft, editingEnabled, markChanged: () => setDirty(true), resume, abandon, finalize };
+
+  return { pendingDraft, editingEnabled, saveNow: (nextPayload) => { setDirty(true); writeNow(nextPayload); }, markChanged: () => setDirty(true), resume, abandon, finalize };
 }
 
 export function DraftRecoveryNotice({ draft, onResume, onAbandon }) {
