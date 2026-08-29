@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./style.css";
 import CompetitionManager from "./CompetitionManager";
 import PublicRegistration from "./PublicRegistration";
@@ -8,6 +8,7 @@ import { isSupabaseConfigured, loadCompetitions, removeCompetition, saveCompetit
 
 const LOCAL_COMPETITIONS_KEY = "nanbudo_competitions";
 const SUPABASE_MIGRATION_KEY = "nanbudo_supabase_migration_v1";
+const LIVE_REFRESH_MS = 2000;
 
 function prepareCompetitions(items) {
   return items.map((competition) => ({
@@ -22,6 +23,10 @@ function readLocalCompetitions() {
   } catch {
     return [];
   }
+}
+
+function snapshot(items) {
+  return JSON.stringify(items);
 }
 
 export default function App() {
@@ -45,16 +50,27 @@ function CommissionApp() {
   const [competitions, setCompetitions] = useState(readLocalCompetitions);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
   const [supabaseLoaded, setSupabaseLoaded] = useState(!isSupabaseConfigured);
+  const remoteSnapshotRef = useRef("");
+  const refreshRunningRef = useRef(false);
 
   useEffect(() => {
     persistCompetitions(competitions);
-    if (isSupabaseConfigured && supabaseLoaded) Promise.all(competitions.map(saveCompetition)).catch((error) => console.error("Synchronisation impossible", error));
+    if (!isSupabaseConfigured || !supabaseLoaded) return;
+
+    const currentSnapshot = snapshot(competitions);
+    if (currentSnapshot === remoteSnapshotRef.current) return;
+
+    Promise.all(competitions.map(saveCompetition))
+      .then(() => { remoteSnapshotRef.current = currentSnapshot; })
+      .catch((error) => console.error("Synchronisation impossible", error));
   }, [competitions, supabaseLoaded]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
 
     const refresh = async () => {
+      if (refreshRunningRef.current || document.visibilityState === "hidden") return;
+      refreshRunningRef.current = true;
       try {
         const remoteItems = prepareCompetitions(await loadCompetitions());
         const migrationDone = localStorage.getItem(SUPABASE_MIGRATION_KEY) === "done";
@@ -63,24 +79,37 @@ function CommissionApp() {
           const localItems = readLocalCompetitions();
           if (localItems.length > 0) {
             await Promise.all(localItems.map(saveCompetition));
+            const localSnapshot = snapshot(localItems);
+            remoteSnapshotRef.current = localSnapshot;
             localStorage.setItem(SUPABASE_MIGRATION_KEY, "done");
             setCompetitions(localItems);
             return;
           }
         }
 
+        const remoteSnapshot = snapshot(remoteItems);
+        remoteSnapshotRef.current = remoteSnapshot;
         localStorage.setItem(SUPABASE_MIGRATION_KEY, "done");
-        setCompetitions(remoteItems);
+        setCompetitions((current) => snapshot(current) === remoteSnapshot ? current : remoteItems);
       } catch (error) {
         console.error("Chargement Supabase impossible", error);
       } finally {
         setSupabaseLoaded(true);
+        refreshRunningRef.current = false;
       }
     };
 
     refresh();
-    addEventListener("focus", refresh);
-    return () => removeEventListener("focus", refresh);
+    const interval = setInterval(refresh, LIVE_REFRESH_MS);
+    const focusListener = () => refresh();
+    const visibilityListener = () => { if (document.visibilityState === "visible") refresh(); };
+    addEventListener("focus", focusListener);
+    document.addEventListener("visibilitychange", visibilityListener);
+    return () => {
+      clearInterval(interval);
+      removeEventListener("focus", focusListener);
+      document.removeEventListener("visibilitychange", visibilityListener);
+    };
   }, []);
 
   useEffect(() => {
