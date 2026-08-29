@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MatchManager, { PoolTieBreakManager } from "./MatchManager";
 import KataSheet from "./KataSheet";
 import CompetitionControl from "./CompetitionControl";
 import { calculatePoolPodium, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { sortArbitrationMatches } from "./arbitrationSorting";
+import { loadArbitrationDraft } from "./arbitrationDraftStorage";
 import { saveMatchResult } from "./supabase";
 
 const ALL_TATAMIS = "all";
@@ -24,6 +25,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   const [pendingTieBreak, setPendingTieBreak] = useState(null);
   const [showControl, setShowControl] = useState(false);
   const [activeTatami, setActiveTatami] = useState(() => localStorage.getItem(FAVORITE_TATAMI_STORAGE_KEY) || ALL_TATAMIS);
+  const lastDraftSyncRef = useRef("");
   function getCompetitor(id) { return competitors.find((competitor) => competitor.id === id); }
   function getCategory(id) { return categories.find((category) => category.id === id); }
   const matchesByTatami = useMemo(() => {
@@ -58,6 +60,46 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
 
   const selectedPool = pools.find((pool) => pool.id === selected?.poolId);
   const selectedMatch = selectedPool?.matches.find((match) => match.id === selected?.matchId);
+
+  useEffect(() => {
+    lastDraftSyncRef.current = "";
+    if (!selectedPool || !selectedMatch || selectedMatch.statut === "Terminé") return undefined;
+
+    const identity = { ...selectedMatch, competitionId: competition.id, poolId: selectedPool.id };
+    let stopped = false;
+
+    const syncDraft = async () => {
+      const draft = loadArbitrationDraft(localStorage, identity);
+      if (!draft?.payload || stopped) return;
+
+      let livePayload = draft.payload;
+      if (competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) && Array.isArray(draft.payload.notes)) {
+        livePayload = { kataName: draft.payload.kataName || "", kataScores: draft.payload.notes };
+      }
+
+      const draftSnapshot = JSON.stringify(livePayload);
+      if (draftSnapshot === lastDraftSyncRef.current) return;
+
+      try {
+        await saveMatchResult(competition.id, selectedPool.id, {
+          ...selectedMatch,
+          ...livePayload,
+          statut: "En cours",
+          liveDraftSavedAt: draft.savedAt,
+        });
+        if (!stopped) lastDraftSyncRef.current = draftSnapshot;
+      } catch (error) {
+        console.error("Synchronisation de la saisie en cours impossible", error);
+      }
+    };
+
+    syncDraft();
+    const interval = setInterval(syncDraft, 500);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
+  }, [competition.id, selectedPool?.id, selectedMatch?.id, selectedMatch?.statut, selectedMatch?.discipline]);
 
   function nextPassageFor(match) {
     const group = matchesByTatami.find((item) => item.tatami === String(match.tatami || "Non affecté"));
@@ -153,7 +195,9 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   if (selectedPool && selectedMatch) {
     const category = getCategory(selectedPool.categoryId);
     const matchProps = { ...selectedMatch, aka: getCompetitor(selectedMatch.akaId), shiro: getCompetitor(selectedMatch.shiroId), competitor: getCompetitor(selectedMatch.competitorId || selectedMatch.akaId), categoryName: category?.nom, poolName: selectedPool.nom, poolId: selectedPool.id, competitionId: competition.id };
-    const liveSheetKey = `${selectedMatch.id}:${JSON.stringify({ statut: selectedMatch.statut, akaScore: selectedMatch.akaScore, shiroScore: selectedMatch.shiroScore, scoreAka: selectedMatch.scoreAka, scoreShiro: selectedMatch.scoreShiro, finalScore: selectedMatch.finalScore, kataName: selectedMatch.kataName, kataScores: selectedMatch.kataScores, assaults: selectedMatch.assaults, tieBreakAssaults: selectedMatch.tieBreakAssaults, finalFlags: selectedMatch.finalFlags, penalties: selectedMatch.penalties, maiWarnings: selectedMatch.maiWarnings, matchHistory: selectedMatch.matchHistory })}`;
+    const localDraft = loadArbitrationDraft(localStorage, matchProps);
+    const liveSheetVersion = JSON.stringify({ statut: selectedMatch.statut, liveDraftSavedAt: selectedMatch.liveDraftSavedAt, akaScore: selectedMatch.akaScore, shiroScore: selectedMatch.shiroScore, scoreAka: selectedMatch.scoreAka, scoreShiro: selectedMatch.scoreShiro, finalScore: selectedMatch.finalScore, kataName: selectedMatch.kataName, kataScores: selectedMatch.kataScores, assaults: selectedMatch.assaults, tieBreakAssaults: selectedMatch.tieBreakAssaults, finalFlags: selectedMatch.finalFlags, penalties: selectedMatch.penalties, maiWarnings: selectedMatch.maiWarnings, matchHistory: selectedMatch.matchHistory });
+    const liveSheetKey = localDraft ? String(selectedMatch.id) : `${selectedMatch.id}:${liveSheetVersion}`;
     return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami)}{renderNextPassage(selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={liveSheetKey} match={matchProps} onSave={saveMatch} /> : <MatchManager key={liveSheetKey} match={matchProps} onSave={saveMatch} />}</div>;
   }
 
