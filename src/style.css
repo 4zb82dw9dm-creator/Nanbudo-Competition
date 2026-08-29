@@ -2146,3 +2146,9 @@ footer span {
 .public-event { margin: 0 auto 20px; max-width: 1200px; text-align: center; }
 .public-event h1 { color: #102f55; margin: 5px 0; }
 .confirmation { background: #e5f6e9; border: 2px solid #2e7d32; border-radius: 10px; margin: 16px auto; max-width: 1200px; padding: 16px; }
+
+.draft-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.draft-recovery { margin: 16px 0; padding: 18px; border: 2px solid #b26a00; border-radius: 12px; background: #fff7e6; color: #442800; }
+.draft-recovery > strong { font-size: 1.15rem; }
+.draft-recovery p { margin: 8px 0 14px; }
+.draft-recovery div { display: flex; flex-wrap: wrap; gap: 10px; }
