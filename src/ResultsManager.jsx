@@ -50,30 +50,49 @@ async function printResults() {
   const competitionName = competition.nom || "Compétition";
   const location = competition.lieu || "Lieu à définir";
   const date = competition.date || "Date à définir";
-  const categoriesHtml = finishedPools.length === 0
-    ? '<p class="empty">Aucun résultat définitif.</p>'
-    : finishedPools.map((pool) => {
-      const category = getCategory(pool.categoryId);
-      const rankings = [
-        ["1er", pool.podium.firstId],
-        ["2e", pool.podium.secondId],
-        ["3e", pool.podium.thirdId],
-      ];
+  const cardsPerPage = 8;
 
-      if (pool.podium.fourthId) rankings.push(["4e", pool.podium.fourthId]);
+  const categoryCards = finishedPools.map((pool) => {
+    const category = getCategory(pool.categoryId);
+    const rankings = [
+      ["1er", pool.podium.firstId],
+      ["2e", pool.podium.secondId],
+      ["3e", pool.podium.thirdId],
+    ];
 
-      return `
-        <article class="category">
-          <p class="discipline">${category?.discipline === "kata" ? "KATA" : "COMBAT"}</p>
-          <h2>${escapeHtml(category?.nom || pool.nom || "Catégorie")}</h2>
-          <ol>
-            ${rankings.map(([rank, competitorId]) => `
-              <li><strong>${rank}</strong><span>${escapeHtml(competitorName(competitorId))}</span></li>
-            `).join("")}
-          </ol>
-        </article>
-      `;
-    }).join("");
+    if (pool.podium.fourthId) rankings.push(["4e", pool.podium.fourthId]);
+
+    return `
+      <article class="category">
+        <p class="discipline">${category?.discipline === "kata" ? "KATA" : "COMBAT"}</p>
+        <h2>${escapeHtml(category?.nom || pool.nom || "Catégorie")}</h2>
+        <ol>
+          ${rankings.map(([rank, competitorId]) => `
+            <li><strong>${rank}</strong><span>${escapeHtml(competitorName(competitorId))}</span></li>
+          `).join("")}
+        </ol>
+      </article>
+    `;
+  });
+
+  const pageChunks = [];
+  for (let index = 0; index < categoryCards.length; index += cardsPerPage) {
+    pageChunks.push(categoryCards.slice(index, index + cardsPerPage));
+  }
+  if (pageChunks.length === 0) pageChunks.push([]);
+
+  const pagesHtml = pageChunks.map((cards) => `
+    <section class="print-page">
+      <header>
+        <p class="eyebrow">RÉSULTATS OFFICIELS</p>
+        <h1>${escapeHtml(competitionName)}</h1>
+        <p>${escapeHtml(location)} · ${escapeHtml(date)}</p>
+      </header>
+      ${cards.length
+        ? `<main class="categories">${cards.join("")}</main>`
+        : '<p class="empty">Aucun résultat définitif.</p>'}
+    </section>
+  `).join("");
 
   const documentLoaded = new Promise((resolve) => {
     printWindow.addEventListener("load", resolve, { once: true });
@@ -87,36 +106,33 @@ async function printResults() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Résultats - ${escapeHtml(competitionName)}</title>
         <style>
-          @page { size: A4 portrait; margin: 14mm; }
+          @page { size: A4 portrait; margin: 12mm; }
           * { box-sizing: border-box; }
           html, body { margin: 0; padding: 0; background: #fff; color: #111827; }
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; font-size: 11pt; }
-          header { margin-bottom: 10mm; padding-bottom: 5mm; border-bottom: 2px solid #111827; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; font-size: 10.5pt; }
+          .print-page { break-after: page; page-break-after: always; }
+          .print-page:last-child { break-after: auto; page-break-after: auto; }
+          header { margin-bottom: 7mm; padding-bottom: 4mm; border-bottom: 2px solid #111827; }
           header p { margin: 0; }
-          .eyebrow, .discipline { color: #6b7280; font-size: 9pt; font-weight: 700; letter-spacing: .12em; }
-          h1 { margin: 2mm 0; font-size: 24pt; line-height: 1.15; }
-          .categories { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; align-items: start; }
-          .category { break-inside: avoid; page-break-inside: avoid; border: 1px solid #d1d5db; border-radius: 2mm; padding: 5mm; }
-          .category h2 { margin: 1.5mm 0 4mm; font-size: 15pt; line-height: 1.2; }
+          .eyebrow, .discipline { color: #6b7280; font-size: 8.5pt; font-weight: 700; letter-spacing: .12em; }
+          h1 { margin: 1.5mm 0; font-size: 22pt; line-height: 1.12; }
+          .categories { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm 6mm; align-items: start; }
+          .category { break-inside: avoid; page-break-inside: avoid; overflow: hidden; border: 1px solid #d1d5db; border-radius: 2mm; padding: 4mm; }
+          .category h2 { margin: 1mm 0 3mm; font-size: 13pt; line-height: 1.18; }
           .discipline { margin: 0; }
           ol { margin: 0; padding: 0; list-style: none; }
-          li { display: grid; grid-template-columns: 13mm 1fr; gap: 3mm; padding: 2.5mm 0; border-top: 1px solid #e5e7eb; }
+          li { display: grid; grid-template-columns: 12mm 1fr; gap: 3mm; padding: 2mm 0; border-top: 1px solid #e5e7eb; }
           li strong { white-space: nowrap; }
           .empty { font-size: 13pt; }
           @media print {
-            html, body { width: 100%; min-height: 100%; }
-            .category { box-shadow: none; }
+            html, body { width: 100%; }
+            .print-page { break-after: page; page-break-after: always; }
+            .print-page:last-child { break-after: auto; page-break-after: auto; }
+            .category { break-inside: avoid !important; page-break-inside: avoid !important; box-shadow: none; }
           }
         </style>
       </head>
-      <body>
-        <header>
-          <p class="eyebrow">RÉSULTATS OFFICIELS</p>
-          <h1>${escapeHtml(competitionName)}</h1>
-          <p>${escapeHtml(location)} · ${escapeHtml(date)}</p>
-        </header>
-        <main class="categories">${categoriesHtml}</main>
-      </body>
+      <body>${pagesHtml}</body>
     </html>`);
   printWindow.document.close();
 
@@ -157,6 +173,7 @@ async function exportResultsPdf() {
   await downloadPdfWithDejaVu({
     document: pdfDocument,
     filename: `resultats-${competition.nom || "competition"}.pdf`.replace(/[^a-z0-9._-]+/gi, "-"),
+    openInNewWindow: true,
   });
 }
   return (
