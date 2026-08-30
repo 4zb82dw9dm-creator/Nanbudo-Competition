@@ -44,6 +44,12 @@ function triggerDownload(pdf, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+function openPdfInWindow(pdf, previewWindow) {
+  const url = URL.createObjectURL(pdf.output("blob"));
+  previewWindow.location.replace(url);
+  setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+}
+
 async function createPdf(orientation = "portrait") {
   const [jsPDF, regularFont, boldFont] = await Promise.all([
     loadJsPdf(),
@@ -132,14 +138,42 @@ function drawLegacyLines(pdf, lines) {
   });
 }
 
-export async function downloadPdfWithDejaVu({ document: pdfDocument, lines, filename, landscape = false }) {
+export async function downloadPdfWithDejaVu({
+  document: pdfDocument,
+  lines,
+  filename,
+  landscape = false,
+  openInNewWindow = false,
+}) {
+  let previewWindow = null;
+
+  if (openInNewWindow) {
+    // Open synchronously while we are still inside the user's click event.
+    // This is required by Safari/iPadOS to avoid popup blocking after awaits.
+    previewWindow = window.open("", "_blank");
+    if (previewWindow) {
+      previewWindow.document.open();
+      previewWindow.document.write(`<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>Préparation du PDF</title></head><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;padding:24px"><p>Préparation du PDF…</p></body></html>`);
+      previewWindow.document.close();
+    }
+  }
+
   try {
     const pdf = await createPdf(landscape ? "landscape" : "portrait");
     if (pdfDocument) drawResults(pdf, pdfDocument);
     else drawLegacyLines(pdf, lines || []);
-    triggerDownload(pdf, filename);
+
+    if (previewWindow && !previewWindow.closed) {
+      openPdfInWindow(pdf, previewWindow);
+    } else {
+      triggerDownload(pdf, filename);
+      if (openInNewWindow) {
+        window.alert("Le nouvel onglet a été bloqué. Autorisez les fenêtres surgissantes pour ouvrir le PDF sans quitter la page.");
+      }
+    }
   } catch (error) {
     console.error("Échec de la génération du PDF", error);
+    if (previewWindow && !previewWindow.closed) previewWindow.close();
     window.alert("Impossible de générer le PDF. Vérifiez la connexion et la présence des fontes DejaVuSans normale et bold dans public/assets.");
   }
 }
