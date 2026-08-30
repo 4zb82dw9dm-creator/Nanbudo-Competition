@@ -50,7 +50,7 @@ async function printResults() {
   const competitionName = competition.nom || "Compétition";
   const location = competition.lieu || "Lieu à définir";
   const date = competition.date || "Date à définir";
-  const cardsPerPage = 8;
+  const cardsPerPage = 6;
 
   const categoryCards = finishedPools.map((pool) => {
     const category = getCategory(pool.categoryId);
@@ -110,7 +110,7 @@ async function printResults() {
           * { box-sizing: border-box; }
           html, body { margin: 0; padding: 0; background: #fff; color: #111827; }
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; font-size: 10.5pt; }
-          .print-page { break-after: page; page-break-after: always; }
+          .print-page { height: 273mm; overflow: hidden; break-after: page; page-break-after: always; break-inside: avoid; page-break-inside: avoid; }
           .print-page:last-child { break-after: auto; page-break-after: auto; }
           header { margin-bottom: 7mm; padding-bottom: 4mm; border-bottom: 2px solid #111827; }
           header p { margin: 0; }
@@ -126,7 +126,7 @@ async function printResults() {
           .empty { font-size: 13pt; }
           @media print {
             html, body { width: 100%; }
-            .print-page { break-after: page; page-break-after: always; }
+            .print-page { height: 273mm; overflow: hidden; break-after: page; page-break-after: always; break-inside: avoid; page-break-inside: avoid; }
             .print-page:last-child { break-after: auto; page-break-after: auto; }
             .category { break-inside: avoid !important; page-break-inside: avoid !important; box-shadow: none; }
           }
