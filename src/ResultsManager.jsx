@@ -50,7 +50,7 @@ async function printResults() {
   const competitionName = competition.nom || "Compétition";
   const location = competition.lieu || "Lieu à définir";
   const date = competition.date || "Date à définir";
-  const cardsPerPage = 6;
+  const cardsPerPage = 4;
 
   const categoryCards = finishedPools.map((pool) => {
     const category = getCategory(pool.categoryId);
