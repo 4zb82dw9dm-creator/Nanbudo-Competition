@@ -236,6 +236,16 @@ function MatchManager({ match, onSave }) {
   }
 
   useEffect(() => {
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+    };
+    scrollToTop();
+    const frame = window.requestAnimationFrame(scrollToTop);
+    return () => window.cancelAnimationFrame(frame);
+  }, [match.id]);
+
+  useEffect(() => {
     const nextScoreSheet = createScoreSheetState(match);
     setKataAka(nextScoreSheet.kataAka);
     setKataShiro(nextScoreSheet.kataShiro);
