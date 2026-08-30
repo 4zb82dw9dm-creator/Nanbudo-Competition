@@ -37,17 +37,28 @@ export function buildPlanning(competition) {
   const categories = [...groups].map(([categoryId, pools], sourceOrder) => ({ categoryId, pools, sourceOrder,
     name: pools[0].nom?.replace(/ · Poule \d+$/, "") || "Catégorie", discipline: pools[0].discipline,
     competitors: [...new Set(pools.flatMap((pool) => pool.competitorIds || []))], duration: estimateCategoryDuration(pools),
-    tatami: Number(adjustments[categoryId]?.tatami || pools[0].tatami || 1), order: Number(adjustments[categoryId]?.order ?? sourceOrder),
+    tatami: Number(adjustments[categoryId]?.tatami || pools[0].tatami || 1),
+    requestedOrder: adjustments[categoryId]?.order == null ? null : Number(adjustments[categoryId].order),
     requestedStart: adjustments[categoryId]?.start == null ? null : Number(adjustments[categoryId].start) }));
   const busy = new Map();
   const session = (items, sessionStart, priority = () => 0) => {
     const cursors = { 1: sessionStart, 2: sessionStart, 3: sessionStart };
-    return [...items].sort((a, b) => priority(a) - priority(b) || a.order - b.order || a.sourceOrder - b.sourceOrder).map((item) => {
+    const defaultOrders = new Map();
+    PLANNING_TATAMIS.forEach((tatami) => {
+      [...items]
+        .filter((item) => (PLANNING_TATAMIS.includes(item.tatami) ? item.tatami : 1) === tatami)
+        .sort((a, b) => priority(a) - priority(b) || a.sourceOrder - b.sourceOrder)
+        .forEach((item, index) => defaultOrders.set(item.categoryId, index + 1));
+    });
+    const orderFor = (item) => item.requestedOrder ?? defaultOrders.get(item.categoryId) ?? 1;
+    const displayOrders = { 1: 0, 2: 0, 3: 0 };
+    return [...items].sort((a, b) => priority(a) - priority(b) || orderFor(a) - orderFor(b) || a.sourceOrder - b.sourceOrder).map((item) => {
       const tatami = PLANNING_TATAMIS.includes(item.tatami) ? item.tatami : 1;
       let start = Math.max(cursors[tatami], item.requestedStart ?? sessionStart), end = start + item.duration, conflict;
       do { conflict = item.competitors.flatMap((id) => busy.get(String(id)) || []).find((slot) => start < slot.end && end > slot.start); if (conflict) { start = conflict.end; end = start + item.duration; } } while (conflict);
       item.competitors.forEach((id) => busy.set(String(id), [...(busy.get(String(id)) || []), { start, end }])); cursors[tatami] = end;
-      return { ...item, tatami, start, end, disciplineLabel: disciplineLabel(item.discipline) };
+      const order = ++displayOrders[tatami];
+      return { ...item, tatami, order, start, end, disciplineLabel: disciplineLabel(item.discipline) };
     });
   };
   const kataEntries = session(categories.filter((item) => isKata(item.discipline)), 540);
