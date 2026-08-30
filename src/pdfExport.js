@@ -46,7 +46,27 @@ function triggerDownload(pdf, filename) {
 
 function openPdfInWindow(pdf, previewWindow) {
   const url = URL.createObjectURL(pdf.output("blob"));
-  previewWindow.location.replace(url);
+
+  // Keep the application's current tab untouched. Instead of navigating the
+  // popup itself to the blob URL (which Safari/iPadOS can occasionally reuse in
+  // the opener), render the PDF inside the already-created independent tab.
+  previewWindow.document.open();
+  previewWindow.document.write(`<!doctype html>
+    <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Résultats PDF</title>
+        <style>
+          html, body { margin: 0; width: 100%; height: 100%; background: #fff; }
+          iframe { border: 0; width: 100%; height: 100%; display: block; }
+        </style>
+      </head>
+      <body><iframe src="${url}" title="Résultats PDF"></iframe></body>
+    </html>`);
+  previewWindow.document.close();
+  previewWindow.focus();
+
   setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
 }
 
