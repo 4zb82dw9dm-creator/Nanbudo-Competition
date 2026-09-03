@@ -5,7 +5,7 @@ import CompetitionControl from "./CompetitionControl";
 import { calculatePoolPodium, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { findNextArbitrationPassage, sortArbitrationMatches } from "./arbitrationSorting";
-import { loadArbitrationDraft } from "./arbitrationDraftStorage";
+import { arbitrationSheetKey, loadArbitrationDraft } from "./arbitrationDraftStorage";
 import { saveMatchResult } from "./supabase";
 
 const ALL_TATAMIS = "all";
@@ -193,9 +193,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   if (selectedPool && selectedMatch) {
     const category = getCategory(selectedPool.categoryId);
     const matchProps = { ...selectedMatch, aka: getCompetitor(selectedMatch.akaId), shiro: getCompetitor(selectedMatch.shiroId), competitor: getCompetitor(selectedMatch.competitorId || selectedMatch.akaId), categoryName: category?.nom, poolName: selectedPool.nom, poolId: selectedPool.id, competitionId: competition.id };
-    const localDraft = loadArbitrationDraft(localStorage, matchProps);
-    const liveSheetVersion = JSON.stringify({ statut: selectedMatch.statut, liveDraftSavedAt: selectedMatch.liveDraftSavedAt, akaScore: selectedMatch.akaScore, shiroScore: selectedMatch.shiroScore, scoreAka: selectedMatch.scoreAka, scoreShiro: selectedMatch.scoreShiro, finalScore: selectedMatch.finalScore, kataName: selectedMatch.kataName, kataScores: selectedMatch.kataScores, assaults: selectedMatch.assaults, tieBreakAssaults: selectedMatch.tieBreakAssaults, finalFlags: selectedMatch.finalFlags, penalties: selectedMatch.penalties, maiWarnings: selectedMatch.maiWarnings, matchHistory: selectedMatch.matchHistory });
-    const liveSheetKey = localDraft ? String(selectedMatch.id) : `${selectedMatch.id}:${liveSheetVersion}`;
+    const liveSheetKey = arbitrationSheetKey(matchProps);
     return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami)}{renderNextPassage(selectedPool, selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={liveSheetKey} match={matchProps} onSave={saveMatch} /> : <MatchManager key={liveSheetKey} match={matchProps} onSave={saveMatch} />}</div>;
   }
 
