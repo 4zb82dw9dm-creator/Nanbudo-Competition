@@ -119,14 +119,20 @@ export function generateMatches(competitorIds, category, poolIndex = 0, tatami =
     }));
   }
   const matches = [];
-  for (let i = 0; i < competitorIds.length; i += 1) {
-    for (let j = i + 1; j < competitorIds.length; j += 1) {
+  const rotation = [...competitorIds];
+  if (rotation.length % 2 === 1) rotation.push(null);
+  const roundCount = Math.max(0, rotation.length - 1);
+  for (let round = 0; round < roundCount; round += 1) {
+    for (let index = 0; index < rotation.length / 2; index += 1) {
+      const akaId = rotation[index];
+      const shiroId = rotation[rotation.length - 1 - index];
+      if (!akaId || !shiroId) continue;
       matches.push({
-        id: `${Date.now()}-${category.id}-${poolIndex}-${i}-${j}`,
+        id: `${Date.now()}-${category.id}-${poolIndex}-${round}-${index}`,
         categoryId: category.id,
         discipline: category.discipline,
-        akaId: competitorIds[i],
-        shiroId: competitorIds[j],
+        akaId,
+        shiroId,
         akaScore: null,
         shiroScore: null,
         winnerId: null,
@@ -140,6 +146,7 @@ export function generateMatches(competitorIds, category, poolIndex = 0, tatami =
         statut: "À jouer",
       });
     }
+    rotation.splice(1, 0, rotation.pop());
   }
   return matches;
 }
