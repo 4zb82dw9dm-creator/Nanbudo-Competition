@@ -4,7 +4,9 @@ export const COMPLETE_TEST_COMPETITION_NAME = "COMPÉTITION TEST 100 COMPÉTITEU
 export const DEMO_COMPETITION_MARKER = "nanbudo-complete-demo-v2";
 
 const CLUBS = ["Nanbudo Paris", "Nanbudo Marseille", "Nanbudo Lyon", "Nanbudo Nantes", "Nanbudo Lille", "Nanbudo Nice", "Nanbudo Bordeaux", "Nanbudo Toulouse", "Nanbudo Strasbourg", "Nanbudo Montpellier"];
-const FIRST_NAMES = ["Léo", "Manon", "Hugo", "Inès", "Nathan", "Chloé", "Lucas", "Zoé", "Maël", "Lina", "Tom", "Sarah", "Antoine", "Léa", "Baptiste", "Julie", "Maxime", "Anaïs", "Quentin", "Marie", "Romain", "Amandine", "Olivier", "Céline"];
+const MALE_FIRST_NAMES = ["Léo", "Hugo", "Nathan", "Lucas", "Maël", "Tom", "Antoine", "Baptiste", "Maxime", "Quentin", "Romain", "Olivier"];
+const FEMALE_FIRST_NAMES = ["Manon", "Inès", "Chloé", "Zoé", "Lina", "Sarah", "Léa", "Julie", "Anaïs", "Marie", "Amandine", "Céline"];
+const FIRST_NAMES = MALE_FIRST_NAMES.flatMap((name, index) => [name, FEMALE_FIRST_NAMES[index]]);
 const LAST_NAMES = ["Martin", "Bernard", "Petit", "Robert", "Richard", "Durand", "Dubois", "Moreau", "Laurent", "Simon", "Michel", "Lefèvre", "Leroy", "Roux", "David", "Bertrand", "Morel", "Fournier", "Girard", "Bonnet", "Dupont", "Lambert", "Fontaine", "Rousseau"];
 
 const DEMO_CATEGORIES = [
@@ -54,7 +56,7 @@ function makeCompetitor(category, categoryIndex, memberIndex) {
   return {
     id,
     nom: `${LAST_NAMES[index % LAST_NAMES.length].toUpperCase()}-${String(index + 1).padStart(3, "0")}`,
-    prenom: FIRST_NAMES[index % FIRST_NAMES.length],
+    prenom: (category.sex === "Homme" ? MALE_FIRST_NAMES : FEMALE_FIRST_NAMES)[index % MALE_FIRST_NAMES.length],
     age: category.age,
     sexe: category.sex,
     ceinture: category.grade,
