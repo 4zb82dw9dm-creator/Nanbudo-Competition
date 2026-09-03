@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { scheduledTimeToMinutes, sortArbitrationMatches } from "../src/arbitrationSorting.js";
+import { findNextArbitrationPassage, scheduledTimeToMinutes, sortArbitrationMatches } from "../src/arbitrationSorting.js";
 
 const entry = (tatami, horaire, ordre, statut = "À jouer", id = `${tatami}-${horaire}-${ordre}`) => ({
   pool: { id: `pool-${tatami}` },
@@ -50,4 +50,24 @@ test("status never changes chronological position", () => {
 test("equal times use tatami then passage number and remain stable after that", () => {
   const matches = [entry(2, "10:00", 2, "À jouer", "first"), entry(1, "10:00", 3), entry(2, "10:00", 1), entry(2, "10:00", 2, "Terminé", "second")];
   assert.deepEqual(sort(matches).map(({ match }) => match.id), ["1-10:00-3", "2-10:00-1", "first", "second"]);
+});
+
+test("the next passage is located by pool and match when match ids are duplicated", () => {
+  const matches = [
+    { pool: { id: "pool-a" }, match: { id: "duplicate", statut: "À jouer" } },
+    { pool: { id: "pool-a" }, match: { id: "a-2", statut: "À jouer" } },
+    { pool: { id: "pool-b" }, match: { id: "duplicate", statut: "À jouer" } },
+    { pool: { id: "pool-b" }, match: { id: "b-2", statut: "À jouer" } },
+  ];
+  assert.equal(findNextArbitrationPassage(matches, "pool-b", "duplicate").match.id, "b-2");
+});
+
+test("the next passage skips a completed match and reports the end of planning", () => {
+  const matches = [
+    { pool: { id: "pool" }, match: { id: "current", statut: "À jouer" } },
+    { pool: { id: "pool" }, match: { id: "finished", statut: "Terminé" } },
+    { pool: { id: "pool" }, match: { id: "next", statut: "À jouer" } },
+  ];
+  assert.equal(findNextArbitrationPassage(matches, "pool", "current").match.id, "next");
+  assert.equal(findNextArbitrationPassage(matches, "pool", "next"), null);
 });
