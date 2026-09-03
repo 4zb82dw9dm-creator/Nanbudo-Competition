@@ -4,7 +4,7 @@ import KataSheet from "./KataSheet";
 import CompetitionControl from "./CompetitionControl";
 import { calculatePoolPodium, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
-import { sortArbitrationMatches } from "./arbitrationSorting";
+import { findNextArbitrationPassage, sortArbitrationMatches } from "./arbitrationSorting";
 import { loadArbitrationDraft } from "./arbitrationDraftStorage";
 import { saveMatchResult } from "./supabase";
 
@@ -101,16 +101,14 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     };
   }, [competition.id, selectedPool?.id, selectedMatch?.id, selectedMatch?.statut, selectedMatch?.discipline]);
 
-  function nextPassageFor(match) {
+  function nextPassageFor(pool, match) {
     const group = matchesByTatami.find((item) => item.tatami === String(match.tatami || "Non affecté"));
     if (!group) return null;
-    const currentIndex = group.matches.findIndex(({ match: item }) => item.id === match.id);
-    if (currentIndex < 0) return null;
-    return group.matches.slice(currentIndex + 1).find(({ match: item }) => item.statut !== "Terminé") || null;
+    return findNextArbitrationPassage(group.matches, pool.id, match.id);
   }
 
-  function renderNextPassage(match) {
-    const next = nextPassageFor(match);
+  function renderNextPassage(pool, match) {
+    const next = nextPassageFor(pool, match);
     if (!next) return <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #d7dde5", borderRadius: "12px", background: "#f7f9fb" }}><strong>À SUIVRE · TATAMI {match.tatami}</strong><div style={{ marginTop: "6px" }}>Dernier passage prévu sur ce tatami.</div></div>;
     const nextMatch = next.match;
     const category = getCategory(next.pool.categoryId);
@@ -198,7 +196,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     const localDraft = loadArbitrationDraft(localStorage, matchProps);
     const liveSheetVersion = JSON.stringify({ statut: selectedMatch.statut, liveDraftSavedAt: selectedMatch.liveDraftSavedAt, akaScore: selectedMatch.akaScore, shiroScore: selectedMatch.shiroScore, scoreAka: selectedMatch.scoreAka, scoreShiro: selectedMatch.scoreShiro, finalScore: selectedMatch.finalScore, kataName: selectedMatch.kataName, kataScores: selectedMatch.kataScores, assaults: selectedMatch.assaults, tieBreakAssaults: selectedMatch.tieBreakAssaults, finalFlags: selectedMatch.finalFlags, penalties: selectedMatch.penalties, maiWarnings: selectedMatch.maiWarnings, matchHistory: selectedMatch.matchHistory });
     const liveSheetKey = localDraft ? String(selectedMatch.id) : `${selectedMatch.id}:${liveSheetVersion}`;
-    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami)}{renderNextPassage(selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={liveSheetKey} match={matchProps} onSave={saveMatch} /> : <MatchManager key={liveSheetKey} match={matchProps} onSave={saveMatch} />}</div>;
+    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami)}{renderNextPassage(selectedPool, selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={liveSheetKey} match={matchProps} onSave={saveMatch} /> : <MatchManager key={liveSheetKey} match={matchProps} onSave={saveMatch} />}</div>;
   }
 
   if (showControl) return <div className="arbitration-manager"><button className="back-button" type="button" onClick={() => setShowControl(false)}>← Vue arbitrage</button><CompetitionControl competition={competition} onOpenMatch={(poolId, matchId) => { setShowControl(false); setSelected({ poolId, matchId }); }} /></div>;

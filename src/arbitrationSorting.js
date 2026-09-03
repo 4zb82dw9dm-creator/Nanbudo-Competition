@@ -23,3 +23,10 @@ export function sortArbitrationMatches(a, b) {
     || tatamiOrder(a.match.tatami) - tatamiOrder(b.match.tatami)
     || passageOrder(a.match) - passageOrder(b.match);
 }
+
+export function findNextArbitrationPassage(matches = [], currentPoolId, currentMatchId) {
+  const currentIndex = matches.findIndex(({ pool, match }) =>
+    String(pool.id) === String(currentPoolId) && String(match.id) === String(currentMatchId));
+  if (currentIndex < 0) return null;
+  return matches.slice(currentIndex + 1).find(({ match }) => match.statut !== "Terminé") || null;
+}
