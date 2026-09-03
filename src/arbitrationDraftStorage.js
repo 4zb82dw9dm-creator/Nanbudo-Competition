@@ -13,7 +13,13 @@ export function hasDraftIdentity(identity) {
 function hasMeaningfulDraftPayload(payload) {
   if (!payload || typeof payload !== "object") return false;
   return Object.values(payload).some((value) => {
-    if (Array.isArray(value)) return value.some((item) => item !== "" && item !== null && item !== undefined && item !== false && item !== 0);
+    if (Array.isArray(value)) return value.some((item) => {
+      if (item && typeof item === "object" && Array.isArray(item.votes)) {
+        return item.votes.some((vote) => vote !== "" && vote !== null && vote !== undefined && vote !== false && vote !== 0);
+      }
+      if (item && typeof item === "object") return true;
+      return item !== "" && item !== null && item !== undefined && item !== false && item !== 0;
+    });
     if (value && typeof value === "object") return hasMeaningfulDraftPayload(value);
     return value !== "" && value !== null && value !== undefined && value !== false && value !== 0;
   });
