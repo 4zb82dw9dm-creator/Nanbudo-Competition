@@ -6,6 +6,10 @@ export function arbitrationDraftKey(identity) {
   return [STORAGE_PREFIX, `competition=${stablePart(identity.competitionId)}`, `discipline=${stablePart(identity.discipline)}`, `pool=${stablePart(identity.poolId)}`, `passage=${stablePart(identity.id)}`, `tatami=${stablePart(identity.tatami || "none")}`].join(":");
 }
 
+export function arbitrationSheetKey(identity) {
+  return ["competition", stablePart(identity?.competitionId), "pool", stablePart(identity?.poolId), "match", stablePart(identity?.id)].join(":");
+}
+
 export function hasDraftIdentity(identity) {
   return Boolean(identity?.competitionId && identity?.discipline && identity?.poolId && identity?.id);
 }
