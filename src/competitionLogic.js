@@ -99,7 +99,7 @@ export function shuffle(items) {
 export function generateMatches(competitorIds, category, poolIndex = 0, tatami = 1) {
   if (competitionRulesEngine.isKataDiscipline(category.discipline)) {
     return competitorIds.map((competitorId, index) => ({
-      id: `${Date.now()}-${poolIndex}-kata-${index}`,
+      id: `${Date.now()}-${category.id}-${poolIndex}-kata-${index}`,
       categoryId: category.id,
       discipline: category.discipline,
       competitorId,
@@ -122,7 +122,7 @@ export function generateMatches(competitorIds, category, poolIndex = 0, tatami =
   for (let i = 0; i < competitorIds.length; i += 1) {
     for (let j = i + 1; j < competitorIds.length; j += 1) {
       matches.push({
-        id: `${Date.now()}-${poolIndex}-${i}-${j}`,
+        id: `${Date.now()}-${category.id}-${poolIndex}-${i}-${j}`,
         categoryId: category.id,
         discipline: category.discipline,
         akaId: competitorIds[i],
