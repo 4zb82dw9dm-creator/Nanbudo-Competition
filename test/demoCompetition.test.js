@@ -35,16 +35,40 @@ test("automatic demo categories never mix sexes and child disciplines stop at 12
   }
 });
 
-test("pool preparation splits mixed automatic categories but preserves a manual mixed category", () => {
+test("pool preparation keeps complete same-sex groups separate", () => {
+  const competitors = [
+    ...Array.from({ length: 7 }, (_, index) => ({ id: `h${index + 1}`, sexe: "Homme", age: 10 })),
+    ...Array.from({ length: 5 }, (_, index) => ({ id: `f${index + 1}`, sexe: "Femme", age: 10 })),
+  ];
+  const category = { id: "mixed", nom: "Randori · Mixte", discipline: "randori", competitorIds: competitors.map(({ id }) => id) };
+  const split = prepareCategoriesForPools([category], competitors);
+  assert.deepEqual(split.map(({ competitorIds }) => competitorIds.length).sort((a, b) => a - b), [5, 7]);
+  assert.ok(split.every((item) => new Set(item.competitorIds.map((id) => competitors.find((competitor) => competitor.id === id).sexe)).size === 1));
+});
+
+test("pool preparation uses mixing only for competitors who cannot form a complete same-sex pool", () => {
+  const competitors = [
+    ...Array.from({ length: 5 }, (_, index) => ({ id: `h${index + 1}`, sexe: "Homme", age: 10 })),
+    ...Array.from({ length: 2 }, (_, index) => ({ id: `f${index + 1}`, sexe: "Femme", age: 10 })),
+  ];
+  const category = { id: "mixed", nom: "Randori · Mixte", discipline: "randori", competitorIds: competitors.map(({ id }) => id) };
+  const split = prepareCategoriesForPools([category], competitors);
+  assert.deepEqual(split.map(({ competitorIds }) => competitorIds.length).sort((a, b) => a - b), [3, 4]);
+  assert.equal(split.filter(({ sexe }) => sexe === "Mixte").length, 1);
+  assert.equal(split.find(({ sexe }) => sexe === "Mixte").autoMixedFallback, true);
+  assert.equal(prepareCategoriesForPools([{ ...category, manualMixed: true }], competitors).length, 1);
+});
+
+test("pool preparation falls back to one mixed pool when neither sex reaches three", () => {
   const competitors = [
     { id: "h1", sexe: "Homme", age: 10 }, { id: "h2", sexe: "Homme", age: 10 },
     { id: "f1", sexe: "Femme", age: 10 }, { id: "f2", sexe: "Femme", age: 10 },
   ];
   const category = { id: "mixed", nom: "Randori · Mixte", discipline: "randori", competitorIds: competitors.map(({ id }) => id) };
-  const split = prepareCategoriesForPools([category], competitors);
-  assert.equal(split.length, 2);
-  assert.ok(split.every((item) => new Set(item.competitorIds.map((id) => competitors.find((competitor) => competitor.id === id).sexe)).size === 1));
-  assert.equal(prepareCategoriesForPools([{ ...category, manualMixed: true }], competitors).length, 1);
+  const [poolCategory] = prepareCategoriesForPools([category], competitors);
+  assert.equal(poolCategory.sexe, "Mixte");
+  assert.equal(poolCategory.competitorIds.length, 4);
+  assert.equal(poolCategory.autoMixedFallback, true);
 });
 
 test("pool preparation converts Randori and Kata 0/1 above 12", () => {
