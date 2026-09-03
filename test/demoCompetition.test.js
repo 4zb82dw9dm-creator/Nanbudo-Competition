@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { COMPLETE_TEST_COMPETITION_NAME, createCompleteTestCompetition, simulateCompleteTestCompetition } from "../src/demoCompetitionData.js";
-import { calculateRanking, unresolvedPoolTieGroups } from "../src/competitionLogic.js";
+import { calculateRanking, generateMatches, unresolvedPoolTieGroups } from "../src/competitionLogic.js";
 import { prepareCategoriesForPools } from "../src/categoryRules.js";
 
 test("the complete demo has 100 competitors, 30 referees and broad age coverage", () => {
@@ -109,4 +109,12 @@ test("simulation supplies kata rankings, negative-point ordering and a targeted 
 test("simulation is unavailable to a real competition", () => {
   const realCompetition = { id: "real", nom: "Open réel", pools: [] };
   assert.equal(simulateCompleteTestCompetition(realCompetition), realCompetition);
+});
+
+test("combat matches alternate competitors within each round", () => {
+  const matches = generateMatches(["a", "b", "c", "d"], { id: "category", discipline: "ju_randori" });
+  assert.equal(matches.length, 6);
+  assert.equal(new Set(matches.flatMap(({ akaId, shiroId }) => [akaId, shiroId])).size, 4);
+  assert.equal(new Set([matches[0].akaId, matches[0].shiroId, matches[1].akaId, matches[1].shiroId]).size, 4);
+  assert.equal(new Set(matches.map(({ akaId, shiroId }) => [akaId, shiroId].sort().join("-"))).size, 6);
 });
