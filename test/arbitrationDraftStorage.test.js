@@ -41,3 +41,24 @@ test("le brouillon reste présent jusqu'à une suppression explicite", () => {
   deleteArbitrationDraft(storage, passage);
   assert.equal(loadArbitrationDraft(storage, passage), null);
 });
+
+test("une feuille Ju-Randori vierge ne crée pas de sauvegarde de secours", () => {
+  const storage = memoryStorage();
+  const juRandori = { ...passage, discipline: "ju_randori", id: "combat-vierge" };
+  const blankPayload = {
+    kataAka: ["", "", ""], kataShiro: ["", "", ""],
+    assaults: [{ label: "Tsuki 1", votes: ["", "", ""] }],
+    tieBreakAssaults: [], finalFlags: ["", "", ""],
+    penalties: { aka: [], shiro: [] }, maiWarnings: { aka: [], shiro: [] }, maiHistory: [],
+  };
+  assert.equal(saveArbitrationDraft(storage, juRandori, blankPayload), false);
+  assert.equal(loadArbitrationDraft(storage, juRandori), null);
+});
+
+test("le premier vote Ju-Randori crée bien une sauvegarde de secours", () => {
+  const storage = memoryStorage();
+  const juRandori = { ...passage, discipline: "ju_randori", id: "combat-commence" };
+  const startedPayload = { assaults: [{ label: "Tsuki 1", votes: ["AKA", "", ""] }] };
+  assert.equal(saveArbitrationDraft(storage, juRandori, startedPayload), true);
+  assert.deepEqual(loadArbitrationDraft(storage, juRandori)?.payload, startedPayload);
+});
