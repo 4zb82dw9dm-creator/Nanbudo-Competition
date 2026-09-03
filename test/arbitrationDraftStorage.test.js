@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { arbitrationDraftKey, deleteArbitrationDraft, loadArbitrationDraft, saveArbitrationDraft } from "../src/arbitrationDraftStorage.js";
+import { arbitrationDraftKey, arbitrationSheetKey, deleteArbitrationDraft, loadArbitrationDraft, saveArbitrationDraft } from "../src/arbitrationDraftStorage.js";
 
 function memoryStorage() {
   const values = new Map();
@@ -61,4 +61,10 @@ test("le premier vote Ju-Randori crée bien une sauvegarde de secours", () => {
   const startedPayload = { assaults: [{ label: "Tsuki 1", votes: ["AKA", "", ""] }] };
   assert.equal(saveArbitrationDraft(storage, juRandori, startedPayload), true);
   assert.deepEqual(loadArbitrationDraft(storage, juRandori)?.payload, startedPayload);
+});
+
+test("la clé de la feuille reste stable quand une sauvegarde automatique est créée", () => {
+  const beforeSave = { ...passage, discipline: "ju_randori", id: "combat-stable" };
+  const afterSave = { ...beforeSave, statut: "En cours", liveDraftSavedAt: "2026-09-03T09:14:23.000Z", penalties: { aka: [{ id: "keikoku" }], shiro: [] } };
+  assert.equal(arbitrationSheetKey(afterSave), arbitrationSheetKey(beforeSave));
 });
