@@ -145,6 +145,7 @@ function MatchManager({ match, onSave }) {
     setMaiWarnings(saved.maiWarnings || { aka: [], shiro: [] }); setMaiHistory(saved.maiHistory || []); setPenaltyEvents(saved.penaltyEvents || []);
   });
   const draftMounted = useRef(false);
+  const initialDraftSnapshotRef = useRef("");
   const automaticSaveDone = useRef(false);
   const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
   const hasMai = match.discipline === "ju_randori" || match.discipline === "ju_randori_equipe";
@@ -289,7 +290,13 @@ function MatchManager({ match, onSave }) {
   }, [match.id]);
 
   useEffect(() => {
-    if (!draftMounted.current) { draftMounted.current = true; return; }
+    const snapshot = JSON.stringify(draftPayload);
+    if (!draftMounted.current) {
+      draftMounted.current = true;
+      initialDraftSnapshotRef.current = snapshot;
+      return;
+    }
+    if (snapshot === initialDraftSnapshotRef.current) return;
     draft.markChanged();
   }, [draftPayload]);
 
