@@ -9,6 +9,7 @@ const DECISIONS = ["AKA", "SHIRO", "HIKIWAKE"];
 const FINAL_DECISIONS = ["AKA", "SHIRO"];
 const ASSAULTS = ["Tsuki 1", "Tsuki 2", "Mae Geri 1", "Mae Geri 2", "Mawashi 1", "Mawashi 2", "Dernier Tsuki"];
 const TIE_BREAK_ASSAULTS = ["Tsuki", "Mae Geri", "Mawashi Geri"];
+const RANDORI_SHORT_ASSAULT_INDEXES = [0, 2, 4];
 const PENALTIES = [
   { id: "keikoku", label: "Keikoku", value: 0 },
   { id: "fujubun", label: "Fujubun (-1)", value: 1 },
@@ -164,11 +165,24 @@ function MatchManager({ match, onSave }) {
     const shiroShikaku = hasShikaku(penalties.shiro);
     const akaTotal = main.akaPositive - akaNegative;
     const shiroTotal = main.shiroPositive - shiroNegative;
-    const mainAssaultsResolved = assaults.every((row) => voteResult(row.votes));
+    const fullAssaultsResolved = assaults.every((row) => voteResult(row.votes));
+    const shortRandoriResolved = match.discipline === "randori"
+      && RANDORI_SHORT_ASSAULT_INDEXES.every((index) => voteResult(assaults[index]?.votes || []));
     const phase = "main";
     const winner = determineIndividualMatchWinner({ akaTotal, shiroTotal, akaShikaku, shiroShikaku });
 
-    return { ...main, akaNegative, shiroNegative, akaTotal, shiroTotal, phase, winner, complete: mainAssaultsResolved };
+    return {
+      ...main,
+      akaNegative,
+      shiroNegative,
+      akaTotal,
+      shiroTotal,
+      phase,
+      winner,
+      complete: fullAssaultsResolved || shortRandoriResolved,
+      fullAssaultsResolved,
+      shortRandoriResolved,
+    };
   }, [assaults, tieBreakAssaults, finalFlags, penalties]);
 
   function setVote(section, rowIndex, judgeIndex, value) {
@@ -261,7 +275,11 @@ function MatchManager({ match, onSave }) {
       return draft.finalize(() => onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : "shiro" }));
     }
     if (isLocked) return;
-    if (!randoriScore.complete) return alert("Saisissez le résultat des sept assauts avant de valider.");
+    if (!randoriScore.complete) {
+      return alert(match.discipline === "randori"
+        ? "Pour valider un Randori, saisissez soit les 7 attaques, soit au minimum Tsuki 1, Mae Geri 1 et Mawashi 1."
+        : "Saisissez le résultat des sept assauts avant de valider.");
+    }
     return draft.finalize(() => onSave({ assaults, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, penaltyEvents, maiWarnings, akaNegative: randoriScore.akaNegative, shiroNegative: randoriScore.shiroNegative, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) }));
   }
 
@@ -311,7 +329,7 @@ function MatchManager({ match, onSave }) {
 
   if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save} disabled={!kataReady}>Valider le résultat</button></div></section>;
 
-  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} maiWarnings={maiWarnings} hasMai={hasMai} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} onRemoveMai={removeLastMai} disabled={isLocked} /><AssaultCards title="Les 7 assauts" rows={assaults} disabled={isLocked} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} /><div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>Résultat du combat</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked || !randoriScore.complete}>{isLocked ? "Combat validé" : "Valider le combat"}</button></div></section>;
+  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} maiWarnings={maiWarnings} hasMai={hasMai} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} onRemoveMai={removeLastMai} disabled={isLocked} /><AssaultCards title={match.discipline === "randori" ? "Les 7 assauts · format court possible : Tsuki 1, Mae Geri 1, Mawashi 1" : "Les 7 assauts"} rows={assaults} disabled={isLocked} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} /><div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>Résultat du combat</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked || !randoriScore.complete}>{isLocked ? "Combat validé" : "Valider le combat"}</button></div></section>;
 }
 
 function ControlPanel({ match, score, penalties, maiWarnings, hasMai, onAddPenalty, onRemovePenalty, onRemoveMai, disabled }) { return <div className="randori-control-zone" aria-label="Console de pilotage du combat">{["aka", "shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} maiWarnings={maiWarnings[side]} hasMai={hasMai} onAddPenalty={(penalty) => onAddPenalty(side, penalty)} onRemovePenalty={(penaltyId) => onRemovePenalty(side, penaltyId)} onRemoveMai={() => onRemoveMai(side)} disabled={disabled} />)}</div>; }
