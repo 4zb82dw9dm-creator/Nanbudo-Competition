@@ -93,12 +93,19 @@ export async function saveMatchResult(competitionId, poolId, match) {
 }
 
 export async function removeCompetition(id) {
-  await request(`/rest/v1/competitions?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+  // Match results are secondary data. Their cleanup must never prevent the
+  // competition itself from disappearing from the UI/database.
   try {
     await request(`/rest/v1/match_results?competition_id=eq.${encodeURIComponent(String(id))}`, { method: "DELETE" });
   } catch (error) {
-    if (!(error.status === 404 || error.code === "42P01" || error.code === "PGRST205")) throw error;
+    console.warn("Nettoyage des résultats de matchs impossible", error);
   }
+
+  // Delete the competition last: this is the authoritative operation.
+  await request(`/rest/v1/competitions?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=representation" },
+  });
 }
 
 export async function getPublicCompetition(slug) {
