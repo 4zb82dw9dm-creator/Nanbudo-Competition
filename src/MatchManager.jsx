@@ -106,6 +106,13 @@ function removePenaltyFromChain(penalties, penaltyId) {
   return updatedPenalties;
 }
 
+function automaticPenaltyEvents(before, after, directPenaltyId, side, at) {
+  return PENALTY_FLOW.filter((penaltyId) => penaltyId !== directPenaltyId && penaltyId !== "shikaku")
+    .flatMap((penaltyId) => Array.from({ length: Math.max(0, (after[penaltyId] || 0) - (before[penaltyId] || 0)) }, () => ({
+      penaltyId, side, action: "add", automatic: true, source: "conversion", at,
+    })));
+}
+
 function createScoreSheetState(match) {
   return {
     kataAka: match?.kataAka || ["", "", ""],
@@ -115,6 +122,7 @@ function createScoreSheetState(match) {
     finalFlags: match?.finalFlags || ["", "", ""],
     penalties: match?.penalties || { aka: [], shiro: [] },
     maiWarnings: match?.maiWarnings || { aka: [], shiro: [] },
+    penaltyEvents: match?.penaltyEvents || [],
   };
 }
 
@@ -127,13 +135,14 @@ function MatchManager({ match, onSave }) {
   const [finalFlags, setFinalFlags] = useState(initialScoreSheet.finalFlags);
   const [penalties, setPenalties] = useState(initialScoreSheet.penalties);
   const [maiWarnings, setMaiWarnings] = useState(initialScoreSheet.maiWarnings);
+  const [penaltyEvents, setPenaltyEvents] = useState(initialScoreSheet.penaltyEvents);
   const [maiHistory, setMaiHistory] = useState(() => (match?.matchHistory || []).filter((event) => event.type === "mai" || event.type === "mai_conversion" || event.type === "mai_removed"));
-  const draftPayload = useMemo(() => ({ kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory }), [kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory]);
+  const draftPayload = useMemo(() => ({ kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory, penaltyEvents }), [kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory, penaltyEvents]);
   const draft = useArbitrationDraft(match, draftPayload, (saved) => {
     setKataAka(saved.kataAka || ["", "", ""]); setKataShiro(saved.kataShiro || ["", "", ""]);
     setAssaults(relabelVotes(saved.assaults, ASSAULTS)); setTieBreakAssaults(relabelVotes(saved.tieBreakAssaults, TIE_BREAK_ASSAULTS));
     setFinalFlags(saved.finalFlags || ["", "", ""]); setPenalties(saved.penalties || { aka: [], shiro: [] });
-    setMaiWarnings(saved.maiWarnings || { aka: [], shiro: [] }); setMaiHistory(saved.maiHistory || []);
+    setMaiWarnings(saved.maiWarnings || { aka: [], shiro: [] }); setMaiHistory(saved.maiHistory || []); setPenaltyEvents(saved.penaltyEvents || []);
   });
   const draftMounted = useRef(false);
   const automaticSaveDone = useRef(false);
@@ -169,12 +178,25 @@ function MatchManager({ match, onSave }) {
 
   function addPenalty(side, penalty) {
     if (isLocked || penalty.id === "shikaku") return;
-    setPenalties((current) => ({ ...current, [side]: [...current[side], { ...penalty, at: new Date().toISOString() }] }));
+    const at = new Date().toISOString();
+    setPenalties((current) => {
+      const before = normalizePenaltyCounts(current[side]);
+      const nextSide = [...current[side], { ...penalty, at }];
+      const after = normalizePenaltyCounts(nextSide);
+      setPenaltyEvents((events) => [
+        ...events,
+        { penaltyId: penalty.id, side, action: "add", automatic: false, source: "manual", at },
+        ...automaticPenaltyEvents(before, after, penalty.id, side, at),
+      ]);
+      return { ...current, [side]: nextSide };
+    });
   }
 
   function removePenalty(side, penaltyId) {
     if (isLocked) return;
+    const at = new Date().toISOString();
     setPenalties((current) => ({ ...current, [side]: removePenaltyFromChain(current[side], penaltyId) }));
+    setPenaltyEvents((events) => [...events, { penaltyId, side, action: "remove", automatic: false, source: "correction", at }]);
   }
 
   function addMai(side, assaultIndex) {
@@ -206,13 +228,20 @@ function MatchManager({ match, onSave }) {
         at,
       })),
     ]);
+    setPenaltyEvents((events) => [
+      ...events,
+      { penaltyId: "mai", side, action: "add", automatic: false, source: "mai", assaultIndex, assaultLabel: warning.assaultLabel, at },
+      ...conversions.map(() => ({ penaltyId: "fujubun", side, action: "add", automatic: true, source: "mai_conversion", at })),
+    ]);
   }
 
   function removeLastMai(side) {
     if (isLocked || !hasMai || !maiWarnings[side].length) return;
     const removed = maiWarnings[side][maiWarnings[side].length - 1];
     setMaiWarnings((current) => ({ ...current, [side]: current[side].slice(0, -1) }));
-    setMaiHistory((current) => [...current, { type: "mai_removed", label: `Maï retiré ${side.toUpperCase()}`, detail: removed.assaultLabel, at: new Date().toISOString() }]);
+    const at = new Date().toISOString();
+    setMaiHistory((current) => [...current, { type: "mai_removed", label: `Maï retiré ${side.toUpperCase()}`, detail: removed.assaultLabel, at }]);
+    setPenaltyEvents((events) => [...events, { penaltyId: "mai", side, action: "remove", automatic: false, source: "correction", assaultIndex: removed.assaultIndex, assaultLabel: removed.assaultLabel, at }]);
   }
 
   function buildHistory(winner) {
@@ -232,7 +261,7 @@ function MatchManager({ match, onSave }) {
     }
     if (isLocked) return;
     if (!randoriScore.complete) return alert("Saisissez le résultat des sept assauts avant de valider.");
-    return draft.finalize(() => onSave({ assaults, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, maiWarnings, akaNegative: randoriScore.akaNegative, shiroNegative: randoriScore.shiroNegative, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) }));
+    return draft.finalize(() => onSave({ assaults, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, penaltyEvents, maiWarnings, akaNegative: randoriScore.akaNegative, shiroNegative: randoriScore.shiroNegative, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) }));
   }
 
   useEffect(() => {
@@ -254,6 +283,7 @@ function MatchManager({ match, onSave }) {
     setFinalFlags(nextScoreSheet.finalFlags);
     setPenalties(nextScoreSheet.penalties);
     setMaiWarnings(nextScoreSheet.maiWarnings);
+    setPenaltyEvents(nextScoreSheet.penaltyEvents || []);
     setMaiHistory((match?.matchHistory || []).filter((event) => event.type === "mai" || event.type === "mai_conversion" || event.type === "mai_removed"));
     automaticSaveDone.current = false;
   }, [match.id]);

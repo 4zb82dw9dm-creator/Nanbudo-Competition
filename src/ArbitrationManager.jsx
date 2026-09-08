@@ -26,6 +26,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   const [showControl, setShowControl] = useState(false);
   const [activeTatami, setActiveTatami] = useState(() => localStorage.getItem(FAVORITE_TATAMI_STORAGE_KEY) || ALL_TATAMIS);
   const lastDraftSyncRef = useRef("");
+  const matchStartRef = useRef({});
   function getCompetitor(id) { return competitors.find((competitor) => competitor.id === id); }
   function getCategory(id) { return categories.find((category) => category.id === id); }
   const matchesByTatami = useMemo(() => {
@@ -60,6 +61,14 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
 
   const selectedPool = pools.find((pool) => pool.id === selected?.poolId);
   const selectedMatch = selectedPool?.matches.find((match) => match.id === selected?.matchId);
+  const selectedTimingKey = selectedPool && selectedMatch ? `${selectedPool.id}:${selectedMatch.id}` : "";
+
+  useEffect(() => {
+    if (!selectedTimingKey || !selectedMatch || selectedMatch.statut === "Terminé") return;
+    if (!matchStartRef.current[selectedTimingKey]) {
+      matchStartRef.current[selectedTimingKey] = selectedMatch.startedAt || new Date().toISOString();
+    }
+  }, [selectedTimingKey, selectedMatch?.statut, selectedMatch?.startedAt]);
 
   useEffect(() => {
     lastDraftSyncRef.current = "";
@@ -85,6 +94,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
           ...selectedMatch,
           ...livePayload,
           statut: "En cours",
+          startedAt: selectedMatch.startedAt || matchStartRef.current[selectedTimingKey] || new Date().toISOString(),
           liveDraftSavedAt: draft.savedAt,
         });
         if (!stopped) lastDraftSyncRef.current = draftSnapshot;
@@ -136,7 +146,30 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
 
   async function saveMatch(result) {
     const winnerId = competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? selectedMatch.akaId : result.vainqueur === "aka" ? selectedMatch.akaId : result.vainqueur === "shiro" ? selectedMatch.shiroId : null;
-    const completedMatch = { ...selectedMatch, ...result, akaScore: result.scoreAka, shiroScore: result.scoreShiro, winnerId, statut: "Terminé" };
+    const now = new Date().toISOString();
+    const timingKey = `${selectedPool.id}:${selectedMatch.id}`;
+    const preserveTiming = selectedMatch.statut === "Terminé" && selectedMatch.startedAt && selectedMatch.endedAt;
+    const startedAt = preserveTiming ? selectedMatch.startedAt : selectedMatch.startedAt || matchStartRef.current[timingKey] || now;
+    const endedAt = preserveTiming ? selectedMatch.endedAt : now;
+    const durationSeconds = preserveTiming && selectedMatch.durationSeconds
+      ? selectedMatch.durationSeconds
+      : Math.max(0, Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 1000));
+    const refereeTeam = competition.refereeAssignments?.[selectedMatch.tatami] || {};
+    const refereeTeamSnapshot = Object.fromEntries(Object.entries(refereeTeam).map(([slot, assignment]) => [slot, refereeName(assignment)]));
+    const shushinName = refereeTeamSnapshot.Shushin || refereeTeamSnapshot.Sushin || refereeTeamSnapshot.shushin || refereeTeamSnapshot.sushin || "Non renseigné";
+    const completedMatch = {
+      ...selectedMatch,
+      ...result,
+      akaScore: result.scoreAka,
+      shiroScore: result.scoreShiro,
+      winnerId,
+      statut: "Terminé",
+      startedAt,
+      endedAt,
+      durationSeconds,
+      refereeSnapshot: { shushin: shushinName, team: refereeTeamSnapshot, tatami: selectedMatch.tatami },
+      shushinName,
+    };
 
     try {
       await saveMatchResult(competition.id, selectedPool.id, completedMatch);
