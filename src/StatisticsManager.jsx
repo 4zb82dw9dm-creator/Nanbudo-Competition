@@ -56,8 +56,8 @@ function aggregate(rows, keySelector) {
     const entry = map.get(key);
     entry.matches += 1;
     if (row.durationSeconds > 0) { entry.durationTotal += row.durationSeconds; entry.durationCount += 1; entry.durations.push(row.durationSeconds); }
-    const rowPenaltyTotal = PENALTY_TYPES.reduce((sum, [id]) => sum + (row.penalties[id] || 0), 0);
-    if (rowPenaltyTotal === 0) entry.penaltyFree += 1;
+    const rowSanctionTotal = ["keikoku", "fujubun", "chui", "hansoku_chui"].reduce((sum, id) => sum + (row.penalties[id] || 0), 0);
+    if (rowSanctionTotal === 0) entry.penaltyFree += 1;
     PENALTY_TYPES.forEach(([id]) => { entry.penalties[id] += row.penalties[id] || 0; });
   });
   return [...map.values()].map((entry) => ({
@@ -66,17 +66,17 @@ function aggregate(rows, keySelector) {
     minDuration: entry.durations.length ? Math.min(...entry.durations) : 0,
     maxDuration: entry.durations.length ? Math.max(...entry.durations) : 0,
     totalDuration: entry.durationTotal,
-    totalPenalties: Object.values(entry.penalties).reduce((sum, value) => sum + value, 0),
-    penaltiesPer10: entry.matches ? Object.values(entry.penalties).reduce((sum, value) => sum + value, 0) / entry.matches * 10 : 0,
+    totalPenalties: ["keikoku", "fujubun", "chui", "hansoku_chui"].reduce((sum, id) => sum + (entry.penalties[id] || 0), 0),
+    penaltiesPer10: entry.matches ? ["keikoku", "fujubun", "chui", "hansoku_chui"].reduce((sum, id) => sum + (entry.penalties[id] || 0), 0) / entry.matches * 10 : 0,
     penaltyFreePercent: entry.matches ? entry.penaltyFree / entry.matches * 100 : 0,
   }));
 }
 
-function StatsTable({ title, rows, firstColumn }) {
+function StatsTable({ title, rows, firstColumn, sampleThreshold = 0 }) {
   return <section className="statistics-panel">
     <div className="statistics-panel-header"><h3>{title}</h3><span>{rows.length} ligne{rows.length > 1 ? "s" : ""}</span></div>
-    <div className="registrations-table"><table><thead><tr><th>{firstColumn}</th><th>Passages / combats</th><th>Temps moyen</th><th>Min.</th><th>Max.</th><th>Temps actif</th>{PENALTY_TYPES.map(([, label]) => <th key={label}>{label}</th>)}<th>Sans pénalité</th><th>Pénalités / 10 combats</th></tr></thead>
-    <tbody>{rows.map((row) => <tr key={row.key}><td><strong>{row.key}</strong></td><td>{row.matches}</td><td>{formatDuration(row.averageDuration)}</td><td>{formatDuration(row.minDuration)}</td><td>{formatDuration(row.maxDuration)}</td><td>{formatDuration(row.totalDuration)}</td>{PENALTY_TYPES.map(([id]) => <td key={id}>{row.penalties[id]}</td>)}<td>{row.penaltyFreePercent.toFixed(0)} %</td><td><strong>{row.penaltiesPer10.toFixed(1)}</strong></td></tr>)}</tbody></table></div>
+    <div className="registrations-table"><table><thead><tr><th>{firstColumn}</th><th>Passages / combats</th><th>Temps moyen</th><th>Min.</th><th>Max.</th><th>Temps actif</th>{PENALTY_TYPES.map(([, label]) => <th key={label}>{label}</th>)}<th>Sans sanction</th><th>Sanctions / 10 combats</th></tr></thead>
+    <tbody>{rows.map((row) => <tr key={row.key}><td><strong>{row.key}</strong></td><td>{row.matches}</td><td>{formatDuration(row.averageDuration)}</td><td>{formatDuration(row.minDuration)}</td><td>{formatDuration(row.maxDuration)}</td><td>{formatDuration(row.totalDuration)}</td>{PENALTY_TYPES.map(([id]) => <td key={id}>{row.penalties[id]}</td>)}<td>{row.penaltyFreePercent.toFixed(0)} %</td><td><strong>{row.penaltiesPer10.toFixed(1)}</strong>{sampleThreshold > 0 && row.matches < sampleThreshold ? <div style={{ fontSize: "12px", fontWeight: 600, marginTop: "3px" }}>Échantillon insuffisant · {row.matches}/{sampleThreshold}</div> : null}</td></tr>)}</tbody></table></div>
   </section>;
 }
 
@@ -93,9 +93,11 @@ function StatisticsManager({ competition }) {
 
   const byDiscipline = useMemo(() => aggregate(rows, (row) => disciplineLabel(row.discipline)), [rows]);
   const byTatami = useMemo(() => aggregate(rows, (row) => `Tatami ${row.tatami || "?"}`), [rows]);
-  const byReferee = useMemo(() => aggregate(rows.filter((row) => !String(row.discipline).startsWith("kata")), (row) => row.shushin), [rows]);
+  const byReferee = useMemo(() => aggregate(rows, (row) => row.shushin), [rows]);
   const byCategory = useMemo(() => aggregate(rows, (row) => row.categoryName), [rows]);
   const totalPenalties = PENALTY_TYPES.map(([id, label]) => ({ id, label, value: rows.reduce((sum, row) => sum + (row.penalties[id] || 0), 0) }));
+  const totalSanctions = totalPenalties.filter((item) => item.id !== "mai").reduce((sum, item) => sum + item.value, 0);
+  const totalMai = totalPenalties.find((item) => item.id === "mai")?.value || 0;
   const timed = rows.filter((row) => row.durationSeconds > 0);
   const average = timed.length ? timed.reduce((sum, row) => sum + row.durationSeconds, 0) / timed.length : 0;
 
@@ -104,14 +106,14 @@ function StatisticsManager({ competition }) {
     <div className="dashboard statistics-kpis">
       <div className="card"><span className="number">{rows.length}</span><h3>Passages terminés</h3><p>Kata, Randori et Ju-Randori confondus.</p></div>
       <div className="card"><span className="number">{formatDuration(average)}</span><h3>Temps moyen global</h3><p>Calculé sur les passages disposant d’un chronométrage.</p></div>
-      <div className="card"><span className="number">{totalPenalties.reduce((sum, item) => sum + item.value, 0)}</span><h3>Pénalités enregistrées</h3><p>Journal détaillé des sanctions et conversions enregistrées.</p></div>
+      <div className="card"><span className="number">{totalSanctions}</span><h3>Sanctions enregistrées</h3><p>Keikoku, Fujubun, Chui et Hansoku Chui. Les Maï sont analysés séparément.</p></div>
     </div>
-    <div className="statistics-penalty-cards">{totalPenalties.map((item) => <article className="card" key={item.id}><span className="number">{item.value}</span><h3>{item.label}</h3></article>)}</div>
+    <div className="statistics-penalty-cards"><article className="card"><span className="number">{totalMai}</span><h3>Maï constatés</h3><p>Événements techniques, distincts des sanctions.</p></article>{totalPenalties.filter((item) => item.id !== "mai").map((item) => <article className="card" key={item.id}><span className="number">{item.value}</span><h3>{item.label}</h3></article>)}</div>
     <StatsTable title="Analyse par discipline" rows={byDiscipline} firstColumn="Discipline" />
     <StatsTable title="Analyse par tatami" rows={byTatami} firstColumn="Tatami" />
-    <StatsTable title="Analyse par Shushin" rows={byReferee.sort((a, b) => b.penaltiesPer10 - a.penaltiesPer10)} firstColumn="Shushin" />
+    <StatsTable title="Analyse par Shushin" rows={byReferee.sort((a, b) => b.penaltiesPer10 - a.penaltiesPer10)} firstColumn="Shushin" sampleThreshold={5} />
     <StatsTable title="Analyse par catégorie" rows={byCategory} firstColumn="Catégorie" />
-    <div className="beta-note"><strong>Lecture recommandée</strong><p>Le ratio « pénalités / 10 combats » sert à repérer des écarts d’arbitrage. Il ne constitue pas un classement des arbitres : il doit être interprété avec la discipline, la catégorie et le volume de combats.</p></div>
+    <div className="beta-note"><strong>Lecture recommandée</strong><p>Les Maï sont des événements techniques et ne sont pas additionnés aux sanctions. Le ratio « sanctions / 10 combats » sert à repérer des écarts d’arbitrage. Pour les Shushin, l’analyse est marquée « échantillon insuffisant » avant 5 passages ou combats.</p></div>
   </div>;
 }
 
