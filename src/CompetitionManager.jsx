@@ -26,7 +26,27 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
   }
 
   function updateCompetition(updatedCompetition) { setCompetitions((current) => current.map((competition) => competition.id === updatedCompetition.id ? updatedCompetition : competition)); }
-  async function deleteCompetition(id) { if (window.confirm("Supprimer cette compétition ?")) { await onDeleteCompetition?.(id); setCompetitions((current) => current.filter((competition) => competition.id !== id)); } }
+  async function deleteCompetition(id) {
+    if (!window.confirm("Supprimer cette compétition ?")) return;
+
+    const competitionToDelete = competitions.find((competition) => competition.id === id);
+
+    // Remove immediately from the interface so repeated clicks cannot start
+    // several deletions while Supabase is answering.
+    setCompetitions((current) => current.filter((competition) => competition.id !== id));
+
+    try {
+      await onDeleteCompetition?.(id);
+    } catch (error) {
+      console.error("Suppression de la compétition impossible", error);
+      if (competitionToDelete) {
+        setCompetitions((current) => current.some((competition) => competition.id === id)
+          ? current
+          : [...current, competitionToDelete]);
+      }
+      alert("La suppression n'a pas pu être enregistrée. Réessaie dans quelques instants.");
+    }
+  }
   const selectedCompetition = competitions.find((competition) => competition.id === selectedCompetitionId);
   if (selectedCompetition) return <CompetitionDashboard competition={selectedCompetition} onBack={() => setSelectedCompetitionId(null)} onUpdateCompetition={updateCompetition} />;
 
