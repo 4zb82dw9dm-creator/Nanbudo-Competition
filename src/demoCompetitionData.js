@@ -1,4 +1,5 @@
 import { buildPoolsForCategory, calculatePoolPodium, setPoolTatami } from "./competitionLogic.js";
+import { balancedTatamiAssignments } from "./planningLogic.js";
 
 export const COMPLETE_TEST_COMPETITION_NAME = "COMPÉTITION TEST 100 COMPÉTITEURS";
 export const DEMO_COMPETITION_MARKER = "nanbudo-complete-demo-v2";
@@ -115,9 +116,13 @@ function buildRefereeAssignments(referees) {
 }
 
 function buildDemoPools(categories) {
+  // Use the same phase-by-phase load balancing as a real competition.
+  // A global round-robin can leave one tatami empty early when Kata and
+  // combat categories are unevenly interleaved in the demo data.
+  const assignments = balancedTatamiAssignments(categories, 3);
   return categories.map((category, index) => {
     const [pool] = buildPoolsForCategory(category, { tatamiCount: 3, startIndex: index });
-    const tatami = (index % 3) + 1;
+    const tatami = assignments.get(String(category.id)) || 1;
     const sessionStart = category.discipline.startsWith("kata") ? 9 * 60 : 14 * 60;
     return setPoolTatami({
       ...pool, id: `demo-pool-${index + 1}`, nom: `${category.nom} · Poule 1`, scenario: category.scenario,
