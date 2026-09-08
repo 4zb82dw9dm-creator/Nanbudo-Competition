@@ -17,6 +17,14 @@ export function useArbitrationDraft(match, payload, restore) {
   useEffect(() => {
     if (!identityKey) return;
     const saved = loadArbitrationDraft(localStorage, match);
+    const isPristineDuplicate = saved?.payload && JSON.stringify(saved.payload) === JSON.stringify(payloadRef.current);
+    if (isPristineDuplicate) {
+      deleteArbitrationDraft(localStorage, match);
+      setPendingDraft(null);
+      setEditingEnabled(true);
+      setDirty(false);
+      return;
+    }
     setPendingDraft(saved);
     setEditingEnabled(!saved);
     setDirty(false);
