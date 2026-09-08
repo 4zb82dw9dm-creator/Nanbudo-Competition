@@ -2,10 +2,8 @@ import { disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { sortArbitrationMatches } from "./arbitrationSorting";
 import { PLANNING_TATAMIS } from "./planningLogic";
+import { fukushinSlotsForDiscipline, refereeSlotsForDiscipline, TABLE_REFEREE_SLOTS } from "./refereeTeamRules";
 
-const REFEREE_SLOTS = ["Shushin", "Fukushin 1", "Fukushin 2", "Fukushin 3", "Fukushin 4", "Arbitre de table 1", "Arbitre de table 2", "Arbitre de table 3"];
-const FUKUSHIN_SLOTS = ["Fukushin 1", "Fukushin 2", "Fukushin 3", "Fukushin 4"];
-const TABLE_SLOTS = ["Arbitre de table 1", "Arbitre de table 2", "Arbitre de table 3"];
 
 function CompetitionControl({ competition, onOpenMatch }) {
   const competitors = competition.competitors || [];
@@ -43,17 +41,19 @@ function CompetitionControl({ competition, onOpenMatch }) {
     return `AKA ${name(match.akaId)} · SHIRO ${name(match.shiroId)}`;
   }
 
-  function buildAlerts(tatami, team) {
+  function buildAlerts(tatami, team, discipline) {
     const alerts = [];
+    const refereeSlots = refereeSlotsForDiscipline(discipline);
+    const fukushinSlots = fukushinSlotsForDiscipline(discipline);
     const shushinAssigned = refereeName(team.Shushin) !== "—";
-    const fukushinCount = FUKUSHIN_SLOTS.filter((slot) => refereeName(team[slot]) !== "—").length;
-    const tableCount = TABLE_SLOTS.filter((slot) => refereeName(team[slot]) !== "—").length;
+    const fukushinCount = fukushinSlots.filter((slot) => refereeName(team[slot]) !== "—").length;
+    const tableCount = TABLE_REFEREE_SLOTS.filter((slot) => refereeName(team[slot]) !== "—").length;
 
     if (!shushinAssigned) alerts.push({ level: "critical", text: "Shushin non affecté" });
-    if (fukushinCount < 4) alerts.push({ level: "warning", text: `${fukushinCount}/4 Fukushin affectés` });
+    if (fukushinCount < fukushinSlots.length) alerts.push({ level: "warning", text: `${fukushinCount}/${fukushinSlots.length} Fukushin affectés` });
     if (tableCount < 2) alerts.push({ level: "critical", text: `${tableCount}/2 arbitres de table minimum` });
 
-    REFEREE_SLOTS.forEach((slot) => {
+    refereeSlots.forEach((slot) => {
       const assignment = team[slot];
       if (!assignment?.refereeId || assignment.manualName) return;
       const conflictTatami = activeCompetitorIds.get(String(assignment.refereeId));
@@ -69,7 +69,8 @@ function CompetitionControl({ competition, onOpenMatch }) {
 
   const allAlerts = PLANNING_TATAMIS.flatMap((tatami) => {
     const team = assignments[tatami] || assignments[String(tatami)] || {};
-    return buildAlerts(tatami, team).map((alert) => ({ ...alert, tatami }));
+    const discipline = currentByTatami.get(String(tatami))?.match.discipline;
+    return buildAlerts(tatami, team, discipline).map((alert) => ({ ...alert, tatami }));
   });
 
   return <section className="competition-control">
@@ -85,16 +86,18 @@ function CompetitionControl({ competition, onOpenMatch }) {
         const finished = matches.length - unfinished.length;
         const progress = matches.length ? Math.round((finished / matches.length) * 100) : 0;
         const team = assignments[tatami] || assignments[String(tatami)] || {};
-        const tableCount = TABLE_SLOTS.filter((slot) => refereeName(team[slot]) !== "—").length;
+        const discipline = current?.match.discipline;
+        const refereeSlots = refereeSlotsForDiscipline(discipline);
+        const tableCount = TABLE_REFEREE_SLOTS.filter((slot) => refereeName(team[slot]) !== "—").length;
         const tableStatus = tableCount >= 3 ? "Table complète" : tableCount >= 2 ? "Table opérationnelle" : "Table incomplète";
-        const alerts = buildAlerts(tatami, team);
+        const alerts = buildAlerts(tatami, team, discipline);
         return <article key={tatami} style={{ border: `2px solid ${alerts.some((alert) => alert.level === "critical") ? "#b3261e" : alerts.length ? "#d97706" : "#d7dde5"}`, borderRadius: "14px", background: "white", overflow: "hidden" }}>
           <div style={{ padding: "16px", background: "#14213d", color: "white" }}><div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center" }}><p className="surtitle" style={{ color: "inherit", margin: 0 }}>TATAMI {tatami}</p>{alerts.length > 0 && <strong>⚠️ {alerts.length}</strong>}</div><h3 style={{ margin: "4px 0 8px" }}>{finished}/{matches.length} passages terminés</h3><div style={{ height: "8px", background: "rgba(255,255,255,.22)", borderRadius: "999px", overflow: "hidden" }}><span style={{ display: "block", height: "100%", width: `${progress}%`, background: "white" }} /></div></div>
           <div style={{ padding: "16px" }}>
             {alerts.length > 0 && <section style={{ marginBottom: "12px", padding: "10px 12px", borderRadius: "10px", background: "#fff4f2", border: "1px solid #e8a39d" }}><p className="surtitle" style={{ marginTop: 0 }}>ALERTES</p>{alerts.map((alert, index) => <div key={`${alert.text}-${index}`} style={{ fontWeight: alert.level === "critical" ? 700 : 600, marginTop: index ? "5px" : 0 }}>⚠️ {alert.text}</div>)}</section>}
             <section style={{ padding: "12px", borderRadius: "10px", background: current ? "#eef6ff" : "#f7f9fb", border: "1px solid #d7dde5" }}><p className="surtitle" style={{ marginTop: 0 }}>EN COURS / PROCHAIN À LANCER</p>{current ? <><strong>{disciplineLabel(current.match.discipline)} · {getCategory(current.pool.categoryId)?.nom || "Catégorie"}</strong><p style={{ marginBottom: "8px" }}>{matchText(current)}</p><button className="primary" type="button" onClick={() => onOpenMatch?.(current.pool.id, current.match.id)}>Ouvrir la feuille</button></> : <strong>Tatami terminé</strong>}</section>
             <section style={{ marginTop: "12px", padding: "12px", borderRadius: "10px", background: "#f7f9fb", border: "1px solid #d7dde5" }}><p className="surtitle" style={{ marginTop: 0 }}>À SUIVRE</p>{next ? <><strong>{disciplineLabel(next.match.discipline)} · {getCategory(next.pool.categoryId)?.nom || "Catégorie"}</strong><p style={{ marginBottom: 0 }}>{matchText(next)}</p></> : <strong>Pas d’autre passage prévu</strong>}</section>
-            <section style={{ marginTop: "12px" }}><div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center" }}><p className="surtitle" style={{ margin: 0 }}>ÉQUIPE D’ARBITRAGE</p><strong>{tableStatus} · {tableCount}/3 table</strong></div><div style={{ display: "grid", gap: "6px", marginTop: "8px" }}>{REFEREE_SLOTS.map((slot) => <div key={slot} style={{ display: "flex", justifyContent: "space-between", gap: "10px", padding: "7px 9px", borderRadius: "8px", background: "#f7f9fb" }}><span>{slot}</span><strong style={{ textAlign: "right" }}>{refereeName(team[slot])}</strong></div>)}</div></section>
+            <section style={{ marginTop: "12px" }}><div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center" }}><p className="surtitle" style={{ margin: 0 }}>ÉQUIPE D’ARBITRAGE</p><strong>{tableStatus} · {tableCount}/3 table</strong></div><div style={{ display: "grid", gap: "6px", marginTop: "8px" }}>{refereeSlots.map((slot) => <div key={slot} style={{ display: "flex", justifyContent: "space-between", gap: "10px", padding: "7px 9px", borderRadius: "8px", background: "#f7f9fb" }}><span>{slot}</span><strong style={{ textAlign: "right" }}>{refereeName(team[slot])}</strong></div>)}</div></section>
           </div>
         </article>;
       })}
