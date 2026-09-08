@@ -2165,3 +2165,48 @@ footer span {
 .statistics-panel .registrations-table { overflow-x: auto; }
 .statistics-panel table { min-width: 980px; }
 .statistics-panel td, .statistics-panel th { white-space: nowrap; }
+
+
+/* Sélection arbitrage renforcée */
+.decision-buttons .vote-button {
+  position: relative;
+}
+
+.decision-buttons .vote-button.selected {
+  border-width: 4px;
+  box-shadow: 0 0 0 5px rgba(7, 26, 51, 0.18), 0 10px 24px rgba(7, 26, 51, 0.28);
+  transform: translateY(-2px) scale(1.06);
+}
+
+.decision-buttons .vote-button.selected.aka {
+  border-color: #7f1d1d;
+  box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.28), 0 10px 24px rgba(127, 29, 29, 0.32);
+}
+
+.decision-buttons .vote-button.selected.shiro {
+  background: #ffffff;
+  border-color: #071a33;
+  box-shadow: 0 0 0 5px rgba(7, 26, 51, 0.26), 0 10px 24px rgba(7, 26, 51, 0.24);
+}
+
+.decision-buttons .vote-button.selected.hikiwake {
+  border-color: #7c5f00;
+  box-shadow: 0 0 0 5px rgba(201, 162, 39, 0.30), 0 10px 24px rgba(124, 95, 0, 0.22);
+}
+
+.vote-selected-mark {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #071a33;
+  color: #ffffff;
+  border: 3px solid #ffffff;
+  font-size: 0.95rem;
+  font-weight: 900;
+  box-shadow: 0 3px 10px rgba(7, 26, 51, 0.30);
+}
