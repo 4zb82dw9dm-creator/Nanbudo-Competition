@@ -52,25 +52,31 @@ function aggregate(rows, keySelector) {
   const map = new Map();
   rows.forEach((row) => {
     const key = keySelector(row) || "Non renseigné";
-    if (!map.has(key)) map.set(key, { key, matches: 0, durationTotal: 0, durationCount: 0, penalties: Object.fromEntries(PENALTY_TYPES.map(([id]) => [id, 0])) });
+    if (!map.has(key)) map.set(key, { key, matches: 0, durationTotal: 0, durationCount: 0, durations: [], penaltyFree: 0, penalties: Object.fromEntries(PENALTY_TYPES.map(([id]) => [id, 0])) });
     const entry = map.get(key);
     entry.matches += 1;
-    if (row.durationSeconds > 0) { entry.durationTotal += row.durationSeconds; entry.durationCount += 1; }
+    if (row.durationSeconds > 0) { entry.durationTotal += row.durationSeconds; entry.durationCount += 1; entry.durations.push(row.durationSeconds); }
+    const rowPenaltyTotal = PENALTY_TYPES.reduce((sum, [id]) => sum + (row.penalties[id] || 0), 0);
+    if (rowPenaltyTotal === 0) entry.penaltyFree += 1;
     PENALTY_TYPES.forEach(([id]) => { entry.penalties[id] += row.penalties[id] || 0; });
   });
   return [...map.values()].map((entry) => ({
     ...entry,
     averageDuration: entry.durationCount ? entry.durationTotal / entry.durationCount : 0,
+    minDuration: entry.durations.length ? Math.min(...entry.durations) : 0,
+    maxDuration: entry.durations.length ? Math.max(...entry.durations) : 0,
+    totalDuration: entry.durationTotal,
     totalPenalties: Object.values(entry.penalties).reduce((sum, value) => sum + value, 0),
     penaltiesPer10: entry.matches ? Object.values(entry.penalties).reduce((sum, value) => sum + value, 0) / entry.matches * 10 : 0,
+    penaltyFreePercent: entry.matches ? entry.penaltyFree / entry.matches * 100 : 0,
   }));
 }
 
 function StatsTable({ title, rows, firstColumn }) {
   return <section className="statistics-panel">
     <div className="statistics-panel-header"><h3>{title}</h3><span>{rows.length} ligne{rows.length > 1 ? "s" : ""}</span></div>
-    <div className="registrations-table"><table><thead><tr><th>{firstColumn}</th><th>Passages / combats</th><th>Temps moyen</th>{PENALTY_TYPES.map(([, label]) => <th key={label}>{label}</th>)}<th>Pénalités / 10 combats</th></tr></thead>
-    <tbody>{rows.map((row) => <tr key={row.key}><td><strong>{row.key}</strong></td><td>{row.matches}</td><td>{formatDuration(row.averageDuration)}</td>{PENALTY_TYPES.map(([id]) => <td key={id}>{row.penalties[id]}</td>)}<td><strong>{row.penaltiesPer10.toFixed(1)}</strong></td></tr>)}</tbody></table></div>
+    <div className="registrations-table"><table><thead><tr><th>{firstColumn}</th><th>Passages / combats</th><th>Temps moyen</th><th>Min.</th><th>Max.</th><th>Temps actif</th>{PENALTY_TYPES.map(([, label]) => <th key={label}>{label}</th>)}<th>Sans pénalité</th><th>Pénalités / 10 combats</th></tr></thead>
+    <tbody>{rows.map((row) => <tr key={row.key}><td><strong>{row.key}</strong></td><td>{row.matches}</td><td>{formatDuration(row.averageDuration)}</td><td>{formatDuration(row.minDuration)}</td><td>{formatDuration(row.maxDuration)}</td><td>{formatDuration(row.totalDuration)}</td>{PENALTY_TYPES.map(([id]) => <td key={id}>{row.penalties[id]}</td>)}<td>{row.penaltyFreePercent.toFixed(0)} %</td><td><strong>{row.penaltiesPer10.toFixed(1)}</strong></td></tr>)}</tbody></table></div>
   </section>;
 }
 
@@ -98,7 +104,7 @@ function StatisticsManager({ competition }) {
     <div className="dashboard statistics-kpis">
       <div className="card"><span className="number">{rows.length}</span><h3>Passages terminés</h3><p>Kata, Randori et Ju-Randori confondus.</p></div>
       <div className="card"><span className="number">{formatDuration(average)}</span><h3>Temps moyen global</h3><p>Calculé sur les passages disposant d’un chronométrage.</p></div>
-      <div className="card"><span className="number">{totalPenalties.reduce((sum, item) => sum + item.value, 0)}</span><h3>Pénalités enregistrées</h3><p>Journal détaillé des sanctions actives.</p></div>
+      <div className="card"><span className="number">{totalPenalties.reduce((sum, item) => sum + item.value, 0)}</span><h3>Pénalités enregistrées</h3><p>Journal détaillé des sanctions et conversions enregistrées.</p></div>
     </div>
     <div className="statistics-penalty-cards">{totalPenalties.map((item) => <article className="card" key={item.id}><span className="number">{item.value}</span><h3>{item.label}</h3></article>)}</div>
     <StatsTable title="Analyse par discipline" rows={byDiscipline} firstColumn="Discipline" />
