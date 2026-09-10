@@ -8,7 +8,7 @@ const FUKUSHIN = ["Fukushin 1", "Fukushin 2", "Fukushin 3"];
 const DECISIONS = ["AKA", "SHIRO", "HIKIWAKE"];
 const FINAL_DECISIONS = ["AKA", "SHIRO"];
 const ASSAULTS = ["Tsuki 1", "Tsuki 2", "Mae Geri 1", "Mae Geri 2", "Mawashi 1", "Mawashi 2", "Dernier Tsuki"];
-const TIE_BREAK_ASSAULTS = ["Tsuki 1", "Tsuki 2", "Mae Geri 1", "Mae Geri 2", "Mawashi 1", "Mawashi 2"];
+const TIE_BREAK_ASSAULTS = ["Tsuki", "Mae Geri", "Mawashi Geri"];
 const RANDORI_SHORT_ASSAULT_INDEXES = [0, 2, 4];
 const PENALTIES = [
   { id: "keikoku", label: "Keikoku", value: 0 },
