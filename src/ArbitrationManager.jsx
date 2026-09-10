@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MatchManager, { PoolTieBreakManager } from "./MatchManager";
 import KataSheet from "./KataSheet";
 import CompetitionControl from "./CompetitionControl";
-import { calculatePoolPodium, disciplineLabel } from "./competitionLogic";
+import { calculatePoolPodium, createKataTieBreakMatches, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { findNextArbitrationPassage, sortArbitrationMatches } from "./arbitrationSorting";
 import { arbitrationSheetKey, loadArbitrationDraft } from "./arbitrationDraftStorage";
@@ -124,7 +124,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     const category = getCategory(next.pool.categoryId);
     const isKata = competitionRulesEngine.isKataDiscipline(nextMatch.discipline);
     const competitor = getCompetitor(nextMatch.competitorId || nextMatch.akaId);
-    return <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #1f5f99", borderRadius: "12px", background: "#eef6ff" }}><strong>À SUIVRE · TATAMI {nextMatch.tatami}</strong><div style={{ marginTop: "6px" }}>{disciplineLabel(nextMatch.discipline)}{category?.nom ? ` · ${category.nom}` : ""}</div>{isKata ? <div style={{ marginTop: "4px", fontWeight: 700 }}>Passage : {competitor?.nom || "-"} {competitor?.prenom || ""}</div> : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}><div style={{ padding: "8px 10px", borderRadius: "8px", background: "#b3261e", color: "white", fontWeight: 700 }}>AKA · {getCompetitor(nextMatch.akaId)?.nom || "-"} {getCompetitor(nextMatch.akaId)?.prenom || ""}</div><div style={{ padding: "8px 10px", borderRadius: "8px", background: "white", color: "#1f2937", border: "1px solid #9ca3af", fontWeight: 700 }}>SHIRO · {getCompetitor(nextMatch.shiroId)?.nom || "-"} {getCompetitor(nextMatch.shiroId)?.prenom || ""}</div></div>}</div>;
+    return <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #1f5f99", borderRadius: "12px", background: "#eef6ff" }}><strong>À SUIVRE · TATAMI {nextMatch.tatami}</strong><div style={{ marginTop: "6px" }}>{disciplineLabel(nextMatch.discipline)}{category?.nom ? ` · ${category.nom}` : ""}</div>{isKata ? <div style={{ marginTop: "4px", fontWeight: 700 }}>Passage : {competitor?.nom || "-"} {competitor?.prenom || ""}{nextMatch.isKataTieBreak ? ` · DÉPARTAGE · ${nextMatch.kataTieBreakMode}` : ""}</div> : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}><div style={{ padding: "8px 10px", borderRadius: "8px", background: "#b3261e", color: "white", fontWeight: 700 }}>AKA · {getCompetitor(nextMatch.akaId)?.nom || "-"} {getCompetitor(nextMatch.akaId)?.prenom || ""}</div><div style={{ padding: "8px 10px", borderRadius: "8px", background: "white", color: "#1f2937", border: "1px solid #9ca3af", fontWeight: 700 }}>SHIRO · {getCompetitor(nextMatch.shiroId)?.nom || "-"} {getCompetitor(nextMatch.shiroId)?.prenom || ""}</div></div>}</div>;
   }
 
   function refereeName(assignment) {
@@ -145,7 +145,8 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   }
 
   async function saveMatch(result) {
-    const winnerId = competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? selectedMatch.akaId : result.vainqueur === "aka" ? selectedMatch.akaId : result.vainqueur === "shiro" ? selectedMatch.shiroId : null;
+    const isKataMatch = competitionRulesEngine.isKataDiscipline(selectedMatch.discipline);
+    const winnerId = isKataMatch ? selectedMatch.akaId : result.vainqueur === "aka" ? selectedMatch.akaId : result.vainqueur === "shiro" ? selectedMatch.shiroId : null;
     const now = new Date().toISOString();
     const timingKey = `${selectedPool.id}:${selectedMatch.id}`;
     const preserveTiming = selectedMatch.statut === "Terminé" && selectedMatch.startedAt && selectedMatch.endedAt;
@@ -181,10 +182,22 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
 
     const updatedPools = pools.map((pool) => {
       if (pool.id !== selectedPool.id) return pool;
-      const matches = pool.matches.map((match) => match.id === selectedMatch.id ? completedMatch : match);
+      let matches = pool.matches.map((match) => match.id === selectedMatch.id ? completedMatch : match);
+
+      // Si une note du passage initial est modifiée, les anciens départages ne sont plus fiables.
+      if (isKataMatch && !selectedMatch.isKataTieBreak && selectedMatch.statut === "Terminé") {
+        matches = matches.filter((match) => !match.isKataTieBreak);
+      }
+
       const changedPool = { ...pool, matches, poolTieBreakOrder: [], rankingLocked: [], podium: null };
       const calculation = calculatePoolPodium(changedPool);
-      if (calculation.tieGroups.length) setPendingTieBreak({ poolId: pool.id, tieGroups: calculation.tieGroups, groupIndex: 0, order: [] });
+
+      if (calculation.tieGroups.length) {
+        if (isKataMatch) {
+          return createKataTieBreakMatches(calculation.pool, calculation.tieGroups);
+        }
+        setPendingTieBreak({ poolId: pool.id, tieGroups: calculation.tieGroups, groupIndex: 0, order: [] });
+      }
       return calculation.pool;
     });
     onUpdateCompetition({ ...competition, pools: updatedPools, statut: "Résultats disponibles" });
@@ -215,7 +228,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     const competitor = getCompetitor(match.competitorId || match.akaId);
     const winner = match.winnerId ? getCompetitor(match.winnerId) : null;
     const isCurrent = match.id === currentMatchId;
-    return <article className={`competition arbitration-match-card ${match.statut === "Terminé" ? "competition-terminee" : ""} ${isCurrent ? "competition-current" : ""}`} key={`${pool.id}-${match.id}`}><div className="match-card-main"><p className="surtitle">{disciplineLabel(match.discipline)} · {category?.nom}</p><h3>#{match.ordre} Tatami {match.tatami} {match.horaire && `· ${match.horaire}`}</h3>{isKata ? <p>Passage : {competitor?.nom} {competitor?.prenom} · {competitor?.club || "Club non renseigné"}{match.finalScore ? ` · Note ${Number(match.finalScore).toFixed(2)}` : ""}</p> : <p>AKA {getCompetitor(match.akaId)?.nom} {getCompetitor(match.akaId)?.prenom} vs SHIRO {getCompetitor(match.shiroId)?.nom} {getCompetitor(match.shiroId)?.prenom}</p>}{winner && !isKata && <p>Vainqueur : {winner.nom} {winner.prenom}</p>}{isCurrent && <span className="current-match-badge">Combat en cours</span>}</div><div className="arbitration-card-actions"><button className="manage-button" onClick={() => setSelected({ poolId: pool.id, matchId: match.id })}>{match.statut === "Terminé" ? "Modifier" : "Arbitrer"}</button>{!isKata && <button className="manage-button" onClick={() => setHistoryMatch({ poolId: pool.id, matchId: match.id })}>Historique</button>}</div></article>;
+    return <article className={`competition arbitration-match-card ${match.statut === "Terminé" ? "competition-terminee" : ""} ${isCurrent ? "competition-current" : ""}`} key={`${pool.id}-${match.id}`}><div className="match-card-main"><p className="surtitle">{match.isKataTieBreak ? `DÉPARTAGE KATA · ${match.kataTieBreakMode}` : disciplineLabel(match.discipline)} · {category?.nom}</p><h3>#{match.ordre} Tatami {match.tatami} {match.horaire && `· ${match.horaire}`}</h3>{isKata ? <p>Passage : {competitor?.nom} {competitor?.prenom} · {competitor?.club || "Club non renseigné"}{match.finalScore ? ` · Note ${Number(match.finalScore).toFixed(2)}` : ""}{match.isKataTieBreak ? ` · Tour de départage ${match.kataTieBreakRound}` : ""}</p> : <p>AKA {getCompetitor(match.akaId)?.nom} {getCompetitor(match.akaId)?.prenom} vs SHIRO {getCompetitor(match.shiroId)?.nom} {getCompetitor(match.shiroId)?.prenom}</p>}{winner && !isKata && <p>Vainqueur : {winner.nom} {winner.prenom}</p>}{isCurrent && <span className="current-match-badge">Combat en cours</span>}</div><div className="arbitration-card-actions"><button className="manage-button" onClick={() => setSelected({ poolId: pool.id, matchId: match.id })}>{match.statut === "Terminé" ? "Modifier" : "Arbitrer"}</button>{!isKata && <button className="manage-button" onClick={() => setHistoryMatch({ poolId: pool.id, matchId: match.id })}>Historique</button>}</div></article>;
   }
 
   if (pendingTieBreak) return <div className="arbitration-manager"><PoolTieBreakManager key={`${pendingTieBreak.poolId}-${pendingTieBreak.groupIndex}`} competitorIds={pendingTieBreak.tieGroups[pendingTieBreak.groupIndex]} getCompetitor={getCompetitor} onComplete={completeTieGroup} /></div>;
@@ -228,7 +241,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     const category = getCategory(selectedPool.categoryId);
     const matchProps = { ...selectedMatch, aka: getCompetitor(selectedMatch.akaId), shiro: getCompetitor(selectedMatch.shiroId), competitor: getCompetitor(selectedMatch.competitorId || selectedMatch.akaId), categoryName: category?.nom, poolName: selectedPool.nom, poolId: selectedPool.id, competitionId: competition.id };
     const liveSheetKey = arbitrationSheetKey(matchProps);
-    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami, selectedMatch.discipline)}{renderNextPassage(selectedPool, selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={liveSheetKey} match={matchProps} onSave={saveMatch} /> : <MatchManager key={liveSheetKey} match={matchProps} onSave={saveMatch} />}</div>;
+    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami, selectedMatch.discipline)}{selectedMatch.isKataTieBreak && <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #caa52f", borderRadius: "12px", background: "#fff8dc" }}><strong>DÉPARTAGE KATA · TOUR {selectedMatch.kataTieBreakRound}</strong><div style={{ marginTop: "6px" }}>{selectedMatch.kataTieBreakMode}. Le podium restera bloqué jusqu'à la fin du départage.</div></div>}{renderNextPassage(selectedPool, selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={liveSheetKey} match={matchProps} onSave={saveMatch} /> : <MatchManager key={liveSheetKey} match={matchProps} onSave={saveMatch} />}</div>;
   }
 
   if (showControl) return <div className="arbitration-manager"><button className="back-button" type="button" onClick={() => setShowControl(false)}>← Vue arbitrage</button><CompetitionControl competition={competition} onOpenMatch={(poolId, matchId) => { setShowControl(false); setSelected({ poolId, matchId }); }} /></div>;
