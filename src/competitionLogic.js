@@ -41,7 +41,6 @@ export function nextPoolTieBreakStep(stageIndex, result) {
   return { winner: null, stageIndex: stageIndex + 1 };
 }
 
-
 export function disciplineIdFromRegistrationCategory(registrationCategory = "") {
   const normalized = registrationCategory.toLowerCase();
   if (normalized.includes("kata") && normalized.includes("équipe")) return "kata_equipe";
@@ -179,13 +178,41 @@ export function buildPoolsForCategory(category, options = {}) {
   });
 }
 
+function kataScore(match) {
+  return match?.statut === "Terminé" ? Number(match.finalScore ?? match.akaScore ?? 0) : null;
+}
+
+function kataScoreVector(pool, competitorId) {
+  const matches = (pool.matches || []).filter((match) => (match.competitorId === competitorId || match.akaId === competitorId) && match.statut === "Terminé");
+  const baseMatch = matches.find((match) => !match.isKataTieBreak);
+  const tieBreakScores = matches
+    .filter((match) => match.isKataTieBreak)
+    .sort((a, b) => Number(a.kataTieBreakRound || 0) - Number(b.kataTieBreakRound || 0))
+    .map(kataScore);
+  return [kataScore(baseMatch) ?? 0, ...tieBreakScores];
+}
+
+function compareScoreVectors(a = [], b = []) {
+  const length = Math.max(a.length, b.length);
+  for (let index = 0; index < length; index += 1) {
+    const aScore = a[index] ?? Number.NEGATIVE_INFINITY;
+    const bScore = b[index] ?? Number.NEGATIVE_INFINITY;
+    if (aScore !== bScore) return bScore - aScore;
+  }
+  return 0;
+}
+
+function sameScoreVector(a = [], b = []) {
+  return a.length === b.length && a.every((score, index) => score === b[index]);
+}
+
 export function calculateRanking(pool) {
   if (competitionRulesEngine.isKataDiscipline(pool.discipline)) {
     return pool.competitorIds.map((id) => {
-      const match = (pool.matches || []).find((item) => item.competitorId === id || item.akaId === id);
-      const score = match?.statut === "Terminé" ? (match.finalScore ?? match.akaScore ?? 0) : 0;
-      return { competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: score, scoreAgainst: 0, difference: score, finalScore: score };
-    }).sort((a, b) => b.finalScore - a.finalScore);
+      const scoreVector = kataScoreVector(pool, id);
+      const score = scoreVector[0] ?? 0;
+      return { competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: score, scoreAgainst: 0, difference: score, finalScore: score, kataScoreVector: scoreVector };
+    }).sort((a, b) => compareScoreVectors(a.kataScoreVector, b.kataScoreVector));
   }
   const ranking = pool.competitorIds.map((id) => ({ competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: 0, scoreAgainst: 0, difference: 0, negativePoints: 0 }));
   (pool.matches || []).forEach((match) => {
@@ -214,8 +241,20 @@ function samePoolResult(a, b) {
   return a.victories === b.victories && a.difference === b.difference && a.scoreFor === b.scoreFor;
 }
 
+function unresolvedKataTieGroups(pool) {
+  const ranking = calculateRanking(pool);
+  const groups = [];
+  for (let start = 0; start < ranking.length;) {
+    let end = start + 1;
+    while (end < ranking.length && sameScoreVector(ranking[start].kataScoreVector, ranking[end].kataScoreVector)) end += 1;
+    if (end - start > 1 && start < 3) groups.push(ranking.slice(start, end).map((item) => item.competitorId));
+    start = end;
+  }
+  return groups;
+}
+
 export function unresolvedPoolTieGroups(pool) {
-  if (competitionRulesEngine.isKataDiscipline(pool.discipline)) return [];
+  if (competitionRulesEngine.isKataDiscipline(pool.discipline)) return unresolvedKataTieGroups(pool);
   const ranking = calculateRanking({ ...pool, poolTieBreakOrder: [] });
   const resolved = new Set(pool.poolTieBreakOrder || []);
   const groups = [];
@@ -233,6 +272,50 @@ export function unresolvedPoolTieGroups(pool) {
     start = end;
   }
   return groups;
+}
+
+export function createKataTieBreakMatches(pool, tieGroups = []) {
+  if (!competitionRulesEngine.isKataDiscipline(pool.discipline) || tieGroups.length === 0) return pool;
+  const existingMatches = pool.matches || [];
+  let nextOrder = existingMatches.reduce((maximum, match) => Math.max(maximum, Number(match.ordre || 0)), 0) + 1;
+  const createdAt = Date.now();
+  const newMatches = [];
+
+  tieGroups.forEach((competitorIds, groupIndex) => {
+    const previousRound = existingMatches
+      .filter((match) => match.isKataTieBreak && competitorIds.includes(match.competitorId || match.akaId))
+      .reduce((maximum, match) => Math.max(maximum, Number(match.kataTieBreakRound || 0)), 0);
+    const round = previousRound + 1;
+    const mode = round === 1 ? "Kata supplémentaire libre" : "Kata imposé";
+
+    competitorIds.forEach((competitorId, competitorIndex) => {
+      const baseMatch = existingMatches.find((match) => !match.isKataTieBreak && (match.competitorId === competitorId || match.akaId === competitorId));
+      newMatches.push({
+        id: `${createdAt}-${pool.id}-kata-tiebreak-${groupIndex}-${round}-${competitorIndex}`,
+        categoryId: pool.categoryId,
+        discipline: pool.discipline,
+        competitorId,
+        akaId: competitorId,
+        shiroId: null,
+        akaScore: null,
+        shiroScore: null,
+        winnerId: null,
+        kataName: "",
+        kataGroup: baseMatch?.kataGroup || DEFAULT_KATA_GROUP,
+        kataScores: [],
+        finalScore: null,
+        tatami: pool.tatami || baseMatch?.tatami || 1,
+        ordre: nextOrder++,
+        horaire: "",
+        statut: "À jouer",
+        isKataTieBreak: true,
+        kataTieBreakRound: round,
+        kataTieBreakMode: mode,
+      });
+    });
+  });
+
+  return { ...pool, matches: [...existingMatches, ...newMatches], statut: "En attente de départage", rankingLocked: [], podium: null };
 }
 
 export function podiumFromPool(pool) {
