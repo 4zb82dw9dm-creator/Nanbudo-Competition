@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
-import { determineIndividualMatchWinner, nextPoolTieBreakStep } from "./competitionLogic";
+import { determineIndividualMatchWinner } from "./competitionLogic";
 import { applyMaiWarning } from "./maiRules";
 import { DraftRecoveryNotice, useArbitrationDraft } from "./arbitrationDrafts";
 
@@ -343,6 +343,7 @@ export function PoolTieBreakManager({ competitorIds, getCompetitor, onComplete }
   const [stageIndex, setStageIndex] = useState(0);
   const [votes, setVotes] = useState(["", "", ""]);
   const [flags, setFlags] = useState(["", "", ""]);
+  const [pairResults, setPairResults] = useState([]);
   const [decisions, setDecisions] = useState([]);
   const pair = pairs[pairIndex];
   const stage = TIE_BREAK_ASSAULTS[stageIndex];
@@ -355,6 +356,7 @@ export function PoolTieBreakManager({ competitorIds, getCompetitor, onComplete }
       setStageIndex(0);
       setVotes(["", "", ""]);
       setFlags(["", "", ""]);
+      setPairResults([]);
       return;
     }
     const wins = new Map(competitorIds.map((id) => [id, 0]));
@@ -366,9 +368,23 @@ export function PoolTieBreakManager({ competitorIds, getCompetitor, onComplete }
 
   function validateStage() {
     const result = voteResult(votes);
-    const next = nextPoolTieBreakStep(stageIndex, result);
-    if (next.winner) return finishPair(next.winner);
-    setStageIndex(next.stageIndex);
+    if (!result) return;
+    const nextPairResults = [...pairResults, result];
+
+    if (stageIndex + 1 < TIE_BREAK_ASSAULTS.length) {
+      setPairResults(nextPairResults);
+      setStageIndex(stageIndex + 1);
+      setVotes(["", "", ""]);
+      return;
+    }
+
+    const akaWins = nextPairResults.filter((item) => item === "AKA").length;
+    const shiroWins = nextPairResults.filter((item) => item === "SHIRO").length;
+    if (akaWins > shiroWins) return finishPair("aka");
+    if (shiroWins > akaWins) return finishPair("shiro");
+
+    setPairResults(nextPairResults);
+    setStageIndex(TIE_BREAK_ASSAULTS.length);
     setVotes(["", "", ""]);
   }
 
@@ -376,6 +392,6 @@ export function PoolTieBreakManager({ competitorIds, getCompetitor, onComplete }
   const aka = getCompetitor(pair.akaId);
   const shiro = getCompetitor(pair.shiroId);
   const flagResult = voteResult(flags, false);
-  return <section className="match-manager randori-sheet pool-tie-break"><div className="manager-header"><div><p className="surtitle">DÉPARTAGE DE LA POULE</p><h2>{competitorIds.map((id) => { const competitor = getCompetitor(id); return `${competitor?.nom || ""} ${competitor?.prenom || ""}`.trim(); }).join(" · ")}</h2><p>Seuls les compétiteurs encore à égalité après comparaison des points négatifs sont concernés.</p></div></div><div className="match-meta"><p><strong>AKA</strong>{aka?.nom} {aka?.prenom}</p><p><strong>SHIRO</strong>{shiro?.nom} {shiro?.prenom}</p><p><strong>Progression</strong>Comparaison {pairIndex + 1} / {pairs.length}</p></div>{stageIndex < TIE_BREAK_ASSAULTS.length ? <><AssaultCards title={`Départage · ${stage}`} rows={[{ label: stage, votes }]} onVote={(_, judgeIndex, value) => setVotes((current) => current.map((vote, index) => index === judgeIndex ? value : vote))} /><button className="primary" disabled={!votes.every(Boolean)} onClick={validateStage}>{voteResult(votes) === "HIKIWAKE" ? `Passer à ${TIE_BREAK_ASSAULTS[stageIndex + 1] || "la décision aux drapeaux"}` : `Valider ${stage}`}</button></> : <div className="final-flags"><h3>Décision finale aux drapeaux</h3><div className="final-flag-cards">{flags.map((vote, index) => <article className="final-flag-card" key={FUKUSHIN[index]}><strong>{FUKUSHIN[index]}</strong><DecisionButtons value={vote} options={FINAL_DECISIONS} onChange={(value) => setFlags((current) => current.map((item, itemIndex) => index === itemIndex ? value : item))} /></article>)}</div><button className="primary" disabled={!flagResult} onClick={() => finishPair(flagResult.toLowerCase())}>Valider la décision aux drapeaux</button></div>}</section>;
+  return <section className="match-manager randori-sheet pool-tie-break"><div className="manager-header"><div><p className="surtitle">DÉPARTAGE DE LA POULE</p><h2>{competitorIds.map((id) => { const competitor = getCompetitor(id); return `${competitor?.nom || ""} ${competitor?.prenom || ""}`.trim(); }).join(" · ")}</h2><p>Chaque comparaison se joue entièrement sur Tsuki, Mae Geri et Mawashi Geri. Les drapeaux ne servent qu'en cas d'égalité après les trois attaques.</p></div></div><div className="match-meta"><p><strong>AKA</strong>{aka?.nom} {aka?.prenom}</p><p><strong>SHIRO</strong>{shiro?.nom} {shiro?.prenom}</p><p><strong>Progression</strong>Comparaison {pairIndex + 1} / {pairs.length}</p></div>{stageIndex < TIE_BREAK_ASSAULTS.length ? <><AssaultCards title={`Départage · ${stage}`} rows={[{ label: stage, votes }]} onVote={(_, judgeIndex, value) => setVotes((current) => current.map((vote, index) => index === judgeIndex ? value : vote))} /><button className="primary" disabled={!votes.every(Boolean)} onClick={validateStage}>{stageIndex + 1 < TIE_BREAK_ASSAULTS.length ? `Valider ${stage} et passer à ${TIE_BREAK_ASSAULTS[stageIndex + 1]}` : `Valider ${stage}`}</button></> : <div className="final-flags"><h3>Égalité après les 3 attaques · décision aux drapeaux</h3><div className="final-flag-cards">{flags.map((vote, index) => <article className="final-flag-card" key={FUKUSHIN[index]}><strong>{FUKUSHIN[index]}</strong><DecisionButtons value={vote} options={FINAL_DECISIONS} onChange={(value) => setFlags((current) => current.map((item, itemIndex) => index === itemIndex ? value : item))} /></article>)}</div><button className="primary" disabled={!flagResult} onClick={() => finishPair(flagResult.toLowerCase())}>Valider la décision aux drapeaux</button></div>}</section>;
 }
 export default MatchManager;
