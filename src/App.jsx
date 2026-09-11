@@ -7,7 +7,6 @@ import { persistCompetitions } from "./registrationProcessing";
 import { isSupabaseConfigured, loadCompetitions, removeCompetition, saveCompetition } from "./supabase";
 
 const LOCAL_COMPETITIONS_KEY = "nanbudo_competitions";
-const SUPABASE_MIGRATION_KEY = "nanbudo_supabase_migration_v1";
 const LIVE_REFRESH_MS = 2000;
 
 function prepareCompetitions(items) {
@@ -82,7 +81,6 @@ function mergePools(localPools = [], remotePools = []) {
 
 function mergeCompetition(localCompetition, remoteCompetition) {
   if (!localCompetition) return remoteCompetition;
-  if (!remoteCompetition) return localCompetition;
   return {
     ...remoteCompetition,
     pools: mergePools(localCompetition.pools || [], remoteCompetition.pools || []),
@@ -91,9 +89,13 @@ function mergeCompetition(localCompetition, remoteCompetition) {
 
 function mergeCompetitionLists(localItems, remoteItems) {
   const localById = new Map(localItems.map((competition) => [String(competition.id), competition]));
-  const remoteById = new Map(remoteItems.map((competition) => [String(competition.id), competition]));
-  const ids = [...new Set([...remoteById.keys(), ...localById.keys()])];
-  return ids.map((id) => mergeCompetition(localById.get(id), remoteById.get(id)));
+
+  // Supabase is authoritative for the existence of competitions. We only merge
+  // local match progress into competitions that still exist remotely. A stale
+  // localStorage entry can therefore never recreate a competition that was deleted.
+  return remoteItems.map((remoteCompetition) => (
+    mergeCompetition(localById.get(String(remoteCompetition.id)), remoteCompetition)
+  ));
 }
 
 export default function App() {
@@ -119,6 +121,7 @@ function CommissionApp() {
   const [supabaseLoaded, setSupabaseLoaded] = useState(!isSupabaseConfigured);
   const remoteSnapshotRef = useRef("");
   const refreshRunningRef = useRef(false);
+  const deletingCompetitionIdsRef = useRef(new Set());
 
   useEffect(() => {
     persistCompetitions(competitions);
@@ -139,30 +142,19 @@ function CommissionApp() {
       if (refreshRunningRef.current || document.visibilityState === "hidden") return;
       refreshRunningRef.current = true;
       try {
-        const remoteItems = prepareCompetitions(await loadCompetitions());
-        const migrationDone = localStorage.getItem(SUPABASE_MIGRATION_KEY) === "done";
+        const loadedItems = prepareCompetitions(await loadCompetitions());
+        const remoteItems = loadedItems.filter(
+          (competition) => !deletingCompetitionIdsRef.current.has(String(competition.id))
+        );
 
-        if (!migrationDone && remoteItems.length === 0) {
-          const localItems = readLocalCompetitions();
-          if (localItems.length > 0) {
-            await Promise.all(localItems.map(saveCompetition));
-            const localSnapshot = snapshot(localItems);
-            remoteSnapshotRef.current = localSnapshot;
-            localStorage.setItem(SUPABASE_MIGRATION_KEY, "done");
-            setCompetitions(localItems);
-            return;
-          }
-        }
-
-        localStorage.setItem(SUPABASE_MIGRATION_KEY, "done");
         setCompetitions((current) => {
           const mergedItems = prepareCompetitions(mergeCompetitionLists(current, remoteItems));
           const remoteSnapshot = snapshot(remoteItems);
           const mergedSnapshot = snapshot(mergedItems);
 
           // Remember exactly what Supabase contained. If the merge rescued a
-          // result from this tablet, the normal save effect will write the
-          // converged version back so every other tablet receives it.
+          // match result from this tablet, the normal save effect writes the
+          // converged version back for the other tatamis.
           remoteSnapshotRef.current = remoteSnapshot;
           return snapshot(current) === mergedSnapshot ? current : mergedItems;
         });
@@ -194,12 +186,30 @@ function CommissionApp() {
   }, []);
 
   function showCompetitions(competitionId = null) { setSelectedCompetitionId(competitionId); setSection("competitions"); }
-  async function deleteCompetition(id) { if (isSupabaseConfigured) await removeCompetition(id); }
+
+  async function createCompetition(competition) {
+    // Save remotely first so the next live refresh cannot interpret a freshly
+    // created local competition as a stale/deleted one.
+    if (isSupabaseConfigured) await saveCompetition(competition);
+    setCompetitions((current) => current.some((item) => String(item.id) === String(competition.id))
+      ? current
+      : [...current, competition]);
+  }
+
+  async function deleteCompetition(id) {
+    const key = String(id);
+    deletingCompetitionIdsRef.current.add(key);
+    try {
+      if (isSupabaseConfigured) await removeCompetition(id);
+    } finally {
+      deletingCompetitionIdsRef.current.delete(key);
+    }
+  }
 
   return <div className={`app ${section === "accueil" ? "home-screen" : ""}`}>
     <header className="header"><img src={`${import.meta.env.BASE_URL}assets/logo-afdp.png`} alt="AFDP Nanbudo" className="header-logo" /><div className="header-text"><p className="surtitle">AFDP NANBUDO</p><h1>Nanbudo Competition</h1><p className="subtitle">Cycle complet des compétitions : inscriptions, catégories, poules, arbitrage et résultats.</p></div></header>
     <nav className="navigation"><button className={section === "accueil" ? "active" : ""} onClick={() => setSection("accueil")}>Accueil</button><button className={section === "competitions" ? "active" : ""} onClick={() => showCompetitions()}>Compétitions</button></nav>
-    <main className="content">{section === "accueil" ? <Home competitions={competitions} onSelect={showCompetitions} onCreate={() => showCompetitions()} /> : <CompetitionManager competitions={competitions} setCompetitions={setCompetitions} initialCompetitionId={selectedCompetitionId} onDeleteCompetition={deleteCompetition} />}</main>
+    <main className="content">{section === "accueil" ? <Home competitions={competitions} onSelect={showCompetitions} onCreate={() => showCompetitions()} /> : <CompetitionManager competitions={competitions} setCompetitions={setCompetitions} initialCompetitionId={selectedCompetitionId} onCreateCompetition={createCompetition} onDeleteCompetition={deleteCompetition} />}</main>
     <footer><strong>AFDP Nanbudo France · Commission Compétition</strong><span>Compétitions uniquement</span></footer>
   </div>;
 }
