@@ -3,26 +3,54 @@ import CompetitionDashboard from "./CompetitionDashboard";
 import { COMPLETE_TEST_COMPETITION_NAME, createCompleteTestCompetition } from "./demoCompetitionData";
 import { slugify } from "./routing";
 
-function CompetitionManager({ competitions, setCompetitions, initialCompetitionId = null, onDeleteCompetition }) {
+function CompetitionManager({ competitions, setCompetitions, initialCompetitionId = null, onCreateCompetition, onDeleteCompetition }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(initialCompetitionId);
   const [form, setForm] = useState({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
 
-  function createCompetition(event) {
+  async function createCompetition(event) {
     event.preventDefault();
     if (!form.nom.trim()) return alert("Indique le nom de la compétition.");
-    setCompetitions((current) => [...current, { id: crypto.randomUUID(), slug: `${slugify(form.nom)}-${crypto.randomUUID().slice(0, 8)}`, nom: form.nom.trim(), date: form.date, lieu: form.lieu.trim(), tatamis: Number(form.tatamis) || 1, horairesActifs: form.horairesActifs, statut: "Inscriptions ouvertes", competitors: [], categories: [], pools: [] }]);
-    setForm({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
-    setShowForm(false);
+
+    const competition = {
+      id: crypto.randomUUID(),
+      slug: `${slugify(form.nom)}-${crypto.randomUUID().slice(0, 8)}`,
+      nom: form.nom.trim(),
+      date: form.date,
+      lieu: form.lieu.trim(),
+      tatamis: Number(form.tatamis) || 1,
+      horairesActifs: form.horairesActifs,
+      statut: "Inscriptions ouvertes",
+      competitors: [],
+      categories: [],
+      pools: [],
+    };
+
+    try {
+      if (onCreateCompetition) await onCreateCompetition(competition);
+      else setCompetitions((current) => [...current, competition]);
+      setForm({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
+      setShowForm(false);
+    } catch (error) {
+      console.error("Création de la compétition impossible", error);
+      alert("La compétition n'a pas pu être enregistrée. Réessaie dans quelques instants.");
+    }
   }
 
-  function createTestCompetition() {
+  async function createTestCompetition() {
     if (competitions.some((competition) => competition.nom === COMPLETE_TEST_COMPETITION_NAME)) {
       alert(`${COMPLETE_TEST_COMPETITION_NAME} existe déjà.`);
       return;
     }
+
     const testCompetition = createCompleteTestCompetition();
-    setCompetitions((current) => [...current, testCompetition]);
+    try {
+      if (onCreateCompetition) await onCreateCompetition(testCompetition);
+      else setCompetitions((current) => [...current, testCompetition]);
+    } catch (error) {
+      console.error("Création de la compétition de démonstration impossible", error);
+      alert("La compétition de démonstration n'a pas pu être enregistrée.");
+    }
   }
 
   function updateCompetition(updatedCompetition) { setCompetitions((current) => current.map((competition) => competition.id === updatedCompetition.id ? updatedCompetition : competition)); }
