@@ -7,7 +7,7 @@ import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { findNextArbitrationPassage, sortArbitrationMatches } from "./arbitrationSorting";
 import { arbitrationSheetKey, loadArbitrationDraft } from "./arbitrationDraftStorage";
 import { saveMatchResult } from "./supabase";
-import { refereeSlotsForDiscipline, TABLE_REFEREE_SLOTS } from "./refereeTeamRules";
+import { effectiveRefereeAssignments, refereeSlotsForDiscipline, replaceMatchReferee, TABLE_REFEREE_SLOTS } from "./refereeTeamRules";
 
 const ALL_TATAMIS = "all";
 const FAVORITE_TATAMI_STORAGE_KEY = "nanbudo-favorite-tatami";
@@ -24,6 +24,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   const [historyMatch, setHistoryMatch] = useState(null);
   const [pendingTieBreak, setPendingTieBreak] = useState(null);
   const [showControl, setShowControl] = useState(false);
+  const [editingRefereeSlot, setEditingRefereeSlot] = useState(null);
   const [activeTatami, setActiveTatami] = useState(() => localStorage.getItem(FAVORITE_TATAMI_STORAGE_KEY) || ALL_TATAMIS);
   const lastDraftSyncRef = useRef("");
   const matchStartRef = useRef({});
@@ -143,13 +144,34 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     return referee ? `${referee.nom || ""} ${referee.prenom || ""}`.trim() : "Non affecté";
   }
 
-  function renderRefereeTeam(tatami, discipline) {
-    const team = competition.refereeAssignments?.[tatami] || {};
+  const referees = competitors
+    .filter((competitor) => competitor.typeInscription === "Arbitre" || competitor.typeInscription === "Compétiteur + Arbitre")
+    .sort((a, b) => `${a.nom || ""} ${a.prenom || ""}`.localeCompare(`${b.nom || ""} ${b.prenom || ""}`, "fr"));
+
+  function updateMatchReferee(match, slot, refereeId) {
+    const baseTeam = competition.refereeAssignments?.[match.tatami] || {};
+    let refereeOverrides = { ...(match.refereeOverrides || {}) };
+    if (refereeId === "__default") {
+      delete refereeOverrides[slot];
+    } else {
+      refereeOverrides = replaceMatchReferee(baseTeam, refereeOverrides, slot, refereeId);
+    }
+    const updatedPools = pools.map((pool) => pool.id !== selectedPool?.id ? pool : {
+      ...pool,
+      matches: pool.matches.map((item) => item.id === match.id ? { ...item, refereeOverrides } : item),
+    });
+    onUpdateCompetition({ ...competition, pools: updatedPools });
+    setEditingRefereeSlot(null);
+  }
+
+  function renderRefereeTeam(tatami, discipline, match = null) {
+    const baseTeam = competition.refereeAssignments?.[tatami] || {};
+    const team = effectiveRefereeAssignments(baseTeam, match?.refereeOverrides || {});
     const refereeSlots = refereeSlotsForDiscipline(discipline);
     const tableCount = TABLE_REFEREE_SLOTS.filter((slot) => refereeName(team[slot]) !== "Non affecté").length;
     return <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #d7dde5", borderRadius: "12px", background: "#ffffff" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center" }}><strong>ÉQUIPE D’ARBITRAGE · TATAMI {tatami}</strong><span style={{ fontWeight: 700 }}>{tableCount >= 3 ? "Table complète · 3 arbitres" : tableCount >= 2 ? "Table opérationnelle · 2 arbitres minimum" : `Table incomplète · ${tableCount}/2 minimum`}</span></div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "8px", marginTop: "10px" }}>{refereeSlots.map((slot) => <div key={slot} style={{ padding: "8px 10px", borderRadius: "8px", background: "#f7f9fb", border: "1px solid #d7dde5" }}><div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase" }}>{slot}</div><div style={{ marginTop: "3px", fontWeight: 700 }}>{refereeName(team[slot])}</div></div>)}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center" }}><strong>ÉQUIPE D’ARBITRAGE · TATAMI {tatami}</strong><span style={{ fontWeight: 700 }}>{match ? "Cliquez sur un nom pour remplacer ou interchanger un arbitre" : tableCount >= 3 ? "Table complète · 3 arbitres" : tableCount >= 2 ? "Table opérationnelle · 2 arbitres minimum" : `Table incomplète · ${tableCount}/2 minimum`}</span></div>
+      <div className="match-referee-grid">{refereeSlots.map((slot) => { const assignment = team[slot] || {}; const isEditing = match && editingRefereeSlot === `${match.id}:${slot}`; return <div className={`match-referee-slot ${match?.refereeOverrides?.[slot] ? "replaced" : ""}`} key={slot}><div className="match-referee-role">{slot}</div>{isEditing ? <select autoFocus value={match?.refereeOverrides?.[slot]?.refereeId ? String(match.refereeOverrides[slot].refereeId) : "__default"} onChange={(event) => updateMatchReferee(match, slot, event.target.value)} onBlur={() => setEditingRefereeSlot(null)}><option value="__default">Affectation fixe · {refereeName(baseTeam[slot])}</option>{referees.map((referee) => <option key={referee.id} value={String(referee.id)}>{referee.nom} {referee.prenom}{referee.club ? ` · ${referee.club}` : ""}</option>)}</select> : match ? <button type="button" className="match-referee-name" onClick={() => setEditingRefereeSlot(`${match.id}:${slot}`)}>{refereeName(assignment)}<small>{match.refereeOverrides?.[slot] ? "Remplaçant pour ce match" : "Modifier"}</small></button> : <div className="match-referee-static">{refereeName(assignment)}</div>}</div>; })}</div>
     </div>;
   }
 
@@ -164,7 +186,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     const durationSeconds = preserveTiming && selectedMatch.durationSeconds
       ? selectedMatch.durationSeconds
       : Math.max(0, Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 1000));
-    const refereeTeam = competition.refereeAssignments?.[selectedMatch.tatami] || {};
+    const refereeTeam = effectiveRefereeAssignments(competition.refereeAssignments?.[selectedMatch.tatami] || {}, selectedMatch.refereeOverrides || {});
     const refereeTeamSnapshot = Object.fromEntries(Object.entries(refereeTeam).map(([slot, assignment]) => [slot, refereeName(assignment)]));
     const shushinName = refereeTeamSnapshot.Shushin || refereeTeamSnapshot.Sushin || refereeTeamSnapshot.shushin || refereeTeamSnapshot.sushin || "Non renseigné";
     const completedMatch = {
@@ -270,7 +292,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     const category = getCategory(selectedPool.categoryId);
     const matchProps = { ...selectedMatch, aka: getCompetitor(selectedMatch.akaId), shiro: getCompetitor(selectedMatch.shiroId), competitor: getCompetitor(selectedMatch.competitorId || selectedMatch.akaId), categoryName: category?.nom, poolName: selectedPool.nom, poolId: selectedPool.id, competitionId: competition.id };
     const liveSheetKey = arbitrationSheetKey(matchProps);
-    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami, selectedMatch.discipline)}{selectedMatch.isKataTieBreak && <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #caa52f", borderRadius: "12px", background: "#fff8dc" }}><strong>DÉPARTAGE KATA · TOUR {selectedMatch.kataTieBreakRound}</strong><div style={{ marginTop: "6px" }}>{selectedMatch.kataTieBreakMode}. Le podium restera bloqué jusqu'à la fin du départage.</div></div>}{renderNextPassage(selectedPool, selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={liveSheetKey} match={matchProps} onSave={saveMatch} /> : <MatchManager key={liveSheetKey} match={matchProps} onSave={saveMatch} />}</div>;
+    return <div className="arbitration-manager"><button className="back-button" onClick={() => setSelected(null)}>← Retour aux matchs</button>{renderRefereeTeam(selectedMatch.tatami, selectedMatch.discipline, selectedMatch)}{selectedMatch.isKataTieBreak && <div style={{ margin: "12px 0 18px", padding: "14px 16px", border: "2px solid #caa52f", borderRadius: "12px", background: "#fff8dc" }}><strong>DÉPARTAGE KATA · TOUR {selectedMatch.kataTieBreakRound}</strong><div style={{ marginTop: "6px" }}>{selectedMatch.kataTieBreakMode}. Le podium restera bloqué jusqu'à la fin du départage.</div></div>}{renderNextPassage(selectedPool, selectedMatch)}{competitionRulesEngine.isKataDiscipline(selectedMatch.discipline) ? <KataSheet key={liveSheetKey} match={matchProps} onSave={saveMatch} /> : <MatchManager key={liveSheetKey} match={matchProps} onSave={saveMatch} />}</div>;
   }
 
   if (showControl) return <div className="arbitration-manager"><button className="back-button" type="button" onClick={() => setShowControl(false)}>← Vue arbitrage</button><CompetitionControl competition={competition} onOpenMatch={(poolId, matchId) => { setShowControl(false); setSelected({ poolId, matchId }); }} /></div>;
