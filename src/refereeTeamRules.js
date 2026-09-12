@@ -37,3 +37,28 @@ export function replaceMatchReferee(baseTeam = {}, overrides = {}, slot, referee
   if (occupiedSlot) nextOverrides[occupiedSlot] = currentAssignment;
   return nextOverrides;
 }
+
+export function replaceCompetitionReferee(assignments = {}, tatami, slot, refereeId) {
+  const targetTatami = String(tatami);
+  const replacementId = String(refereeId || "");
+  const currentAssignment = assignments[targetTatami]?.[slot] || { refereeId: "", manualName: "" };
+  const nextAssignments = Object.fromEntries(Object.entries(assignments).map(([tatamiId, team]) => [tatamiId, { ...team }]));
+  nextAssignments[targetTatami] = { ...(nextAssignments[targetTatami] || {}) };
+
+  let occupiedPosition = null;
+  if (replacementId) {
+    Object.entries(assignments).some(([tatamiId, team]) => Object.entries(team || {}).some(([otherSlot, assignment]) => {
+      if (tatamiId === targetTatami && otherSlot === slot) return false;
+      if (String(assignment?.refereeId || "") !== replacementId) return false;
+      occupiedPosition = { tatamiId, slot: otherSlot };
+      return true;
+    }));
+  }
+
+  nextAssignments[targetTatami][slot] = { refereeId: replacementId, manualName: "" };
+  if (occupiedPosition) {
+    nextAssignments[occupiedPosition.tatamiId] = { ...(nextAssignments[occupiedPosition.tatamiId] || {}) };
+    nextAssignments[occupiedPosition.tatamiId][occupiedPosition.slot] = currentAssignment;
+  }
+  return nextAssignments;
+}
