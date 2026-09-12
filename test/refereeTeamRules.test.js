@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { effectiveRefereeAssignments, fukushinSlotsForDiscipline, refereeSlotsForDiscipline, replaceMatchReferee } from "../src/refereeTeamRules.js";
+import { effectiveRefereeAssignments, fukushinSlotsForDiscipline, refereeSlotsForDiscipline, replaceCompetitionReferee, replaceMatchReferee } from "../src/refereeTeamRules.js";
 
 test("Randori et Ju-Randori affichent trois Fukushin", () => {
   for (const discipline of ["randori", "ju_randori", "ju_randori_equipe", "dantai_randori"]) {
@@ -38,4 +38,24 @@ test("deux arbitres déjà présents sont interchangés sans doublon", () => {
   assert.equal(effective.Shushin.refereeId, "B");
   assert.equal(effective["Fukushin 1"].refereeId, "A");
   assert.equal(new Set(Object.values(effective).map(({ refereeId }) => refereeId)).size, 2);
+});
+
+test("une modification d'équipe fixe intervertit aussi deux arbitres de tatamis différents", () => {
+  const assignments = {
+    1: { Shushin: { refereeId: "A" } },
+    2: { Shushin: { refereeId: "B" } },
+  };
+  const updated = replaceCompetitionReferee(assignments, 1, "Shushin", "B");
+  assert.equal(updated[1].Shushin.refereeId, "B");
+  assert.equal(updated[2].Shushin.refereeId, "A");
+  assert.equal(assignments[1].Shushin.refereeId, "A");
+});
+
+test("un poste fixe peut être libéré sans déplacer un autre poste vide", () => {
+  const assignments = {
+    1: { Shushin: { refereeId: "A" }, "Fukushin 1": { refereeId: "" } },
+  };
+  const updated = replaceCompetitionReferee(assignments, 1, "Shushin", "");
+  assert.equal(updated[1].Shushin.refereeId, "");
+  assert.equal(updated[1]["Fukushin 1"].refereeId, "");
 });
