@@ -41,7 +41,7 @@ export const CINDA_2025_RULESET = {
     regroupBelowMinimum: true,
     dimensions: ["sex", "age", "weight", "grade"],
     ageBands: [
-      { id: "poussins", label: "Poussins", min: 6, max: 7, children: true },
+      { id: "poussins", label: "Poussins", min: 5, max: 7, children: true },
       { id: "pupilles", label: "Pupilles", min: 8, max: 9, children: true },
       { id: "benjamins", label: "Benjamins", min: 10, max: 11, children: true },
       { id: "minimes", label: "Minimes", min: 12, max: 13, children: true },
