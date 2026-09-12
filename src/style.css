@@ -1943,6 +1943,88 @@ footer span {
   height: 100%;
 }
 
+.pool-passage-groups {
+  display: grid;
+  gap: 20px;
+}
+
+.pool-passage-group {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  box-shadow: 0 5px 16px rgba(7, 26, 51, 0.07);
+  overflow: hidden;
+  padding: 0 14px 14px;
+}
+
+.pool-passage-group.pool-passage-complete {
+  border-color: #86b98a;
+}
+
+.pool-passage-header {
+  align-items: center;
+  background: #edf3f9;
+  display: grid;
+  gap: 12px 18px;
+  grid-template-columns: 1fr auto;
+  margin: 0 -14px 14px;
+  padding: 16px 18px;
+}
+
+.pool-passage-complete .pool-passage-header {
+  background: #edf8ee;
+}
+
+.pool-passage-header h3 {
+  color: #071a33;
+  margin: 4px 0;
+}
+
+.pool-passage-header p:not(.surtitle) {
+  color: #526175;
+  margin: 0;
+  font-weight: 700;
+}
+
+.pool-progress-status {
+  background: #e2e8f0;
+  border-radius: 999px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.pool-progress-status.current {
+  background: #fff0b8;
+  color: #6d5200;
+}
+
+.pool-progress-status.complete {
+  background: #d9f1dc;
+  color: #166534;
+}
+
+.pool-progress-track {
+  background: #d6e0eb;
+  border-radius: 999px;
+  grid-column: 1 / -1;
+  height: 12px;
+  overflow: hidden;
+}
+
+.pool-progress-track span {
+  background: linear-gradient(90deg, #c9a227, #e0c35d);
+  display: block;
+  height: 100%;
+  transition: width 180ms ease;
+}
+
+.pool-passage-complete .pool-progress-track span {
+  background: linear-gradient(90deg, #2e7d32, #6dbb70);
+}
+
 .arbitration-match-card {
   align-items: stretch;
   border-left-width: 8px;
@@ -1987,6 +2069,14 @@ footer span {
 @media (max-width: 900px) {
   .tatami-group-header {
     grid-template-columns: 1fr;
+  }
+
+  .pool-passage-header {
+    grid-template-columns: 1fr;
+  }
+
+  .pool-progress-status {
+    justify-self: start;
   }
 
   .arbitration-match-card {
