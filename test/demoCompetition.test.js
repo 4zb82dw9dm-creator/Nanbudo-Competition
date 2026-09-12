@@ -2,7 +2,30 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { COMPLETE_TEST_COMPETITION_NAME, createCompleteTestCompetition, simulateCompleteTestCompetition } from "../src/demoCompetitionData.js";
 import { calculateRanking, generateMatches, unresolvedPoolTieGroups } from "../src/competitionLogic.js";
-import { prepareCategoriesForPools } from "../src/categoryRules.js";
+import { ageCompetitionRule, prepareCategoriesForPools } from "../src/categoryRules.js";
+
+test("Kata groups follow the mandatory age boundaries", () => {
+  assert.equal(ageCompetitionRule(5).kataGroup, "Kata 0");
+  assert.equal(ageCompetitionRule(7).kataGroup, "Kata 0");
+  assert.equal(ageCompetitionRule(8).kataGroup, "Kata 1");
+  assert.equal(ageCompetitionRule(10).kataGroup, "Kata 1");
+  assert.equal(ageCompetitionRule(11).kataGroup, "Kata 1");
+  assert.equal(ageCompetitionRule(12).kataGroup, "Kata 2");
+});
+
+test("pool preparation corrects an invalid Kata group even after a manual category edit", () => {
+  const competitors = [{ id: "child", sexe: "Homme", age: 10 }];
+  const [category] = prepareCategoriesForPools([{
+    id: "wrong-kata",
+    nom: "Kata 0 · 10 ans · Homme",
+    discipline: "kata_individuel",
+    kataGroup: "Kata 0",
+    competitorIds: ["child"],
+    manual: true,
+  }], competitors);
+  assert.equal(category.kataGroup, "Kata 1");
+  assert.match(category.nom, /^Kata 1\b/);
+});
 
 test("the complete demo has 100 competitors, 30 referees and broad age coverage", () => {
   const demo = createCompleteTestCompetition();
@@ -23,7 +46,7 @@ test("the complete demo has 100 competitors, 30 referees and broad age coverage"
   assert.ok(Object.values(demo.refereeAssignments).every((team) => Object.keys(team).length === 8));
 });
 
-test("automatic demo categories never mix sexes and child disciplines stop at 12", () => {
+test("automatic demo categories never mix sexes and use the mandatory Kata group", () => {
   const demo = createCompleteTestCompetition();
   const competitors = demo.competitors.filter(({ typeInscription }) => typeInscription === "Compétiteur");
   for (const category of demo.categories) {
@@ -31,7 +54,7 @@ test("automatic demo categories never mix sexes and child disciplines stop at 12
     assert.equal(new Set(members.map(({ sexe }) => sexe)).size, 1);
     const maxAge = Math.max(...members.map(({ age }) => age));
     if (category.discipline === "randori") assert.ok(maxAge <= 12);
-    if (["Kata 0", "Kata 1"].includes(category.kataGroup)) assert.ok(maxAge <= 12);
+    if (category.discipline.startsWith("kata")) assert.equal(category.kataGroup, ageCompetitionRule(maxAge).kataGroup);
   }
 });
 
