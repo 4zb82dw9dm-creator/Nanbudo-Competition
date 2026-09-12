@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { KATA_PLACEHOLDER, getKatasForCategory } from "./constants/katas";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { DraftRecoveryNotice, useArbitrationDraft } from "./arbitrationDrafts";
@@ -17,10 +17,13 @@ function KataSheet({ match, onSave }) {
     setKataName(saved.kataName || "");
     setNotes(Array.isArray(saved.notes) ? saved.notes : ["", "", "", "", ""]);
   });
+  const initializedMatchRef = useRef("");
 
   useEffect(() => {
+    if (initializedMatchRef.current === match.id) return;
+    initializedMatchRef.current = match.id;
     if (kataName && !kataOptions.includes(kataName)) setKataName("");
-  }, [kataName, kataOptions]);
+  }, [match.id, kataName, kataOptions]);
 
   async function save() {
     if (!kataName) return alert("Sélectionnez le Kata exécuté.");
