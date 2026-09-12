@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { sortArbitrationMatches } from "./arbitrationSorting";
 import { PLANNING_TATAMIS } from "./planningLogic";
-import { fukushinSlotsForDiscipline, refereeSlotsForDiscipline, TABLE_REFEREE_SLOTS } from "./refereeTeamRules";
+import { fukushinSlotsForDiscipline, refereeSlotsForDiscipline, replaceCompetitionReferee, TABLE_REFEREE_SLOTS } from "./refereeTeamRules";
 
 
-function CompetitionControl({ competition, onOpenMatch }) {
+function CompetitionControl({ competition, onOpenMatch, onUpdateCompetition }) {
+  const [editingReferee, setEditingReferee] = useState(null);
   const competitors = competition.competitors || [];
   const categories = competition.categories || [];
   const assignments = competition.refereeAssignments || {};
@@ -13,6 +15,17 @@ function CompetitionControl({ competition, onOpenMatch }) {
   const getCategory = (id) => categories.find((category) => String(category.id) === String(id));
   const name = (id) => { const person = getCompetitor(id); return person ? `${person.nom || ""} ${person.prenom || ""}`.trim() : "—"; };
   const refereeName = (assignment) => assignment?.manualName || name(assignment?.refereeId);
+  const referees = competitors
+    .filter((competitor) => competitor.typeInscription === "Arbitre" || competitor.typeInscription === "Compétiteur + Arbitre")
+    .sort((a, b) => `${a.nom || ""} ${a.prenom || ""}`.localeCompare(`${b.nom || ""} ${b.prenom || ""}`, "fr"));
+
+  function updateTatamiReferee(tatami, slot, refereeId) {
+    onUpdateCompetition?.({
+      ...competition,
+      refereeAssignments: replaceCompetitionReferee(assignments, tatami, slot, refereeId),
+    });
+    setEditingReferee(null);
+  }
 
   const groups = new Map(PLANNING_TATAMIS.map((tatami) => [String(tatami), []]));
   (competition.pools || []).forEach((pool) => (pool.matches || []).forEach((match) => {
@@ -97,7 +110,7 @@ function CompetitionControl({ competition, onOpenMatch }) {
             {alerts.length > 0 && <section style={{ marginBottom: "12px", padding: "10px 12px", borderRadius: "10px", background: "#fff4f2", border: "1px solid #e8a39d" }}><p className="surtitle" style={{ marginTop: 0 }}>ALERTES</p>{alerts.map((alert, index) => <div key={`${alert.text}-${index}`} style={{ fontWeight: alert.level === "critical" ? 700 : 600, marginTop: index ? "5px" : 0 }}>⚠️ {alert.text}</div>)}</section>}
             <section style={{ padding: "12px", borderRadius: "10px", background: current ? "#eef6ff" : "#f7f9fb", border: "1px solid #d7dde5" }}><p className="surtitle" style={{ marginTop: 0 }}>EN COURS / PROCHAIN À LANCER</p>{current ? <><strong>{disciplineLabel(current.match.discipline)} · {getCategory(current.pool.categoryId)?.nom || "Catégorie"}</strong><p style={{ marginBottom: "8px" }}>{matchText(current)}</p><button className="primary" type="button" onClick={() => onOpenMatch?.(current.pool.id, current.match.id)}>Ouvrir la feuille</button></> : <strong>Tatami terminé</strong>}</section>
             <section style={{ marginTop: "12px", padding: "12px", borderRadius: "10px", background: "#f7f9fb", border: "1px solid #d7dde5" }}><p className="surtitle" style={{ marginTop: 0 }}>À SUIVRE</p>{next ? <><strong>{disciplineLabel(next.match.discipline)} · {getCategory(next.pool.categoryId)?.nom || "Catégorie"}</strong><p style={{ marginBottom: 0 }}>{matchText(next)}</p></> : <strong>Pas d’autre passage prévu</strong>}</section>
-            <section style={{ marginTop: "12px" }}><div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center" }}><p className="surtitle" style={{ margin: 0 }}>ÉQUIPE D’ARBITRAGE</p><strong>{tableStatus} · {tableCount}/3 table</strong></div><div style={{ display: "grid", gap: "6px", marginTop: "8px" }}>{refereeSlots.map((slot) => <div key={slot} style={{ display: "flex", justifyContent: "space-between", gap: "10px", padding: "7px 9px", borderRadius: "8px", background: "#f7f9fb" }}><span>{slot}</span><strong style={{ textAlign: "right" }}>{refereeName(team[slot])}</strong></div>)}</div></section>
+            <section style={{ marginTop: "12px" }}><div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center" }}><p className="surtitle" style={{ margin: 0 }}>ÉQUIPE D’ARBITRAGE</p><strong>{tableStatus} · {tableCount}/3 table</strong></div><div style={{ display: "grid", gap: "6px", marginTop: "8px" }}>{refereeSlots.map((slot) => { const editingKey = `${tatami}:${slot}`; const isEditing = editingReferee === editingKey; return <div className="control-referee-row" key={slot}><span>{slot}</span>{isEditing ? <select autoFocus value={String(team[slot]?.refereeId || "")} onChange={(event) => updateTatamiReferee(tatami, slot, event.target.value)}><option value="">— Non affecté —</option>{referees.map((referee) => <option key={referee.id} value={String(referee.id)}>{referee.nom} {referee.prenom}{referee.club ? ` · ${referee.club}` : ""}</option>)}</select> : <button type="button" onClick={() => setEditingReferee(editingKey)}>{refereeName(team[slot])}<small>Modifier</small></button>}</div>; })}</div></section>
           </div>
         </article>;
       })}
