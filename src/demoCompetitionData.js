@@ -1,5 +1,6 @@
 import { buildPoolsForCategory, calculatePoolPodium, setPoolTatami } from "./competitionLogic.js";
 import { balancedTatamiAssignments } from "./planningLogic.js";
+import { ageCompetitionRule } from "./categoryRules.js";
 
 export const COMPLETE_TEST_COMPETITION_NAME = "COMPÉTITION TEST 100 COMPÉTITEURS";
 export const DEMO_COMPETITION_MARKER = "nanbudo-complete-demo-v2";
@@ -11,18 +12,18 @@ const FIRST_NAMES = MALE_FIRST_NAMES.flatMap((name, index) => [name, FEMALE_FIRS
 const LAST_NAMES = ["Martin", "Bernard", "Petit", "Robert", "Richard", "Durand", "Dubois", "Moreau", "Laurent", "Simon", "Michel", "Lefèvre", "Leroy", "Roux", "David", "Bertrand", "Morel", "Fournier", "Girard", "Bonnet", "Dupont", "Lambert", "Fontaine", "Rousseau"];
 
 const DEMO_CATEGORIES = [
-  { key: "kata-0", name: "Kata 0 · Poussins · Mixte · Kyu débutants", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 0", age: 9, grade: "6e Kyu", scenario: "F" },
-  { key: "kata-1", name: "Kata 1 · Benjamins / Minimes · Mixte · Kyu intermédiaires", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 1", age: 13, grade: "3e Kyu", scenario: "F" },
+  { key: "kata-0", name: "Kata 0 · Poussins · Mixte · Kyu débutants", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 0", age: 6, grade: "6e Kyu", scenario: "F" },
+  { key: "kata-1", name: "Kata 1 · Benjamins · Mixte · Kyu intermédiaires", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 1", age: 10, grade: "3e Kyu", scenario: "F" },
   { key: "kata-2", name: "Kata 2 · Seniors · Mixte · Dan", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 2", age: 24, grade: "2e Dan", scenario: "F" },
   { key: "randori", name: "Randori · Cadets / Juniors · Mixte · Kyu avancés", discipline: "randori", registrationCategory: "Randori", age: 16, grade: "1er Kyu", scenario: "A" },
   { key: "ju-randori-1", name: "Ju-Randori 1 · Benjamins / Minimes · Mixte · Kyu", discipline: "ju_randori", registrationCategory: "Ju Randori", age: 13, grade: "4e Kyu", scenario: "B/D" },
   { key: "ju-randori-2", name: "Ju-Randori 2 · Seniors · Mixte · Dan", discipline: "ju_randori", registrationCategory: "Ju Randori", age: 28, grade: "2e Dan", scenario: "C/E" },
   { key: "kata0-7", name: "Kata 0 · 7 ans · Mixte", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 0", age: 7, grade: "6e Kyu", scenario: "F" },
   { key: "randori-8", name: "Randori · 8 ans · Mixte", discipline: "randori", registrationCategory: "Randori", age: 8, grade: "6e Kyu", scenario: "A" },
-  { key: "kata0-10", name: "Kata 0 · 10 ans · Mixte", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 0", age: 10, grade: "5e Kyu", scenario: "F" },
+  { key: "kata1-10", name: "Kata 1 · 10 ans · Mixte", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 1", age: 10, grade: "5e Kyu", scenario: "F" },
   { key: "kata1-11", name: "Kata 1 · 11 ans · Mixte", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 1", age: 11, grade: "4e Kyu", scenario: "F" },
   { key: "jur1-12", name: "Ju-Randori 1 · 12 ans · Mixte", discipline: "ju_randori", registrationCategory: "Ju Randori", age: 12, grade: "4e Kyu", scenario: "A" },
-  { key: "kata1-14", name: "Kata 1 · 14 ans · Mixte", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 1", age: 14, grade: "2e Kyu", scenario: "F" },
+  { key: "kata2-14", name: "Kata 2 · 14 ans · Mixte", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 2", age: 14, grade: "2e Kyu", scenario: "F" },
   { key: "randori-15", name: "Randori · 15 ans · Mixte", discipline: "randori", registrationCategory: "Randori", age: 15, grade: "2e Kyu", scenario: "A" },
   { key: "kata2-17", name: "Kata 2 · 17 ans · Mixte", discipline: "kata_individuel", registrationCategory: "Kata individuel", kataGroup: "Kata 2", age: 17, grade: "1er Kyu", scenario: "F" },
   { key: "jur2-18", name: "Ju-Randori 2 · 18 ans · Mixte", discipline: "ju_randori", registrationCategory: "Ju Randori", age: 18, grade: "1er Dan", scenario: "A" },
@@ -44,8 +45,9 @@ function normalizeDemoDefinition(definition, index) {
   if (normalized.age > 12 && normalized.discipline === "randori") {
     normalized = { ...normalized, discipline: "ju_randori", registrationCategory: "Ju Randori", name: normalized.name.replace(/^Randori\b/, "Ju Randori") };
   }
-  if (normalized.age > 12 && ["Kata 0", "Kata 1"].includes(normalized.kataGroup)) {
-    normalized = { ...normalized, kataGroup: "Kata 2", name: normalized.name.replace(/^Kata [01]\b/, "Kata 2") };
+  if (normalized.discipline.startsWith("kata")) {
+    const kataGroup = ageCompetitionRule(normalized.age)?.kataGroup || normalized.kataGroup;
+    normalized = { ...normalized, kataGroup, name: normalized.name.replace(/^Kata [012]\b/, kataGroup) };
   }
   return normalized;
 }
