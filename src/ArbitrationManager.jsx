@@ -27,6 +27,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   const [activeTatami, setActiveTatami] = useState(() => localStorage.getItem(FAVORITE_TATAMI_STORAGE_KEY) || ALL_TATAMIS);
   const lastDraftSyncRef = useRef("");
   const matchStartRef = useRef({});
+  const callupRef = useRef(null);
   function getCompetitor(id) { return competitors.find((competitor) => competitor.id === id); }
   function getCategory(id) { return categories.find((category) => category.id === id); }
   const matchesByTatami = useMemo(() => {
@@ -69,6 +70,14 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
       matchStartRef.current[selectedTimingKey] = selectedMatch.startedAt || new Date().toISOString();
     }
   }, [selectedTimingKey, selectedMatch?.statut, selectedMatch?.startedAt]);
+
+  useEffect(() => {
+    if (!selectedTimingKey) return undefined;
+    const frame = requestAnimationFrame(() => {
+      callupRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedTimingKey]);
 
   useEffect(() => {
     lastDraftSyncRef.current = "";
@@ -119,12 +128,12 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
 
   function renderNextPassage(pool, match) {
     const next = nextPassageFor(pool, match);
-    if (!next) return <div className="next-passage-callout finished"><div><strong>À SUIVRE · TATAMI {match.tatami}</strong><p>Dernier passage prévu sur ce tatami.</p></div><span className="callup-finished">FIN DU TATAMI</span></div>;
+    if (!next) return <div className="next-passage-callout finished" ref={callupRef}><div><strong>À SUIVRE · TATAMI {match.tatami}</strong><p>Dernier passage prévu sur ce tatami.</p></div><span className="callup-finished">FIN DU TATAMI</span></div>;
     const nextMatch = next.match;
     const category = getCategory(next.pool.categoryId);
     const isKata = competitionRulesEngine.isKataDiscipline(nextMatch.discipline);
     const competitor = getCompetitor(nextMatch.competitorId || nextMatch.akaId);
-    return <div className="next-passage-callout"><div className="next-passage-details"><strong>À SUIVRE · TATAMI {nextMatch.tatami}</strong><p>{disciplineLabel(nextMatch.discipline)}{category?.nom ? ` · ${category.nom}` : ""}</p>{isKata ? <h3>{competitor?.nom || "-"} {competitor?.prenom || ""}{nextMatch.isKataTieBreak ? ` · DÉPARTAGE · ${nextMatch.kataTieBreakMode}` : ""}</h3> : <div className="next-fighters"><span className="aka">AKA · {getCompetitor(nextMatch.akaId)?.nom || "-"} {getCompetitor(nextMatch.akaId)?.prenom || ""}</span><span className="shiro">SHIRO · {getCompetitor(nextMatch.shiroId)?.nom || "-"} {getCompetitor(nextMatch.shiroId)?.prenom || ""}</span></div>}</div><div className="prepare-callout"><small>PROCHAIN PASSAGE</small><strong>SE PRÉPARE</strong></div></div>;
+    return <div className="next-passage-callout" ref={callupRef}><div className="next-passage-details"><strong>À SUIVRE · TATAMI {nextMatch.tatami}</strong><p>{disciplineLabel(nextMatch.discipline)}{category?.nom ? ` · ${category.nom}` : ""}</p>{isKata ? <h3>{competitor?.nom || "-"} {competitor?.prenom || ""}{nextMatch.isKataTieBreak ? ` · DÉPARTAGE · ${nextMatch.kataTieBreakMode}` : ""}</h3> : <div className="next-fighters"><span className="aka">AKA · {getCompetitor(nextMatch.akaId)?.nom || "-"} {getCompetitor(nextMatch.akaId)?.prenom || ""}</span><span className="shiro">SHIRO · {getCompetitor(nextMatch.shiroId)?.nom || "-"} {getCompetitor(nextMatch.shiroId)?.prenom || ""}</span></div>}</div><div className="prepare-callout"><small>PROCHAIN PASSAGE</small><strong>SE PRÉPARE</strong></div></div>;
   }
 
   function refereeName(assignment) {
