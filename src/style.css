@@ -2222,6 +2222,80 @@ footer span {
   width: 100%;
 }
 
+.match-referee-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  margin-top: 10px;
+}
+
+.match-referee-slot {
+  background: #f7f9fb;
+  border: 1px solid #d7dde5;
+  border-radius: 10px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 8px 10px;
+}
+
+.match-referee-slot.replaced {
+  background: #fff8dc;
+  border: 2px solid #c9a227;
+  padding: 7px 9px;
+}
+
+.match-referee-role {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.match-referee-name {
+  align-items: flex-start;
+  background: transparent;
+  border: 0;
+  color: #071a33;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font-weight: 800;
+  gap: 3px;
+  margin-top: 3px;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.match-referee-name:hover,
+.match-referee-name:focus-visible {
+  color: #1f5f99;
+  outline: none;
+}
+
+.match-referee-name small {
+  color: #657080;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.match-referee-static {
+  font-weight: 800;
+  margin-top: 3px;
+}
+
+.match-referee-slot select {
+  background: #ffffff;
+  border: 2px solid #1f5f99;
+  border-radius: 8px;
+  color: #071a33;
+  font: inherit;
+  font-weight: 700;
+  margin-top: 5px;
+  min-height: 48px;
+  padding: 8px;
+  width: 100%;
+}
+
 @media (max-width: 900px) {
   .tatami-group-header {
     grid-template-columns: 1fr;
