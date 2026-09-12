@@ -15,3 +15,25 @@ export function refereeSlotsForDiscipline(discipline) {
   if (!discipline) return ALL_REFEREE_SLOTS;
   return ["Shushin", ...fukushinSlotsForDiscipline(discipline), ...TABLE_REFEREE_SLOTS];
 }
+
+export function effectiveRefereeAssignments(baseTeam = {}, overrides = {}) {
+  return { ...baseTeam, ...overrides };
+}
+
+export function replaceMatchReferee(baseTeam = {}, overrides = {}, slot, refereeId) {
+  const effectiveTeam = effectiveRefereeAssignments(baseTeam, overrides);
+  const currentAssignment = effectiveTeam[slot] || { refereeId: "", manualName: "" };
+  const replacementId = String(refereeId || "");
+  const occupiedSlot = Object.entries(effectiveTeam).find(([otherSlot, assignment]) => (
+    otherSlot !== slot && String(assignment?.refereeId || "") === replacementId
+  ))?.[0];
+  const nextOverrides = {
+    ...overrides,
+    [slot]: { refereeId: replacementId, manualName: "" },
+  };
+
+  // If the replacement is already on this match, truly interchange both
+  // officials instead of accidentally assigning the same person twice.
+  if (occupiedSlot) nextOverrides[occupiedSlot] = currentAssignment;
+  return nextOverrides;
+}
