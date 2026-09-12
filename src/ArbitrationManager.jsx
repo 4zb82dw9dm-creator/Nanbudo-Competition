@@ -222,6 +222,26 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     return { finished, remaining: matches.length - finished, total: matches.length };
   }
 
+  function groupPassagesByPool(matches) {
+    const grouped = new Map();
+    matches.forEach(({ pool, match }) => {
+      if (!grouped.has(pool.id)) grouped.set(pool.id, { pool, matches: [] });
+      grouped.get(pool.id).matches.push({ pool, match });
+    });
+    return Array.from(grouped.values());
+  }
+
+  function poolProgress(matches) {
+    const finished = matches.filter(({ match }) => match.statut === "Terminé").length;
+    const total = matches.length;
+    return {
+      finished,
+      total,
+      percentage: total ? Math.round((finished / total) * 100) : 0,
+      label: finished === total ? "Terminée" : finished > 0 ? "En cours" : "À venir",
+    };
+  }
+
   function renderMatchCard(pool, match, currentMatchId) {
     const category = getCategory(pool.categoryId);
     const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
@@ -247,6 +267,6 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   if (showControl) return <div className="arbitration-manager"><button className="back-button" type="button" onClick={() => setShowControl(false)}>← Vue arbitrage</button><CompetitionControl competition={competition} onOpenMatch={(poolId, matchId) => { setShowControl(false); setSelected({ poolId, matchId }); }} /></div>;
 
   const displayedGroups = activeTatami === ALL_TATAMIS ? matchesByTatami : matchesByTatami.filter((group) => group.tatami === activeTatami);
-  return <div className="arbitration-manager"><div className="manager-header"><div><p className="surtitle">ARBITRAGE DIRECT</p><h2>Arbitrage par tatami</h2><p>Sélectionnez un tatami pour ouvrir la liste de passage dédiée. Le choix est mémorisé sur cette tablette.</p></div><div><button className="primary" type="button" onClick={() => setShowControl(true)}>Vue contrôle compétition</button></div></div>{pools.length === 0 ? <div className="empty-state"><h3>Aucun match disponible</h3><p>Générez et validez les poules avant l'arbitrage.</p></div> : <><div className="tatami-tabs" role="tablist" aria-label="Sélection du tatami"><button className={activeTatami === ALL_TATAMIS ? "active" : ""} onClick={() => handleTatamiSelection(ALL_TATAMIS)}>Tous</button>{tatamis.map((tatami) => <button key={tatami} className={activeTatami === tatami ? "active" : ""} onClick={() => handleTatamiSelection(tatami)}>Tatami {tatami}</button>)}</div><div className="tatami-groups">{displayedGroups.map((group) => { const progress = tatamiProgress(group.matches); const current = group.matches.find(({ match }) => match.statut !== "Terminé"); return <section className="tatami-group" key={group.tatami}><div className="tatami-group-header"><div><p className="surtitle">TATAMI {group.tatami}</p><h3>{progress.finished} terminés · {progress.remaining} restants</h3></div><div className="tatami-progress" aria-label={`${progress.finished} combats terminés sur ${progress.total}`}><span style={{ width: `${progress.total ? (progress.finished / progress.total) * 100 : 0}%` }} /></div></div>{renderRefereeTeam(group.tatami, current?.match.discipline)}<div className="competition-list">{group.matches.map(({ pool, match }) => renderMatchCard(pool, match, current?.match.id))}</div></section>; })}</div></>}</div>;
+  return <div className="arbitration-manager"><div className="manager-header"><div><p className="surtitle">ARBITRAGE DIRECT</p><h2>Arbitrage par tatami</h2><p>Sélectionnez un tatami pour suivre la compétition poule par poule. Le choix est mémorisé sur cette tablette.</p></div><div><button className="primary" type="button" onClick={() => setShowControl(true)}>Vue contrôle compétition</button></div></div>{pools.length === 0 ? <div className="empty-state"><h3>Aucun match disponible</h3><p>Générez et validez les poules avant l'arbitrage.</p></div> : <><div className="tatami-tabs" role="tablist" aria-label="Sélection du tatami"><button className={activeTatami === ALL_TATAMIS ? "active" : ""} onClick={() => handleTatamiSelection(ALL_TATAMIS)}>Tous</button>{tatamis.map((tatami) => <button key={tatami} className={activeTatami === tatami ? "active" : ""} onClick={() => handleTatamiSelection(tatami)}>Tatami {tatami}</button>)}</div><div className="tatami-groups">{displayedGroups.map((group) => { const progress = tatamiProgress(group.matches); const current = group.matches.find(({ match }) => match.statut !== "Terminé"); const poolGroups = groupPassagesByPool(group.matches); return <section className="tatami-group" key={group.tatami}><div className="tatami-group-header"><div><p className="surtitle">TATAMI {group.tatami}</p><h3>{progress.finished} terminés · {progress.remaining} restants</h3></div><div className="tatami-progress" aria-label={`${progress.finished} passages terminés sur ${progress.total}`}><span style={{ width: `${progress.total ? (progress.finished / progress.total) * 100 : 0}%` }} /></div></div>{renderRefereeTeam(group.tatami, current?.match.discipline)}<div className="pool-passage-groups">{poolGroups.map(({ pool, matches }) => { const poolState = poolProgress(matches); const category = getCategory(pool.categoryId); return <section className={`pool-passage-group ${poolState.label === "Terminée" ? "pool-passage-complete" : ""}`} key={pool.id}><div className="pool-passage-header"><div><p className="surtitle">{disciplineLabel(pool.discipline)} · TATAMI {group.tatami}</p><h3>{pool.nom || category?.nom || "Poule"}</h3><p>{poolState.finished} passage{poolState.finished > 1 ? "s" : ""} terminé{poolState.finished > 1 ? "s" : ""} sur {poolState.total}</p></div><span className={`pool-progress-status ${poolState.label === "Terminée" ? "complete" : poolState.label === "En cours" ? "current" : ""}`}>{poolState.label}</span><div className="pool-progress-track" aria-label={`Progression de la poule : ${poolState.percentage} %`}><span style={{ width: `${poolState.percentage}%` }} /></div></div><div className="competition-list">{matches.map(({ pool: matchPool, match }) => renderMatchCard(matchPool, match, current?.match.id))}</div></section>; })}</div></section>; })}</div></>}</div>;
 }
 export default ArbitrationManager;
