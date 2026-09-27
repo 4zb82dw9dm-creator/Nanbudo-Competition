@@ -2577,3 +2577,8 @@ footer span {
   font-weight: 900;
   box-shadow: 0 3px 10px rgba(7, 26, 51, 0.30);
 }
+
+.sync-status { font-weight: 800; padding: 6px 10px; border-radius: 999px; }
+.sync-status.synced { background: #e7f7ed; }
+.sync-status.pending { background: #fff4cf; }
+.sync-status.offline { background: #ffe1e1; }

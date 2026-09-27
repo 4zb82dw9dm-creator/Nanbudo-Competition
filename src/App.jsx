@@ -5,6 +5,7 @@ import PublicRegistration from "./PublicRegistration";
 import { competitionPublicSlug, currentRoute, publicRegistrationSlug } from "./routing";
 import { persistCompetitions } from "./registrationProcessing";
 import { isSupabaseConfigured, loadCompetitions, removeCompetition, saveCompetition } from "./supabase";
+import { OFFLINE_QUEUE_CHANGED_EVENT, pendingMatchResultCount, syncPendingMatchResults } from "./offlineResultQueue";
 
 const LOCAL_COMPETITIONS_KEY = "nanbudo_competitions";
 const LIVE_REFRESH_MS = 2000;
@@ -119,9 +120,38 @@ function CommissionApp() {
   const [competitions, setCompetitions] = useState(readLocalCompetitions);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(null);
   const [supabaseLoaded, setSupabaseLoaded] = useState(!isSupabaseConfigured);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [pendingSyncCount, setPendingSyncCount] = useState(() => pendingMatchResultCount());
   const remoteSnapshotRef = useRef("");
   const refreshRunningRef = useRef(false);
   const deletingCompetitionIdsRef = useRef(new Set());
+
+  useEffect(() => {
+    let stopped = false;
+    const refreshStatus = () => {
+      if (stopped) return;
+      setIsOnline(navigator.onLine);
+      setPendingSyncCount(pendingMatchResultCount());
+    };
+    const syncNow = async () => {
+      refreshStatus();
+      if (!navigator.onLine) return;
+      await syncPendingMatchResults();
+      refreshStatus();
+    };
+    addEventListener("online", syncNow);
+    addEventListener("offline", refreshStatus);
+    addEventListener(OFFLINE_QUEUE_CHANGED_EVENT, refreshStatus);
+    syncNow();
+    const interval = setInterval(syncNow, 5000);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+      removeEventListener("online", syncNow);
+      removeEventListener("offline", refreshStatus);
+      removeEventListener(OFFLINE_QUEUE_CHANGED_EVENT, refreshStatus);
+    };
+  }, []);
 
   useEffect(() => {
     persistCompetitions(competitions);
@@ -210,7 +240,7 @@ function CommissionApp() {
     <header className="header"><img src={`${import.meta.env.BASE_URL}assets/logo-afdp.png`} alt="AFDP Nanbudo" className="header-logo" /><div className="header-text"><p className="surtitle">AFDP NANBUDO</p><h1>Nanbudo Competition</h1><p className="subtitle">Cycle complet des compétitions : inscriptions, catégories, poules, arbitrage et résultats.</p></div></header>
     <nav className="navigation"><button className={section === "accueil" ? "active" : ""} onClick={() => setSection("accueil")}>Accueil</button><button className={section === "competitions" ? "active" : ""} onClick={() => showCompetitions()}>Compétitions</button></nav>
     <main className="content">{section === "accueil" ? <Home competitions={competitions} onSelect={showCompetitions} onCreate={() => showCompetitions()} /> : <CompetitionManager competitions={competitions} setCompetitions={setCompetitions} initialCompetitionId={selectedCompetitionId} onCreateCompetition={createCompetition} onDeleteCompetition={deleteCompetition} />}</main>
-    <footer><strong>AFDP Nanbudo France · Commission Compétition</strong><span>Compétitions uniquement</span></footer>
+    <footer><strong>AFDP Nanbudo France · Commission Compétition</strong><span>Compétitions uniquement</span><span className={`sync-status ${!isOnline ? "offline" : pendingSyncCount ? "pending" : "synced"}`}>{!isOnline ? `Hors ligne · ${pendingSyncCount} résultat${pendingSyncCount > 1 ? "s" : ""} en attente` : pendingSyncCount ? `Synchronisation · ${pendingSyncCount} en attente` : "Synchronisé"}</span></footer>
   </div>;
 }
 
