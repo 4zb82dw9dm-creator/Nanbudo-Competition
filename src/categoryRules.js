@@ -1,3 +1,37 @@
+export const FFK_SEASON_START_YEAR = 2026;
+
+export const FFK_BIRTH_YEAR_CATEGORIES_2026_2027 = [
+  { id: "mini-poussins", label: "Mini-poussins", from: 2021, to: 2022 },
+  { id: "poussins", label: "Poussins", from: 2019, to: 2020 },
+  { id: "pupilles", label: "Pupilles", from: 2017, to: 2018 },
+  { id: "benjamins", label: "Benjamins", from: 2015, to: 2016 },
+  { id: "minimes", label: "Minimes", from: 2013, to: 2014 },
+  { id: "cadets", label: "Cadets", from: 2011, to: 2012 },
+  { id: "juniors", label: "Juniors", from: 2009, to: 2010 },
+  { id: "seniors", label: "Seniors", from: 1987, to: 2008 },
+  { id: "veterans", label: "Vétérans", from: null, to: 1986 },
+];
+
+export function categoryFromBirthYear(dateNaissance, fallbackAge = null) {
+  const birthYear = Number(String(dateNaissance || "").slice(0, 4));
+  if (Number.isFinite(birthYear) && birthYear > 1900) {
+    return FFK_BIRTH_YEAR_CATEGORIES_2026_2027.find(({ from, to }) =>
+      (from === null || birthYear >= from) && (to === null || birthYear <= to)
+    )?.label || "Catégorie à vérifier";
+  }
+  const age = Number(fallbackAge);
+  if (!Number.isFinite(age)) return "Catégorie à vérifier";
+  if (age <= 5) return "Mini-poussins";
+  if (age <= 7) return "Poussins";
+  if (age <= 9) return "Pupilles";
+  if (age <= 11) return "Benjamins";
+  if (age <= 13) return "Minimes";
+  if (age <= 15) return "Cadets";
+  if (age <= 17) return "Juniors";
+  if (age <= 39) return "Seniors";
+  return "Vétérans";
+}
+
 export const CHILD_DISCIPLINE_MAX_AGE = 11;
 
 export function ageCompetitionRule(age) {

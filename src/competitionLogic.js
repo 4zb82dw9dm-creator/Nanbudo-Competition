@@ -1,6 +1,6 @@
 import { DEFAULT_KATA_GROUP, getValidKataGroup } from "./constants/katas.js";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine.js";
-import { ageCompetitionRule } from "./categoryRules.js";
+import { ageCompetitionRule, categoryFromBirthYear } from "./categoryRules.js";
 
 export const DISCIPLINES = Object.entries(competitionRulesEngine.ruleset.disciplines).map(([id, discipline]) => ({
   id,
@@ -71,14 +71,15 @@ export function buildAutomaticCategories(inscriptions) {
     getRegistrationCategories(inscription).forEach((registrationCategory) => {
       const discipline = disciplineIdFromRegistrationCategory(registrationCategory);
       const age = inscription.age ?? calculateAge(inscription.dateNaissance);
-      const key = [registrationCategory, ageBand(age), inscription.sexe, gradeBand(inscription.grade)].join("|");
+      const birthCategory = categoryFromBirthYear(inscription.dateNaissance, age);
+      const key = [registrationCategory, birthCategory, inscription.sexe, gradeBand(inscription.grade)].join("|");
       if (!groups.has(key)) {
         groups.set(key, {
           id: `${discipline}-${key}`.replace(/\s+/g, "-").toLowerCase(),
-          nom: `${registrationCategory} · ${ageBand(age)} · ${inscription.sexe} · ${gradeBand(inscription.grade)}`,
+          nom: `${registrationCategory} · ${birthCategory} · ${inscription.sexe} · ${gradeBand(inscription.grade)}`,
           discipline,
           registrationCategory,
-          ageGroup: ageBand(age),
+          ageGroup: birthCategory,
           sexe: inscription.sexe,
           gradeGroup: gradeBand(inscription.grade),
           competitorIds: [],
