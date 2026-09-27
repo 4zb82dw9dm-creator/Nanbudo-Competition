@@ -7,6 +7,7 @@ import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { findNextArbitrationPassage, sortArbitrationMatches } from "./arbitrationSorting";
 import { arbitrationSheetKey, loadArbitrationDraft } from "./arbitrationDraftStorage";
 import { saveMatchResult } from "./supabase";
+import { queueMatchResult } from "./offlineResultQueue";
 import { effectiveRefereeAssignments, refereeSlotsForDiscipline, replaceCompetitionReferee, TABLE_REFEREE_SLOTS } from "./refereeTeamRules";
 
 const ALL_TATAMIS = "all";
@@ -195,12 +196,14 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
       shushinName,
     };
 
+    // Local-first: the result is committed to the competition state below even
+    // when Supabase is unreachable. Remote sync is best-effort and retryable.
     try {
-      await saveMatchResult(competition.id, selectedPool.id, completedMatch);
+      const synced = await saveMatchResult(competition.id, selectedPool.id, completedMatch);
+      if (!synced) queueMatchResult(competition.id, selectedPool.id, completedMatch);
     } catch (error) {
-      console.error("Enregistrement indépendant du résultat impossible", error);
-      alert("Le résultat n'a pas pu être synchronisé. Vérifiez la connexion puis réessayez.");
-      return false;
+      console.warn("Résultat conservé localement, synchronisation différée", error);
+      queueMatchResult(competition.id, selectedPool.id, completedMatch);
     }
 
     const updatedPools = pools.map((pool) => {
