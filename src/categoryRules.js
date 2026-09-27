@@ -34,13 +34,30 @@ export function categoryFromBirthYear(dateNaissance, fallbackAge = null) {
 
 export const CHILD_DISCIPLINE_MAX_AGE = 11;
 
+export function categoryCompetitionRule(ageGroup) {
+  if (ageGroup === "Poussins") return { ageGroup, kataGroup: "Kata 0", combatDisciplines: ["randori"] };
+  if (["Pupilles", "Benjamins"].includes(ageGroup)) return { ageGroup, kataGroup: "Kata 1", combatDisciplines: ["randori"] };
+  if (["Minimes", "Cadets", "Juniors", "Seniors", "Vétérans"].includes(ageGroup)) return { ageGroup, kataGroup: "Kata 2", combatDisciplines: ["ju_randori"] };
+  return null;
+}
+
+export function registrationDisciplinesForCategory(ageGroup) {
+  const rule = categoryCompetitionRule(ageGroup);
+  if (!rule) return [];
+  return [rule.kataGroup, rule.combatDisciplines[0] === "randori" ? "Randori" : "Ju Randori"];
+}
+
 export function ageCompetitionRule(age) {
   const numericAge = Number(age);
   if (!Number.isFinite(numericAge)) return null;
-  if (numericAge >= 5 && numericAge <= 7) return { ageGroup: "Poussins", kataGroup: "Kata 0", combatDisciplines: ["randori"] };
-  if (numericAge >= 8 && numericAge <= 9) return { ageGroup: "Pupilles", kataGroup: "Kata 1", combatDisciplines: ["randori"] };
-  if (numericAge >= 10 && numericAge <= 11) return { ageGroup: "Benjamins", kataGroup: "Kata 1", combatDisciplines: ["randori", "ju_randori"] };
-  if (numericAge >= 12) return { ageGroup: null, kataGroup: "Kata 2", combatDisciplines: ["ju_randori"] };
+  if (numericAge >= 6 && numericAge <= 7) return categoryCompetitionRule("Poussins");
+  if (numericAge >= 8 && numericAge <= 9) return categoryCompetitionRule("Pupilles");
+  if (numericAge >= 10 && numericAge <= 11) return categoryCompetitionRule("Benjamins");
+  if (numericAge >= 12 && numericAge <= 13) return categoryCompetitionRule("Minimes");
+  if (numericAge >= 14 && numericAge <= 15) return categoryCompetitionRule("Cadets");
+  if (numericAge >= 16 && numericAge <= 17) return categoryCompetitionRule("Juniors");
+  if (numericAge >= 18 && numericAge <= 39) return categoryCompetitionRule("Seniors");
+  if (numericAge >= 40) return categoryCompetitionRule("Vétérans");
   return null;
 }
 
@@ -75,7 +92,7 @@ export function categoryAgeCompetitionRule(category, competitors = []) {
 }
 
 export function normalizeCategoryForAge(category, competitors = []) {
-  const rule = categoryAgeCompetitionRule(category, competitors);
+  const rule = categoryCompetitionRule(category.ageGroup) || categoryAgeCompetitionRule(category, competitors);
   if (!rule) return category;
 
   let normalized = { ...category };
