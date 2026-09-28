@@ -47,8 +47,9 @@ function PlanningManager({ competition, onUpdateCompetition }) {
       });
     };
 
-    appendPhase("PHASE 1 · KATA", planning.entries.filter((entry) => isKata(entry.discipline)));
-    lines.push(`FIN DES KATA · ${minutesToTime(planning.kataEnd)}`, "");
+    appendPhase("PHASE 1 · KATA", planning.entries.filter((entry) => isKata(entry.discipline) && entry.phase !== "world-kata-final"));
+    lines.push(`FIN DES 2 ROUNDS KATA · ${minutesToTime(planning.kataEnd)}`, "");
+    if (planning.worldKataFinals?.length) appendPhase("FINALES KATA · WORLD CHAMPIONSHIP", planning.worldKataFinals);
     appendPhase("PHASE 2 · RANDORI / JU-RANDORI", planning.entries.filter((entry) => !isKata(entry.discipline)));
     lines.push(`REMISE DES MÉDAILLES / CÉRÉMONIE · ${minutesToTime(planning.ceremonyStart)}`);
 
@@ -59,13 +60,18 @@ function PlanningManager({ competition, onUpdateCompetition }) {
     });
   };
   if (!(competition.pools || []).length) return <div className="empty-state"><h3>Planning indisponible</h3><p>Générez et validez d’abord les poules : le planning apparaîtra automatiquement, sans ressaisie.</p></div>;
-  const kataEntries = planning.entries.filter((entry) => isKata(entry.discipline));
-  const combatEntries = planning.entries.filter((entry) => !isKata(entry.discipline));
+  const kataEntries = planning.entries.filter((entry) => isKata(entry.discipline) && entry.phase !== "world-kata-final");
+  const worldKataFinals = planning.worldKataFinals || [];
+  const combatEntries = planning.entries.filter((entry) => !isKata(entry.discipline) && entry.phase !== "world-team");
+  const worldTeamEntries = planning.worldTeamEntries || [];
+  const isWorld = competition.categoryMode === "world_championship_2026";
   return <section className="planning-manager"><div className="manager-header planning-heading"><div><p className="surtitle">PROGRAMME AUTOMATIQUE</p><h2>Planning</h2><p>Les Kata sont terminés en premier sur l’ensemble des tatamis. Les Randori / Ju-Randori démarrent dès la fin du dernier Kata, même si celle-ci intervient avant midi.</p></div><div className="planning-actions"><button className="primary" onClick={recalculate}>Recalculer automatiquement le planning</button><button onClick={() => window.confirm("Réinitialiser et rééquilibrer le planning sur les 3 tatamis ?") && recalculate()}>Réinitialiser le planning</button><button onClick={exportPlanningPdf}>Exporter le planning en PDF</button><button onClick={() => window.print()}>Imprimer le planning</button></div></div>
-    <Session title="PHASE 1 · KATA" entries={kataEntries} competitors={competitors} onChange={change} />
-    <div className="planning-break"><strong>FIN DES KATA</strong><span>{minutesToTime(planning.kataEnd)} · Début immédiat des Randori / Ju-Randori</span></div>
-    <Session title="PHASE 2 · RANDORI / JU-RANDORI" entries={combatEntries} competitors={competitors} onChange={change} />
+    <Session title={isWorld ? "JOUR 1 · KATA INDIVIDUELS · 2 ROUNDS" : "PHASE 1 · KATA · 2 ROUNDS"} entries={kataEntries} competitors={competitors} onChange={change} />
+    <div className="planning-break"><strong>FIN DES 2 ROUNDS KATA</strong><span>{minutesToTime(planning.kataEnd)}</span></div>
+    {worldKataFinals.length > 0 && <><Session title="JOUR 1 · FINALES KATA" entries={worldKataFinals} competitors={competitors} onChange={change} /><div className="planning-break"><strong>FIN JOUR 1 · KATA</strong><span>{minutesToTime(planning.worldFinalsEnd)}</span></div></>}
+    <Session title={isWorld ? "JOUR 2 · JU-RANDORI INDIVIDUELS" : "PHASE 2 · RANDORI / JU-RANDORI"} entries={combatEntries} competitors={competitors} onChange={change} />
+    {worldTeamEntries.length > 0 && <Session title="JOUR 3 MATIN · ÉPREUVES PAR ÉQUIPES" entries={worldTeamEntries} competitors={competitors} onChange={change} />}
     <div className="planning-ceremony">{minutesToTime(planning.ceremonyStart)} · REMISE DES MÉDAILLES / CÉRÉMONIE</div></section>;
 }
-function Session({ title, entries, competitors, onChange }) { return <><div className="planning-session-label">{title}</div><div className="planning-grid">{PLANNING_TATAMIS.map((tatami) => <div className="tatami-column" key={tatami}><h3>TATAMI {tatami}</h3>{entries.filter((e) => e.tatami === tatami).map((entry) => <article className="planning-card" key={entry.categoryId}><div className="planning-card-top"><strong>{minutesToTime(entry.start)} – {minutesToTime(entry.end)}</strong><span>{entry.duration} min</span></div><h4>{entry.name}</h4><p>{entry.disciplineLabel}</p><div className="planning-controls"><label>Tatami<select value={entry.tatami} onChange={(e) => onChange(entry, { tatami: +e.target.value })}>{PLANNING_TATAMIS.map((n) => <option key={n}>{n}</option>)}</select></label><label>Début<input type="time" value={`${String(Math.floor(entry.start / 60)).padStart(2,"0")}:${String(entry.start % 60).padStart(2,"0")}`} onChange={(e) => { const [h,m] = e.target.value.split(":").map(Number); onChange(entry, { start: h * 60 + m }); }} /></label><label>Ordre<input type="number" value={entry.order} onChange={(e) => onChange(entry, { order: +e.target.value })} /></label></div><table><thead><tr><th>Club</th><th>Nom</th><th>Prénom</th></tr></thead><tbody>{entry.competitors.map((id) => { const c = competitors.get(String(id)); return <tr key={id}><td>{c?.club || "—"}</td><td>{c?.nom || "Inconnu"}</td><td>{c?.prenom || "—"}</td></tr>; })}</tbody></table></article>)}</div>)}</div></>; }
+function Session({ title, entries, competitors, onChange }) { return <><div className="planning-session-label">{title}</div><div className="planning-grid">{PLANNING_TATAMIS.map((tatami) => <div className="tatami-column" key={tatami}><h3>TATAMI {tatami}</h3>{entries.filter((e) => e.tatami === tatami).map((entry) => <article className="planning-card" key={entry.categoryId}><div className="planning-card-top"><strong>{minutesToTime(entry.start)} – {minutesToTime(entry.end)}</strong><span>{entry.duration} min</span></div><h4>{entry.name}</h4><p>{entry.disciplineLabel}{entry.phase === "world-kata-final" ? ` · ${entry.finalistCount} finalistes · 4 min/passage` : ""}</p><div className="planning-controls"><label>Tatami<select value={entry.tatami} onChange={(e) => onChange(entry, { tatami: +e.target.value })}>{PLANNING_TATAMIS.map((n) => <option key={n}>{n}</option>)}</select></label><label>Début<input type="time" value={`${String(Math.floor(entry.start / 60)).padStart(2,"0")}:${String(entry.start % 60).padStart(2,"0")}`} onChange={(e) => { const [h,m] = e.target.value.split(":").map(Number); onChange(entry, { start: h * 60 + m }); }} /></label><label>Ordre<input type="number" value={entry.order} onChange={(e) => onChange(entry, { order: +e.target.value })} /></label></div><table><thead><tr><th>Club</th><th>Nom</th><th>Prénom</th></tr></thead><tbody>{entry.competitors.map((id) => { const c = competitors.get(String(id)); return <tr key={id}><td>{c?.club || "—"}</td><td>{c?.nom || "Inconnu"}</td><td>{c?.prenom || "—"}</td></tr>; })}</tbody></table></article>)}</div>)}</div></>; }
 export default PlanningManager;
