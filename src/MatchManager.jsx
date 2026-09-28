@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { determineIndividualMatchWinner } from "./competitionLogic";
 import { applyMaiWarning } from "./maiRules";
+import { isJuRandoriDisqualified, juRandoriNegativeTotal, normalizeJuRandoriPenalties } from "./juRandoriPenaltyRules";
 import { DraftRecoveryNotice, useArbitrationDraft } from "./arbitrationDrafts";
 
 const FUKUSHIN = ["Fukushin 1", "Fukushin 2", "Fukushin 3"];
@@ -43,75 +44,42 @@ function scoreRows(rows) {
   }, { akaPositive: 0, shiroPositive: 0 });
 }
 
-function emptyPenaltyCounts() {
-  return Object.fromEntries(PENALTY_FLOW.map((penaltyId) => [penaltyId, 0]));
-}
-
-function normalizePenaltyCounts(penalties = []) {
-  const counts = penalties.reduce((totals, penalty) => {
-    if (!PENALTY_BY_ID[penalty.id]) return totals;
-    return { ...totals, [penalty.id]: totals[penalty.id] + 1 };
-  }, emptyPenaltyCounts());
-
-  for (let index = 0; index < PENALTY_FLOW.length - 1; index += 1) {
-    const currentLevel = PENALTY_FLOW[index];
-    const upperLevel = PENALTY_FLOW[index + 1];
-    const conversions = Math.floor(counts[currentLevel] / 3);
-    counts[currentLevel] %= 3;
-    counts[upperLevel] += conversions;
-  }
-
-  if (counts.shikaku > 0) {
-    counts.hansoku_chui = 0;
-    counts.shikaku = 1;
-  }
-
-  return counts;
-}
-
 function normalizePenalties(penalties = []) {
-  const now = new Date().toISOString();
-  const counts = normalizePenaltyCounts(penalties);
-  return PENALTY_FLOW.flatMap((penaltyId) =>
-    Array.from({ length: counts[penaltyId] }, (_, index) => ({
-      ...PENALTY_BY_ID[penaltyId],
-      at: penalties.find((penalty) => penalty.id === penaltyId)?.at || now,
-      automatic: true,
-      conversionIndex: index,
-    }))
-  );
+  return normalizeJuRandoriPenalties(penalties).map((penalty) => ({
+    ...PENALTY_BY_ID[penalty.id],
+    ...penalty,
+  }));
 }
 
 function penaltyTotal(penalties) {
-  return normalizePenalties(penalties).reduce((total, penalty) => total + penalty.value, 0);
+  return juRandoriNegativeTotal(penalties);
 }
 
-function hasShikaku(penalties) {
-  return normalizePenaltyCounts(penalties).shikaku > 0;
+function isDisqualified(penalties) {
+  return isJuRandoriDisqualified(penalties);
 }
 
 function groupedPenalties(penalties) {
-  const counts = normalizePenaltyCounts(penalties);
-  return PENALTIES.map((penalty) => ({ ...penalty, count: counts[penalty.id] })).filter((penalty) => penalty.count > 0);
+  const counts = normalizePenalties(penalties).reduce((totals, penalty) => ({
+    ...totals,
+    [penalty.id]: (totals[penalty.id] || 0) + 1,
+  }), {});
+  return PENALTIES.map((penalty) => ({ ...penalty, count: counts[penalty.id] || 0 })).filter((penalty) => penalty.count > 0);
 }
 
 function removePenaltyFromChain(penalties, penaltyId) {
   const directIndex = penalties.findIndex((penalty) => penalty.id === penaltyId);
   if (directIndex >= 0) return penalties.filter((_, itemIndex) => itemIndex !== directIndex);
+  if (penaltyId !== "fujubun") return penalties;
 
-  const lowerPenaltyId = PENALTY_FLOW[PENALTY_FLOW.indexOf(penaltyId) - 1];
-  if (!lowerPenaltyId) return penalties;
-
-  let updatedPenalties = penalties;
-  for (let index = 0; index < 3; index += 1) updatedPenalties = removePenaltyFromChain(updatedPenalties, lowerPenaltyId);
-  return updatedPenalties;
-}
-
-function automaticPenaltyEvents(before, after, directPenaltyId, side, at) {
-  return PENALTY_FLOW.filter((penaltyId) => penaltyId !== directPenaltyId && penaltyId !== "shikaku")
-    .flatMap((penaltyId) => Array.from({ length: Math.max(0, (after[penaltyId] || 0) - (before[penaltyId] || 0)) }, () => ({
-      penaltyId, side, action: "add", automatic: true, source: "conversion", at,
-    })));
+  let remaining = 3;
+  return penalties.filter((penalty) => {
+    if (remaining > 0 && penalty.id === "keikoku") {
+      remaining -= 1;
+      return false;
+    }
+    return true;
+  });
 }
 
 function createScoreSheetState(match) {
@@ -161,15 +129,15 @@ function MatchManager({ match, onSave }) {
     const main = scoreRows(assaults);
     const akaNegative = penaltyTotal(penalties.aka);
     const shiroNegative = penaltyTotal(penalties.shiro);
-    const akaShikaku = hasShikaku(penalties.aka);
-    const shiroShikaku = hasShikaku(penalties.shiro);
+    const akaDisqualified = isDisqualified(penalties.aka);
+    const shiroDisqualified = isDisqualified(penalties.shiro);
     const akaTotal = main.akaPositive - akaNegative;
     const shiroTotal = main.shiroPositive - shiroNegative;
     const fullAssaultsResolved = assaults.every((row) => voteResult(row.votes));
     const shortRandoriResolved = match.discipline === "randori"
       && RANDORI_SHORT_ASSAULT_INDEXES.every((index) => voteResult(assaults[index]?.votes || []));
     const phase = "main";
-    const winner = determineIndividualMatchWinner({ akaTotal, shiroTotal, akaShikaku, shiroShikaku });
+    const winner = determineIndividualMatchWinner({ akaTotal, shiroTotal, akaDisqualified, shiroDisqualified });
 
     return {
       ...main,
@@ -195,13 +163,10 @@ function MatchManager({ match, onSave }) {
     if (isLocked || penalty.id === "shikaku") return;
     const at = new Date().toISOString();
     setPenalties((current) => {
-      const before = normalizePenaltyCounts(current[side]);
       const nextSide = [...current[side], { ...penalty, at }];
-      const after = normalizePenaltyCounts(nextSide);
       setPenaltyEvents((events) => [
         ...events,
         { penaltyId: penalty.id, side, action: "add", automatic: false, source: "manual", at },
-        ...automaticPenaltyEvents(before, after, penalty.id, side, at),
       ]);
       return { ...current, [side]: nextSide };
     });
@@ -320,7 +285,7 @@ function MatchManager({ match, onSave }) {
 
   useEffect(() => {
     if (isKata || isEditing || automaticSaveDone.current) return;
-    if (!hasShikaku(penalties.aka) && !hasShikaku(penalties.shiro)) return;
+    if (!isDisqualified(penalties.aka) && !isDisqualified(penalties.shiro)) return;
     automaticSaveDone.current = true;
     save();
   }, [isEditing, isKata, penalties, randoriScore.winner]);
