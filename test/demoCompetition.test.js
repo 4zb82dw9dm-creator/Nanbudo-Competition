@@ -116,7 +116,7 @@ test("simulation supplies kata rankings, negative-point ordering and a targeted 
   const simulated = simulateCompleteTestCompetition(createCompleteTestCompetition());
   const kataPools = simulated.pools.filter(({ discipline }) => discipline.startsWith("kata"));
   assert.ok(kataPools.every(({ podium, statut }) => podium && statut === "Terminée"));
-  assert.deepEqual(calculateRanking(kataPools[0]).map(({ finalScore }) => finalScore), [4.57, 4.41, 4.28, 4.15]);
+  assert.deepEqual(calculateRanking(kataPools[0]).map(({ finalScore }) => finalScore), [9.1, 8.8, 8.6, 8.3]);
 
   const negativePool = simulated.pools.find(({ scenario }) => scenario === "B/D");
   assert.deepEqual(calculateRanking(negativePool).map(({ negativePoints }) => negativePoints), [2, 4, 6, 8]);

@@ -5,14 +5,14 @@ export const isKata = (discipline = "") => String(discipline).startsWith("kata")
 export const minutesToTime = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}h${String(Math.round(minutes) % 60).padStart(2, "0")}`;
 
 export function estimateCategoryDuration(pools = []) {
-  const competitors = new Set(pools.flatMap((pool) => pool.competitorIds || [])).size;
   const matches = pools.reduce((total, pool) => total + (pool.matches?.length || 0), 0);
-  return Math.max(15, Math.ceil((isKata(pools[0]?.discipline) ? competitors * 4 : matches * 5) / 5) * 5) + 5;
+  const passageMinutes = isKata(pools[0]?.discipline) ? 4 : 6;
+  return Math.max(15, Math.ceil((matches * passageMinutes) / 5) * 5) + 5;
 }
 
 function categoryLoad(category) {
   const count = category.competitorIds?.length || 0;
-  return isKata(category.discipline) ? count * 4 + 5 : Math.max(15, count * (count - 1) / 2 * 5) + 5;
+  return isKata(category.discipline) ? count * 2 * 4 + 5 : Math.max(15, count * (count - 1) / 2 * 6) + 5;
 }
 
 function assignPhase(categories, tatamiCount, result) {
