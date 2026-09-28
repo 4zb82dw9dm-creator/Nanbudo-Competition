@@ -30,8 +30,8 @@ export function disciplineLabel(discipline) {
   return competitionRulesEngine.disciplineLabel(discipline);
 }
 
-export function determineIndividualMatchWinner({ akaTotal, shiroTotal, akaShikaku = false, shiroShikaku = false }) {
-  if (akaShikaku !== shiroShikaku) return akaShikaku ? "shiro" : "aka";
+export function determineIndividualMatchWinner({ akaTotal, shiroTotal, akaShikaku = false, shiroShikaku = false, akaDisqualified = akaShikaku, shiroDisqualified = shiroShikaku }) {
+  if (akaDisqualified !== shiroDisqualified) return akaDisqualified ? "shiro" : "aka";
   if (akaTotal > shiroTotal) return "aka";
   if (shiroTotal > akaTotal) return "shiro";
   return null;
