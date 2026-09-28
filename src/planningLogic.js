@@ -67,9 +67,12 @@ export function buildPlanning(competition) {
       return { ...item, tatami, order, start, end, disciplineLabel: disciplineLabel(item.discipline) };
     });
   };
-  const kataEntries = session(categories.filter((item) => isKata(item.discipline)), 540);
-  const kataEnd = Math.max(540, ...kataEntries.map((item) => item.end));
   const isWorld = competition.categoryMode === "world_championship_2026";
+  const isTeam = (item) => item.discipline === "kata_equipe" || item.discipline === "ju_randori_equipe" || item.discipline === "dantai_randori" || /équipe|equipe|team/i.test(item.name);
+  const individualKata = categories.filter((item) => isKata(item.discipline) && (!isWorld || !isTeam(item)));
+  const teamCategories = isWorld ? categories.filter(isTeam) : [];
+  const kataEntries = session(individualKata, 540);
+  const kataEnd = Math.max(540, ...kataEntries.map((item) => item.end));
   const worldKataFinals = isWorld ? kataEntries
     .map((entry) => {
       const finalistCount = worldKataFinalistCount(entry.competitors.length);
@@ -89,10 +92,16 @@ export function buildPlanning(competition) {
     .filter(Boolean) : [];
   const finalEntries = worldKataFinals.length ? session(worldKataFinals, Math.max(840, kataEnd)) : [];
   const worldFinalsEnd = finalEntries.length ? Math.max(...finalEntries.map((item) => item.end)) : kataEnd;
-  const combatStart = isWorld ? worldFinalsEnd : kataEnd;
-  const combatEntries = session(categories.filter((item) => !isKata(item.discipline)), combatStart, (item) => combatDisciplinePriority(item.discipline));
-  const ceremonyStart = Math.max(combatStart, ...combatEntries.map((item) => item.end));
-  return { entries: [...kataEntries, ...finalEntries, ...combatEntries], kataEnd, worldKataFinals: finalEntries, worldFinalsEnd, combatStart, morningEnd: kataEnd, afternoonStart: combatStart, ceremonyStart };
+  const combatStart = isWorld ? 540 : kataEnd;
+  const individualCombat = categories.filter((item) => !isKata(item.discipline) && (!isWorld || !isTeam(item)));
+  const combatEntries = session(individualCombat, combatStart, (item) => combatDisciplinePriority(item.discipline)).map((entry) => ({ ...entry, day: isWorld ? 2 : 1 }));
+  const day1KataEntries = kataEntries.map((entry) => ({ ...entry, day: 1 }));
+  const day1FinalEntries = finalEntries.map((entry) => ({ ...entry, day: 1 }));
+  const teamEntries = isWorld ? session(teamCategories, 540, (item) => isKata(item.discipline) ? 0 : 1).map((entry) => ({ ...entry, day: 3, phase: "world-team" })) : [];
+  const ceremonyStart = isWorld
+    ? Math.max(540, ...teamEntries.map((item) => item.end))
+    : Math.max(combatStart, ...combatEntries.map((item) => item.end));
+  return { entries: [...day1KataEntries, ...day1FinalEntries, ...combatEntries, ...teamEntries], kataEnd, worldKataFinals: day1FinalEntries, worldFinalsEnd, combatStart, worldTeamEntries: teamEntries, morningEnd: kataEnd, afternoonStart: combatStart, ceremonyStart };
 }
 
 export function balancedTatamiAssignments(categories, tatamiCount = 3) {
