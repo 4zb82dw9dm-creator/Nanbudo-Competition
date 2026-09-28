@@ -55,7 +55,9 @@ export function createCompetitionRulesEngine(ruleset = CINDA_2025_RULESET) {
     retained.splice(retained.indexOf(highest), 1);
     retained.splice(retained.indexOf(lowest), 1);
     const total = retained.reduce((sum, note) => sum + note, 0);
-    return { highest, lowest, retained, total, average: total / retained.length };
+    const retainedSpread = Math.max(...retained) - Math.min(...retained);
+    const requiresShugo = retainedSpread >= 0.3 - Number.EPSILON;
+    return { highest, lowest, retained, total, average: total / retained.length, retainedSpread, requiresShugo };
   }
 
   function applyPenaltyConsequences(scores, penaltiesBySide = {}) {
