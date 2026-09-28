@@ -8,6 +8,19 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
   const importInputRef = useRef(null);
   const [selectedCompetitionId, setSelectedCompetitionId] = useState(initialCompetitionId);
   const [form, setForm] = useState({ nom: "", date: "", lieu: "", tatamis: 3, horairesActifs: false });
+  const WORLD_CHAMPIONSHIP_ACCESS_CODE = "2409";
+  function isWorldChampionshipLocked(competition) { return competition.categoryMode === "world_championship_2026"; }
+  function openCompetition(competition) {
+    if (isWorldChampionshipLocked(competition)) {
+      const code = window.prompt("🔒 World Championship 2026 — Entrez le code d’accès");
+      if (code === null) return;
+      if (code !== WORLD_CHAMPIONSHIP_ACCESS_CODE) {
+        alert("Code incorrect.");
+        return;
+      }
+    }
+    setSelectedCompetitionId(competition.id);
+  }
 
   async function createCompetition(event) {
     event.preventDefault();
@@ -120,7 +133,7 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
 
       if (onCreateCompetition) await onCreateCompetition(imported);
       else setCompetitions((current) => [...current, imported]);
-      setSelectedCompetitionId(imported.id);
+      if (!isWorldChampionshipLocked(imported)) setSelectedCompetitionId(imported.id);
     } catch (error) {
       console.error("Import de la compétition impossible", error);
       alert(`Import impossible : ${error.message || "fichier JSON invalide"}`);
@@ -156,7 +169,7 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
     <section className="competition-manager">
       <div className="manager-header"><div><p className="surtitle">COMPÉTITIONS</p><h2>Gestion des compétitions</h2><p>Créez une compétition puis suivez son cycle complet.</p></div><div className="competition-header-actions"><button className="primary" onClick={() => setShowForm((current) => !current)}>{showForm ? "Annuler" : "+ Nouvelle compétition"}</button><button className="manage-button" type="button" onClick={() => importInputRef.current?.click()}>Importer une compétition</button><input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={importCompetition} /><button className="manage-button" type="button" onClick={createTestCompetition}>Créer compétition de démonstration</button></div></div>
       {showForm && <form className="competition-form" onSubmit={createCompetition}><h3>Nouvelle compétition</h3><label>Nom<input name="nom" value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} required /></label><div className="form-row"><label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label>Lieu<input value={form.lieu} onChange={(e) => setForm({ ...form, lieu: e.target.value })} /></label></div><div className="form-row"><label>Tatamis<input type="number" min="1" value={form.tatamis} onChange={(e) => setForm({ ...form, tatamis: e.target.value })} /></label><label className="checkbox-line"><input type="checkbox" checked={form.horairesActifs} onChange={(e) => setForm({ ...form, horairesActifs: e.target.checked })} /> Activer la planification horaire</label></div><button className="primary" type="submit">Créer</button></form>}
-      {competitions.length === 0 ? <div className="empty-state"><span className="empty-number">0</span><h3>Aucune compétition</h3><p>Créez votre première compétition pour recevoir les inscriptions.</p></div> : <div className="managed-competitions">{competitions.map((competition) => <article className="managed-competition" key={competition.id}><div className="competition-main"><span className="status">{competition.statut}</span><h3>{competition.nom}</h3><p>{competition.lieu || "Lieu à définir"} · {competition.date || "Date à définir"}</p></div><div className="competition-stats"><div><strong>{competition.competitors?.length || 0}</strong><span>Inscriptions</span></div><div><strong>{competition.categories?.length || 0}</strong><span>Catégories</span></div></div><div className="competition-actions"><button className="manage-button" onClick={() => setSelectedCompetitionId(competition.id)}>Gérer</button><button className="delete-button" onClick={() => deleteCompetition(competition.id)}>Supprimer</button></div></article>)}</div>}
+      {competitions.length === 0 ? <div className="empty-state"><span className="empty-number">0</span><h3>Aucune compétition</h3><p>Créez votre première compétition pour recevoir les inscriptions.</p></div> : <div className="managed-competitions">{competitions.map((competition) => <article className="managed-competition" key={competition.id}><div className="competition-main"><span className="status">{competition.statut}</span><h3>{isWorldChampionshipLocked(competition) ? "🔒 " : ""}{competition.nom}</h3><p>{competition.lieu || "Lieu à définir"} · {competition.date || "Date à définir"}</p></div><div className="competition-stats"><div><strong>{competition.competitors?.length || 0}</strong><span>Inscriptions</span></div><div><strong>{competition.categories?.length || 0}</strong><span>Catégories</span></div></div><div className="competition-actions"><button className="manage-button" onClick={() => openCompetition(competition)}>Gérer</button><button className="delete-button" onClick={() => deleteCompetition(competition.id)}>Supprimer</button></div></article>)}</div>}
     </section>
   );
 }
