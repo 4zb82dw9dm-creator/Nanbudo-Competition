@@ -35,16 +35,14 @@ test("Ju-Randori: fewer negative points comes before direct encounter", () => {
   assert.ok(ranking.indexOf("B") < ranking.indexOf("A"));
 });
 
-test("Ju-Randori: direct encounter resolves a two-person tie after negative points", () => {
+test("Ju-Randori: equal victories and negative points require a supplemental tie-break", () => {
   const matches = [
     match("A", "B", "A"),
     match("A", "C", "C"),
     match("B", "C", "B"),
   ];
   const juPool = pool(matches);
-  const ranking = calculateRanking(juPool).map(({ competitorId }) => competitorId);
-  assert.ok(ranking.indexOf("A") < ranking.indexOf("B"));
-  assert.deepEqual(unresolvedPoolTieGroups(juPool), []);
+  assert.deepEqual(unresolvedPoolTieGroups(juPool), [["A", "B", "C"]]);
 });
 
 test("Ju-Randori: unresolved tie requires supplemental assaults, then respects recorded order", () => {
