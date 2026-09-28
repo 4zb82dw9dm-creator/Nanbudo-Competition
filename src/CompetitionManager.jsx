@@ -66,6 +66,43 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
       if (!String(source.nom || "").trim()) throw new Error("Le nom de la compétition est obligatoire.");
       if (source.competitors != null && !Array.isArray(source.competitors)) throw new Error("La liste des compétiteurs doit être un tableau.");
 
+      const competitorIdMap = new Map();
+      const importedCompetitors = (source.competitors || []).map((competitor) => {
+        const newId = crypto.randomUUID();
+        if (competitor.id != null) competitorIdMap.set(String(competitor.id), newId);
+        return {
+          ...competitor,
+          id: newId,
+          categoriesInscription: Array.isArray(competitor.categoriesInscription)
+            ? competitor.categoriesInscription.filter(Boolean)
+            : (competitor.categorieInscription ? [competitor.categorieInscription] : []),
+        };
+      });
+      const remapCompetitorId = (id) => id == null ? id : (competitorIdMap.get(String(id)) || id);
+      const importedCategories = Array.isArray(source.categories) ? source.categories.map((category) => ({
+        ...category,
+        competitorIds: Array.isArray(category.competitorIds) ? category.competitorIds.map(remapCompetitorId) : [],
+      })) : [];
+      const importedPools = Array.isArray(source.pools) ? source.pools.map((pool) => ({
+        ...pool,
+        competitorIds: Array.isArray(pool.competitorIds) ? pool.competitorIds.map(remapCompetitorId) : [],
+        rankingLocked: Array.isArray(pool.rankingLocked) ? pool.rankingLocked.map(remapCompetitorId) : pool.rankingLocked,
+        poolTieBreakOrder: Array.isArray(pool.poolTieBreakOrder) ? pool.poolTieBreakOrder.map(remapCompetitorId) : pool.poolTieBreakOrder,
+        podium: pool.podium ? {
+          ...pool.podium,
+          firstId: remapCompetitorId(pool.podium.firstId),
+          secondId: remapCompetitorId(pool.podium.secondId),
+          thirdId: remapCompetitorId(pool.podium.thirdId),
+        } : pool.podium,
+        matches: Array.isArray(pool.matches) ? pool.matches.map((match) => ({
+          ...match,
+          competitorId: remapCompetitorId(match.competitorId),
+          akaId: remapCompetitorId(match.akaId),
+          shiroId: remapCompetitorId(match.shiroId),
+          winnerId: remapCompetitorId(match.winnerId),
+        })) : [],
+      })) : [];
+
       const imported = {
         ...source,
         id: crypto.randomUUID(),
@@ -74,15 +111,9 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
         tatamis: Math.max(1, Number(source.tatamis) || 3),
         horairesActifs: Boolean(source.horairesActifs),
         statut: source.statut || "Inscriptions ouvertes",
-        competitors: (source.competitors || []).map((competitor) => ({
-          ...competitor,
-          id: crypto.randomUUID(),
-          categoriesInscription: Array.isArray(competitor.categoriesInscription)
-            ? competitor.categoriesInscription.filter(Boolean)
-            : (competitor.categorieInscription ? [competitor.categorieInscription] : []),
-        })),
-        categories: Array.isArray(source.categories) ? source.categories : [],
-        pools: Array.isArray(source.pools) ? source.pools : [],
+        competitors: importedCompetitors,
+        categories: importedCategories,
+        pools: importedPools,
       };
 
       if (!window.confirm(`Importer « ${imported.nom} » avec ${imported.competitors.length} compétiteur(s) ?\n\nUne nouvelle compétition sera créée : aucune compétition existante ne sera écrasée.`)) return;
