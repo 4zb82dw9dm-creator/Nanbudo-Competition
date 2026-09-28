@@ -193,7 +193,7 @@ function kataScoreVector(pool, competitorId) {
     .sort((a, b) => Number(a.kataRound || 1) - Number(b.kataRound || 1))
     .map(kataScore)
     .filter((score) => score != null);
-  const twoRoundTotal = baseScores.slice(0, 2).reduce((sum, score) => sum + score, 0);
+  const twoRoundTotal = Number(baseScores.slice(0, 2).reduce((sum, score) => sum + score, 0).toFixed(1));
   const tieBreakScores = matches
     .filter((match) => match.isKataTieBreak)
     .sort((a, b) => Number(a.kataTieBreakRound || 0) - Number(b.kataTieBreakRound || 0))
