@@ -25,6 +25,7 @@ function KataSheet({ match, onSave }) {
   async function save() {
     if (!kataName) return alert("Sélectionnez le Kata exécuté.");
     if (!result) return alert("Saisissez les cinq notes avant de valider.");
+    if (result.requiresShugo) return alert("SHUGO — Écart de 0,3 point ou plus entre les trois notes retenues. Les arbitres doivent se réunir et corriger les notes avant validation.");
     const roundedAverage = Number(result.average.toFixed(1));
     await draft.finalize(() => onSave({ kataName, kataScores: notes.map(Number), kataHighestRemoved: result.highest, kataLowestRemoved: result.lowest, kataRetainedScores: result.retained, finalScore: roundedAverage, scoreAka: roundedAverage, scoreShiro: 0, vainqueur: "aka" }));
   }
@@ -34,8 +35,9 @@ function KataSheet({ match, onSave }) {
     <DraftRecoveryNotice draft={draft.pendingDraft} onResume={draft.resume} onAbandon={draft.abandon} />
     <fieldset disabled={!draft.editingEnabled} className="draft-fieldset"><label className="kata-select-label">Kata exécuté<select className="tablet-select" value={kataName} onChange={(event) => { const nextKataName = event.target.value; draft.saveNow({ kataName: nextKataName, notes }); setKataName(nextKataName); }}><option value="">{KATA_PLACEHOLDER}</option>{kataOptions.map((kata) => <option key={kata} value={kata}>{kata}</option>)}</select></label>
     <div className="kata-jury"><h3>Jury</h3>{JUDGES.map((judge, index) => <label className="kata-judge-row" key={judge}><span>{judge}</span><select className="tablet-select" value={notes[index]} onChange={(event) => { const nextNotes = notes.map((note, noteIndex) => noteIndex === index ? event.target.value : note); draft.saveNow({ kataName, notes: nextNotes }); setNotes(nextNotes); }}><option value="">Note...</option>{NOTE_OPTIONS.map((note) => <option key={note} value={note}>{note}</option>)}</select></label>)}</div>
+    {result?.requiresShugo && <div role="alert" style={{ margin: "16px 0", padding: "20px", border: "3px solid #b42318", borderRadius: "14px", background: "#fff1f0", textAlign: "center" }}><strong style={{ display: "block", fontSize: "2rem" }}>SHUGO</strong><span>Écart de {result.retainedSpread.toFixed(1)} point entre les notes retenues. Réunion des arbitres obligatoire avant validation.</span></div>}
     <div className="kata-summary"><h3>Récapitulatif officiel</h3>{JUDGES.map((judge, index) => <p key={judge}><span>{judge}</span><strong>{notes[index] || "--"}</strong></p>)}<hr /><p>Note la plus haute retirée : <strong>{result ? result.highest.toFixed(1) : "--"}</strong></p><p>Note la plus basse retirée : <strong>{result ? result.lowest.toFixed(1) : "--"}</strong></p><div className="kata-official-score"><span>Moyenne retenue</span><strong>{result ? result.average.toFixed(1) : "--"}</strong></div></div>
-    <button className="primary kata-validate" onClick={save}>Valider le Kata</button></fieldset>
+    <button className="primary kata-validate" onClick={save} disabled={Boolean(result?.requiresShugo)}>Valider le Kata</button></fieldset>
   </section>;
 }
 
