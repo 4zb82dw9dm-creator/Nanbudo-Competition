@@ -99,8 +99,9 @@ export function shuffle(items) {
 
 export function generateMatches(competitorIds, category, poolIndex = 0, tatami = 1) {
   if (competitionRulesEngine.isKataDiscipline(category.discipline)) {
-    return competitorIds.map((competitorId, index) => ({
-      id: `${Date.now()}-${category.id}-${poolIndex}-kata-${index}`,
+    const createdAt = Date.now();
+    return [1, 2].flatMap((kataRound) => competitorIds.map((competitorId, index) => ({
+      id: `${createdAt}-${category.id}-${poolIndex}-kata-r${kataRound}-${index}`,
       categoryId: category.id,
       discipline: category.discipline,
       competitorId,
@@ -113,11 +114,12 @@ export function generateMatches(competitorIds, category, poolIndex = 0, tatami =
       kataGroup: getValidKataGroup(category.kataGroup),
       kataScores: [],
       finalScore: null,
+      kataRound,
       tatami,
-      ordre: index + 1,
+      ordre: (kataRound - 1) * competitorIds.length + index + 1,
       horaire: "",
       statut: "À jouer",
-    }));
+    })));
   }
   const matches = [];
   const rotation = [...competitorIds];
@@ -186,12 +188,17 @@ function kataScore(match) {
 
 function kataScoreVector(pool, competitorId) {
   const matches = (pool.matches || []).filter((match) => (match.competitorId === competitorId || match.akaId === competitorId) && match.statut === "Terminé");
-  const baseMatch = matches.find((match) => !match.isKataTieBreak);
+  const baseScores = matches
+    .filter((match) => !match.isKataTieBreak)
+    .sort((a, b) => Number(a.kataRound || 1) - Number(b.kataRound || 1))
+    .map(kataScore)
+    .filter((score) => score != null);
+  const twoRoundTotal = baseScores.slice(0, 2).reduce((sum, score) => sum + score, 0);
   const tieBreakScores = matches
     .filter((match) => match.isKataTieBreak)
     .sort((a, b) => Number(a.kataTieBreakRound || 0) - Number(b.kataTieBreakRound || 0))
     .map(kataScore);
-  return [kataScore(baseMatch) ?? 0, ...tieBreakScores];
+  return [twoRoundTotal, ...tieBreakScores];
 }
 
 function compareScoreVectors(a = [], b = []) {
