@@ -37,3 +37,16 @@ test("AFDP ne reçoit aucune finale World programmée", () => {
   const planning = buildPlanning(competition);
   assert.deepEqual(planning.worldKataFinals, []);
 });
+
+test("World répartit les disciplines sur trois journées", () => {
+  const base = worldCompetition(7);
+  base.pools.push(
+    { id: "p2", categoryId: "j1", nom: "JU-RANDORI SENIORS · Poule 1", discipline: "ju_randori", competitorIds: ["a","b","c"], tatami: 2, matches: Array.from({ length: 3 }, () => ({})) },
+    { id: "p3", categoryId: "t1", nom: "KATA ÉQUIPE HOMMES · Poule 1", discipline: "kata_equipe", competitorIds: ["t1","t2","t3","t4"], tatami: 3, matches: Array.from({ length: 8 }, () => ({})) }
+  );
+  const planning = buildPlanning(base);
+  assert.ok(planning.entries.filter((entry) => entry.discipline === "kata_individuel").every((entry) => entry.day === 1));
+  assert.ok(planning.entries.filter((entry) => entry.discipline === "ju_randori").every((entry) => entry.day === 2));
+  assert.ok(planning.worldTeamEntries.every((entry) => entry.day === 3));
+  assert.ok(planning.worldTeamEntries.every((entry) => entry.start >= 9 * 60));
+});
