@@ -35,7 +35,7 @@ export function categoryFromBirthYear(dateNaissance, fallbackAge = null) {
 export const CHILD_DISCIPLINE_MAX_AGE = 11;
 
 export function categoryCompetitionRule(ageGroup) {
-  if (ageGroup === "Poussins") return { ageGroup, kataGroup: "Kata 0", combatDisciplines: ["randori"] };
+  if (["Mini-poussins", "Poussins"].includes(ageGroup)) return { ageGroup, kataGroup: "Kata 0", combatDisciplines: ["randori"] };
   if (["Pupilles", "Benjamins"].includes(ageGroup)) return { ageGroup, kataGroup: "Kata 1", combatDisciplines: ["randori"] };
   if (["Minimes", "Cadets", "Juniors", "Seniors", "Vétérans"].includes(ageGroup)) return { ageGroup, kataGroup: "Kata 2", combatDisciplines: ["ju_randori"] };
   return null;
@@ -50,7 +50,7 @@ export function registrationDisciplinesForCategory(ageGroup) {
 export function ageCompetitionRule(age) {
   const numericAge = Number(age);
   if (!Number.isFinite(numericAge)) return null;
-  if (numericAge >= 6 && numericAge <= 7) return categoryCompetitionRule("Poussins");
+  if (numericAge >= 5 && numericAge <= 7) return categoryCompetitionRule("Poussins");
   if (numericAge >= 8 && numericAge <= 9) return categoryCompetitionRule("Pupilles");
   if (numericAge >= 10 && numericAge <= 11) return categoryCompetitionRule("Benjamins");
   if (numericAge >= 12 && numericAge <= 13) return categoryCompetitionRule("Minimes");

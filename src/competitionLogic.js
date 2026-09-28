@@ -244,25 +244,8 @@ export function calculateRanking(pool) {
   const tieBreakPositions = new Map((pool.poolTieBreakOrder || []).map((competitorId, index) => [competitorId, index]));
 
   if (usesJuRandoriPoolTieBreak(pool.discipline)) {
-    const directEncounterPositions = new Map();
-    const criteriaGroups = new Map();
-    ranking.forEach((item) => {
-      const key = `${item.victories}|${item.negativePoints}`;
-      if (!criteriaGroups.has(key)) criteriaGroups.set(key, []);
-      criteriaGroups.get(key).push(item.competitorId);
-    });
-    criteriaGroups.forEach((competitorIds) => {
-      if (competitorIds.length !== 2) return;
-      const winnerId = directEncounterWinner(pool, competitorIds[0], competitorIds[1]);
-      if (!winnerId) return;
-      const loserId = competitorIds.find((id) => id !== winnerId);
-      directEncounterPositions.set(winnerId, 0);
-      directEncounterPositions.set(loserId, 1);
-    });
-
     return ranking.sort((a, b) => b.victories - a.victories
       || a.negativePoints - b.negativePoints
-      || (directEncounterPositions.get(a.competitorId) ?? Number.MAX_SAFE_INTEGER) - (directEncounterPositions.get(b.competitorId) ?? Number.MAX_SAFE_INTEGER)
       || (tieBreakPositions.get(a.competitorId) ?? Number.MAX_SAFE_INTEGER) - (tieBreakPositions.get(b.competitorId) ?? Number.MAX_SAFE_INTEGER));
   }
 
@@ -302,8 +285,7 @@ function unresolvedJuRandoriTieGroups(pool) {
     const competitorIds = ranking.slice(start, end).map((item) => item.competitorId);
 
     if (competitorIds.length > 1 && competitorIds.some((id) => !resolved.has(id))) {
-      const resolvedByDirectEncounter = competitorIds.length === 2 && Boolean(directEncounterWinner(pool, competitorIds[0], competitorIds[1]));
-      if (!resolvedByDirectEncounter) groups.push(competitorIds);
+      groups.push(competitorIds);
     }
     start = end;
   }
