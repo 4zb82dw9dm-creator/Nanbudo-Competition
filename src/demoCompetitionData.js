@@ -177,8 +177,12 @@ export function createCompleteTestCompetition() {
 }
 
 function simulatedKata(pool) {
-  const averages = [4.15, 4.28, 4.41, 4.57];
-  return pool.matches.map((match, index) => ({ ...match, kataName: ["Randori-tori", "Shiho-taï Tsuki", "Nanbu Shodan"][Math.min(2, Number(pool.id.split("-").at(-1)) - 1)], kataScores: [averages[index], averages[index], averages[index], averages[index], averages[index]], scoreAka: averages[index], akaScore: averages[index], finalScore: averages[index], winnerId: match.akaId, statut: "Terminé" }));
+  const totals = [8.30, 8.56, 8.82, 9.14];
+  return pool.matches.map((match) => {
+    const competitorIndex = pool.competitorIds.indexOf(match.competitorId || match.akaId);
+    const roundScore = Number((totals[competitorIndex] / 2).toFixed(2));
+    return { ...match, kataName: ["Randori-tori", "Shiho-taï Tsuki", "Nanbu Shodan"][Math.min(2, Number(pool.id.split("-").at(-1)) - 1)], kataScores: [roundScore, roundScore, roundScore, roundScore, roundScore], scoreAka: roundScore, akaScore: roundScore, finalScore: roundScore, winnerId: match.akaId, statut: "Terminé" };
+  });
 }
 
 function simulatedCombat(pool) {
