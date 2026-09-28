@@ -240,7 +240,8 @@ function MatchManager({ match, onSave }) {
       return draft.finalize(() => onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : "shiro" }));
     }
     if (isLocked) return;
-    if (!randoriScore.complete) {
+    const penaltyDisqualification = isDisqualified(penalties.aka) || isDisqualified(penalties.shiro);
+    if (!randoriScore.complete && !penaltyDisqualification) {
       return alert(match.discipline === "randori"
         ? "Pour valider un Randori, saisissez soit les 7 attaques, soit au minimum Tsuki 1, Mae Geri 1 et Mawashi 1."
         : "Saisissez le résultat des sept assauts avant de valider.");
