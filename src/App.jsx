@@ -215,7 +215,21 @@ function CommissionApp() {
     return () => removeEventListener("nanbudo:competitions-updated", listener);
   }, []);
 
-  function showCompetitions(competitionId = null) { setSelectedCompetitionId(competitionId); setSection("competitions"); }
+  function showCompetitions(competitionId = null) {
+    if (competitionId) {
+      const competition = competitions.find((item) => String(item.id) === String(competitionId));
+      if (competition?.categoryMode === "world_championship_2026") {
+        const code = window.prompt("🔒 World Championship 2026 — Entrez le code d’accès");
+        if (code === null) return;
+        if (code !== "2409") {
+          alert("Code incorrect.");
+          return;
+        }
+      }
+    }
+    setSelectedCompetitionId(competitionId);
+    setSection("competitions");
+  }
 
   async function createCompetition(competition) {
     // Save remotely first so the next live refresh cannot interpret a freshly
