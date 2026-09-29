@@ -8,7 +8,8 @@ const entry = (tatami, horaire, ordre, statut = "À jouer", id = `${tatami}-${ho
 });
 
 const sort = (matches) => [...matches].sort(sortArbitrationMatches);
-const times = (matches) => sort(matches).map(({ match }) => match.horaire);\nconst orders = (matches) => sort(matches).map(({ match }) => match.ordre);
+const times = (matches) => sort(matches).map(({ match }) => match.horaire);
+const orders = (matches) => sort(matches).map(({ match }) => match.ordre);
 
 test("converts the scheduled horaire string to comparable minutes", () => {
   assert.equal(scheduledTimeToMinutes("09:20"), 560);
