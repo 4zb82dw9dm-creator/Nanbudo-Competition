@@ -2724,3 +2724,34 @@ footer span {
 .sync-status.synced { background: #e7f7ed; }
 .sync-status.pending { background: #fff4cf; }
 .sync-status.offline { background: #ffe1e1; }
+
+.participants-scroll-controls {
+  display: none;
+}
+
+@media (orientation: landscape) and (min-width: 900px) and (max-width: 1400px) {
+  .participants-scroll-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    position: sticky;
+    left: 0;
+    width: 100%;
+  }
+
+  .participants-scroll-controls button {
+    border: 0;
+    border-radius: 9px;
+    background: #071a33;
+    color: white;
+    padding: 10px 14px;
+    font-weight: 800;
+  }
+
+  .participants-scroll-controls span {
+    color: #657080;
+    font-size: 12px;
+    text-align: center;
+  }
+}
