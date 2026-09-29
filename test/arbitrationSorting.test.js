@@ -34,8 +34,8 @@ test("the All tab keeps every tatami in displayed passage order within its group
   const matches = [entry(1, "15:00", 3), entry(2, "09:10", 2), entry(1, "09:00", 1), entry(2, "14:00", 1), entry(3, "09:25", 2), entry(3, "14:50", 1)];
   for (const tatami of [1, 2, 3]) {
     const group = matches.filter(({ match }) => match.tatami === tatami);
-    const minutes = sort(group).map(({ match }) => scheduledTimeToMinutes(match.horaire));
-    assert.deepEqual(minutes, [...minutes].sort((a, b) => a - b));
+    const passageOrders = orders(group);
+    assert.deepEqual(passageOrders, [...passageOrders].sort((a, b) => a - b));
   }
 });
 
