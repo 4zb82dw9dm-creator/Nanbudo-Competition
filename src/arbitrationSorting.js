@@ -1,4 +1,4 @@
-function passageOrder(match) {
+function categoryStart(item) {\n  const start = Number(item?.planningStart);\n  return Number.isFinite(start) ? start : Number.MAX_SAFE_INTEGER;\n}\n\nfunction passageOrder(match) {
   const order = Number(match.ordre);
   return Number.isFinite(order) ? order : Number.MAX_SAFE_INTEGER;
 }
