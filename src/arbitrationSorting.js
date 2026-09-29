@@ -1,8 +1,3 @@
-function categoryStart(item) {
-  const start = Number(item?.planningStart);
-  return Number.isFinite(start) ? start : Number.MAX_SAFE_INTEGER;
-}
-
 function passageOrder(match) {
   const order = Number(match.ordre);
   return Number.isFinite(order) ? order : Number.MAX_SAFE_INTEGER;
@@ -24,9 +19,11 @@ export function scheduledTimeToMinutes(horaire) {
 }
 
 export function sortArbitrationMatches(a, b) {
-  return scheduledTimeToMinutes(a.match.horaire) - scheduledTimeToMinutes(b.match.horaire)
-    || tatamiOrder(a.match.tatami) - tatamiOrder(b.match.tatami)
-    || passageOrder(a.match) - passageOrder(b.match);
+  // Sur un même tatami, le numéro de passage affiché (#1, #2, #3…) est la référence.
+  // L'horaire ne sert qu'à départager deux passages portant le même numéro.
+  return passageOrder(a.match) - passageOrder(b.match)
+    || scheduledTimeToMinutes(a.match.horaire) - scheduledTimeToMinutes(b.match.horaire)
+    || tatamiOrder(a.match.tatami) - tatamiOrder(b.match.tatami);
 }
 
 export function findNextArbitrationPassage(matches = [], currentPoolId, currentMatchId) {

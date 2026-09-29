@@ -8,7 +8,7 @@ const entry = (tatami, horaire, ordre, statut = "À jouer", id = `${tatami}-${ho
 });
 
 const sort = (matches) => [...matches].sort(sortArbitrationMatches);
-const times = (matches) => sort(matches).map(({ match }) => match.horaire);
+const times = (matches) => sort(matches).map(({ match }) => match.horaire);\nconst orders = (matches) => sort(matches).map(({ match }) => match.ordre);
 
 test("converts the scheduled horaire string to comparable minutes", () => {
   assert.equal(scheduledTimeToMinutes("09:20"), 560);
@@ -17,15 +17,15 @@ test("converts the scheduled horaire string to comparable minutes", () => {
 });
 
 for (const tatami of [1, 2, 3]) {
-  test(`Tatami ${tatami} is displayed from the earliest to the latest event`, () => {
+  test(`Tatami ${tatami} follows the displayed passage numbers`, () => {
     const matches = [
       entry(tatami, "14:50", 2),
       entry(tatami, "09:30", 3),
       entry(tatami, "09:20", 1),
-      entry(tatami, "14:55", 4),
-      entry(tatami, "09:25", 2),
+      entry(tatami, "14:55", 5),
+      entry(tatami, "09:25", 4),
     ];
-    assert.deepEqual(times(matches), ["09:20", "09:25", "09:30", "14:50", "14:55"]);
+    assert.deepEqual(orders(matches), [1, 2, 3, 4, 5]);
   });
 }
 
@@ -38,18 +38,18 @@ test("the All tab keeps every tatami chronological within its group", () => {
   }
 });
 
-test("status never changes chronological position", () => {
+test("status never changes passage position", () => {
   const matches = [
     entry(1, "14:50", 3, "Terminé"),
     entry(1, "09:25", 2, "En cours"),
     entry(1, "09:20", 1, "À jouer"),
   ];
-  assert.deepEqual(times(matches), ["09:20", "09:25", "14:50"]);
+  assert.deepEqual(orders(matches), [1, 2, 3]);
 });
 
-test("equal times use tatami then passage number and remain stable after that", () => {
+test("equal passage numbers use time then tatami and remain stable after that", () => {
   const matches = [entry(2, "10:00", 2, "À jouer", "first"), entry(1, "10:00", 3), entry(2, "10:00", 1), entry(2, "10:00", 2, "Terminé", "second")];
-  assert.deepEqual(sort(matches).map(({ match }) => match.id), ["1-10:00-3", "2-10:00-1", "first", "second"]);
+  assert.deepEqual(sort(matches).map(({ match }) => match.id), ["2-10:00-1", "first", "second", "1-10:00-3"]);
 });
 
 test("the next passage is located by pool and match when match ids are duplicated", () => {
