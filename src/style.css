@@ -1989,16 +1989,30 @@ footer span {
 
   .participants-table-wrap {
     display: block;
-    overflow-x: scroll;
+    overflow-x: auto;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
-    width: calc(100vw - 96px);
-    max-width: calc(100vw - 96px);
+    width: 100%;
+    max-width: 100%;
     scrollbar-width: auto;
+    padding-bottom: 14px;
   }
 
   .participants-table {
-    min-width: 1500px;
-    width: 1500px;
+    /* 11 colonnes : largeur réelle suffisante pour Nom → Observations. */
+    min-width: 1900px;
+    width: 1900px;
+    max-width: none;
+  }
+
+  .participants-table th,
+  .participants-table td {
+    box-sizing: border-box;
+  }
+
+  .participants-table th:nth-child(11),
+  .participants-table td:nth-child(11) {
+    width: 220px;
   }
 }
 
