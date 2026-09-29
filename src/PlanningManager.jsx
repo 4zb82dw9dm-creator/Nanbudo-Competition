@@ -6,6 +6,14 @@ import { downloadPdfWithDejaVu } from "./pdfExport";
 function PlanningManager({ competition, onUpdateCompetition }) {
   const planning = useMemo(() => buildPlanning(competition), [competition]);
   const competitors = new Map((competition.competitors || []).map((item) => [String(item.id), item]));
+  const passageRows = useMemo(() => {
+    const rows = [];
+    planning.entries.forEach((entry) => {
+      const categoryPools = (competition.pools || []).filter((pool) => String(pool.categoryId || pool.id) === String(entry.categoryId));
+      categoryPools.forEach((pool) => (pool.matches || []).forEach((match) => rows.push({ entry, pool, match })));
+    });
+    return rows.sort((a, b) => a.entry.start - b.entry.start || a.entry.tatami - b.entry.tatami || Number(a.match.ordre || 0) - Number(b.match.ordre || 0));
+  }, [planning, competition.pools]);
   const change = (entry, patch) => { const planningAdjustments = { ...(competition.planningAdjustments || {}), [entry.categoryId]: { ...(competition.planningAdjustments?.[entry.categoryId] || {}), ...patch } }; const pools = patch.tatami ? competition.pools.map((pool) => String(pool.categoryId || pool.id) === entry.categoryId ? setPoolTatami(pool, Number(patch.tatami)) : pool) : competition.pools; onUpdateCompetition({ ...competition, pools, planningAdjustments }); };
   const recalculate = () => {
     const assignments = balancedTatamiAssignments(competition.categories || [], PLANNING_TATAMIS.length);
@@ -47,10 +55,30 @@ function PlanningManager({ competition, onUpdateCompetition }) {
       });
     };
 
+    const appendConfrontations = (title, kataPhase) => {
+      lines.push(title, "");
+      PLANNING_TATAMIS.forEach((tatami) => {
+        lines.push(`TATAMI ${tatami}`);
+        const rows = passageRows.filter(({ entry }) => entry.tatami === tatami && isKata(entry.discipline) === kataPhase);
+        if (!rows.length) { lines.push("Aucun passage", ""); return; }
+        rows.forEach(({ entry, match }, index) => {
+          const aka = competitors.get(String(match.competitorId || match.akaId));
+          const shiro = competitors.get(String(match.shiroId));
+          const people = kataPhase
+            ? `${aka?.nom || "Inconnu"} ${aka?.prenom || ""}`
+            : `${aka?.nom || "Inconnu"} ${aka?.prenom || ""} / ${shiro?.nom || "Inconnu"} ${shiro?.prenom || ""}`;
+          lines.push(`Passage ${index + 1} · ${entry.name} · ${people}`);
+        });
+        lines.push("");
+      });
+    };
+
     appendPhase("PHASE 1 · KATA", planning.entries.filter((entry) => isKata(entry.discipline)));
     lines.push(`FIN DES KATA · ${minutesToTime(planning.kataEnd)}`, "");
     appendPhase("PHASE 2 · RANDORI / JU-RANDORI", planning.entries.filter((entry) => !isKata(entry.discipline)));
-    lines.push(`REMISE DES MÉDAILLES / CÉRÉMONIE · ${minutesToTime(planning.ceremonyStart)}`);
+    lines.push(`REMISE DES MÉDAILLES / CÉRÉMONIE · ${minutesToTime(planning.ceremonyStart)}`, "");
+    appendConfrontations("ORDRE IMPRIMABLE DES PASSAGES · KATA", true);
+    appendConfrontations("ORDRE IMPRIMABLE DES CONFRONTATIONS · RANDORI / JU-RANDORI", false);
 
     await downloadPdfWithDejaVu({
       lines,
@@ -61,7 +89,7 @@ function PlanningManager({ competition, onUpdateCompetition }) {
   if (!(competition.pools || []).length) return <div className="empty-state"><h3>Planning indisponible</h3><p>Générez et validez d’abord les poules : le planning apparaîtra automatiquement, sans ressaisie.</p></div>;
   const kataEntries = planning.entries.filter((entry) => isKata(entry.discipline));
   const combatEntries = planning.entries.filter((entry) => !isKata(entry.discipline));
-  return <section className="planning-manager"><div className="manager-header planning-heading"><div><p className="surtitle">PROGRAMME AUTOMATIQUE</p><h2>Planning</h2><p>Les Kata sont terminés en premier sur l’ensemble des tatamis. Les Randori / Ju-Randori démarrent dès la fin du dernier Kata, même si celle-ci intervient avant midi.</p></div><div className="planning-actions"><button className="primary" onClick={recalculate}>Recalculer automatiquement le planning</button><button onClick={() => window.confirm("Réinitialiser et rééquilibrer le planning sur les 3 tatamis ?") && recalculate()}>Réinitialiser le planning</button><button onClick={exportPlanningPdf}>Exporter le planning en PDF</button><button onClick={() => window.print()}>Imprimer le planning</button></div></div>
+  return <section className="planning-manager"><div className="manager-header planning-heading"><div><p className="surtitle">PROGRAMME AUTOMATIQUE</p><h2>Planning</h2><p>Les Kata sont terminés en premier sur l’ensemble des tatamis. Les Randori / Ju-Randori démarrent dès la fin du dernier Kata, même si celle-ci intervient avant midi.</p></div><div className="planning-actions"><button className="primary" onClick={recalculate}>Recalculer automatiquement le planning</button><button onClick={() => window.confirm("Réinitialiser et rééquilibrer le planning sur les 3 tatamis ?") && recalculate()}>Réinitialiser le planning</button><button onClick={exportPlanningPdf}>Exporter / imprimer les passages en PDF</button><button onClick={() => window.print()}>Imprimer le planning</button></div></div>
     <Session title="PHASE 1 · KATA" entries={kataEntries} competitors={competitors} onChange={change} />
     <div className="planning-break"><strong>FIN DES KATA</strong><span>{minutesToTime(planning.kataEnd)} · Début immédiat des Randori / Ju-Randori</span></div>
     <Session title="PHASE 2 · RANDORI / JU-RANDORI" entries={combatEntries} competitors={competitors} onChange={change} />
