@@ -19,9 +19,10 @@ export function scheduledTimeToMinutes(horaire) {
 }
 
 export function sortArbitrationMatches(a, b) {
-  // Sur un même tatami, le numéro de passage affiché (#1, #2, #3…) est la référence.
-  // L'horaire ne sert qu'à départager deux passages portant le même numéro.
-  return passageOrder(a.match) - passageOrder(b.match)
+  // Ordre réel du planning : catégorie/phase d'abord, puis #1, #2, #3 dans la catégorie.
+  return (a.planningStart ?? Number.MAX_SAFE_INTEGER) - (b.planningStart ?? Number.MAX_SAFE_INTEGER)
+    || (a.planningOrder ?? Number.MAX_SAFE_INTEGER) - (b.planningOrder ?? Number.MAX_SAFE_INTEGER)
+    || passageOrder(a.match) - passageOrder(b.match)
     || scheduledTimeToMinutes(a.match.horaire) - scheduledTimeToMinutes(b.match.horaire)
     || tatamiOrder(a.match.tatami) - tatamiOrder(b.match.tatami);
 }

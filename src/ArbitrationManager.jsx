@@ -8,6 +8,7 @@ import { findNextArbitrationPassage, sortArbitrationMatches } from "./arbitratio
 import { arbitrationSheetKey, loadArbitrationDraft } from "./arbitrationDraftStorage";
 import { saveMatchResult } from "./supabase";
 import { queueMatchResult } from "./offlineResultQueue";
+import { buildPlanning } from "./planningLogic";
 import { effectiveRefereeAssignments, refereeSlotsForDiscipline, replaceCompetitionReferee, TABLE_REFEREE_SLOTS } from "./refereeTeamRules";
 
 const ALL_TATAMIS = "all";
@@ -33,18 +34,30 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   function getCompetitor(id) { return competitors.find((competitor) => competitor.id === id); }
   function getCategory(id) { return categories.find((category) => category.id === id); }
   const matchesByTatami = useMemo(() => {
+    // L'arbitrage doit suivre exactement le planning bleu : phase KATA d'abord
+    // sur les 3 tatamis, puis RANDORI / JU-RANDORI, catégorie par catégorie.
+    const planning = buildPlanning(competition);
+    const planningByCategory = new Map(
+      planning.entries.map((entry) => [String(entry.categoryId), entry])
+    );
     const grouped = new Map();
     pools.forEach((pool) => {
       (pool.matches || []).forEach((match) => {
         const tatami = String(match.tatami || "Non affecté");
         if (!grouped.has(tatami)) grouped.set(tatami, []);
-        grouped.get(tatami).push({ pool, match });
+        const planningEntry = planningByCategory.get(String(pool.categoryId || pool.id));
+        grouped.get(tatami).push({
+          pool,
+          match,
+          planningStart: planningEntry?.start ?? Number.MAX_SAFE_INTEGER,
+          planningOrder: planningEntry?.order ?? Number.MAX_SAFE_INTEGER,
+        });
       });
     });
     return Array.from(grouped.entries())
       .sort(([tatamiA], [tatamiB]) => tatamiOrder(tatamiA) - tatamiOrder(tatamiB) || String(tatamiA).localeCompare(String(tatamiB)))
       .map(([tatami, matches]) => ({ tatami, matches: matches.sort(sortArbitrationMatches) }));
-  }, [pools]);
+  }, [competition, pools]);
   const tatamis = matchesByTatami.map((group) => group.tatami);
 
   useEffect(() => {
