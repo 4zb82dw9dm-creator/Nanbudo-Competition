@@ -38,32 +38,10 @@ function PlanningManager({ competition, onUpdateCompetition }) {
       .replace(/^_+|_+$/g, "");
 
     const lines = [
-      `PLANNING · ${competition.nom || "Compétition"}`,
+      `DÉROULEMENT DÉTAILLÉ · ${competition.nom || "Compétition"}`,
       `${competition.lieu || "Lieu à définir"} · ${competition.date || "Date à définir"}`,
       "",
     ];
-
-    const appendPhase = (title, entries) => {
-      lines.push(title, "");
-      PLANNING_TATAMIS.forEach((tatami) => {
-        lines.push(`TATAMI ${tatami}`);
-        const tatamiEntries = entries.filter((entry) => entry.tatami === tatami);
-        if (!tatamiEntries.length) {
-          lines.push("Aucune catégorie", "");
-          return;
-        }
-        tatamiEntries.forEach((entry) => {
-          lines.push(
-            `${minutesToTime(entry.start)} – ${minutesToTime(entry.end)} · ${entry.name} · ${entry.disciplineLabel}`
-          );
-          entry.competitors.forEach((id) => {
-            const competitor = competitors.get(String(id));
-            lines.push(`   ${competitor?.club || "—"} · ${competitor?.nom || "Inconnu"} ${competitor?.prenom || ""}`.trimEnd());
-          });
-          lines.push("");
-        });
-      });
-    };
 
     const appendDetailedRunningOrder = () => {
       lines.push("FEUILLES DE DÉROULEMENT · PASSAGES ET CONFRONTATIONS", "");
@@ -91,10 +69,6 @@ function PlanningManager({ competition, onUpdateCompetition }) {
       });
     };
 
-    appendPhase("PHASE 1 · KATA", planning.entries.filter((entry) => isKata(entry.discipline)));
-    lines.push(`FIN DES KATA · ${minutesToTime(planning.kataEnd)}`, "");
-    appendPhase("PHASE 2 · RANDORI / JU-RANDORI", planning.entries.filter((entry) => !isKata(entry.discipline)));
-    lines.push(`REMISE DES MÉDAILLES / CÉRÉMONIE · ${minutesToTime(planning.ceremonyStart)}`, "");
     appendDetailedRunningOrder();
 
     await downloadPdfWithDejaVu({
