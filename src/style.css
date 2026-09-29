@@ -1907,7 +1907,11 @@ footer span {
   border-radius: 14px;
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.06);
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
   width: 100%;
+  max-width: 100%;
 }
 
 .participants-table {
@@ -1978,8 +1982,21 @@ footer span {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .participants-section {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .participants-table-wrap {
+    display: block;
+    overflow-x: scroll;
+    -webkit-overflow-scrolling: touch;
+    max-width: calc(100vw - 64px);
+  }
+
   .participants-table {
-    min-width: 1380px;
+    min-width: 1500px;
+    width: 1500px;
   }
 }
 
