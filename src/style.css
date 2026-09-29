@@ -1984,14 +1984,16 @@ footer span {
 
   .participants-section {
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .participants-table-wrap {
     display: block;
     overflow-x: scroll;
     -webkit-overflow-scrolling: touch;
-    max-width: calc(100vw - 64px);
+    width: calc(100vw - 96px);
+    max-width: calc(100vw - 96px);
+    scrollbar-width: auto;
   }
 
   .participants-table {
