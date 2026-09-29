@@ -22,6 +22,7 @@ export function sortArbitrationMatches(a, b) {
   // Ordre réel du planning : catégorie/phase d'abord, puis #1, #2, #3 dans la catégorie.
   return (a.planningStart ?? Number.MAX_SAFE_INTEGER) - (b.planningStart ?? Number.MAX_SAFE_INTEGER)
     || (a.planningOrder ?? Number.MAX_SAFE_INTEGER) - (b.planningOrder ?? Number.MAX_SAFE_INTEGER)
+    || (a.poolOrder ?? 0) - (b.poolOrder ?? 0)
     || passageOrder(a.match) - passageOrder(b.match)
     || scheduledTimeToMinutes(a.match.horaire) - scheduledTimeToMinutes(b.match.horaire)
     || tatamiOrder(a.match.tatami) - tatamiOrder(b.match.tatami);

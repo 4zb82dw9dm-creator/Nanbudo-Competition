@@ -72,3 +72,16 @@ test("the next passage skips a completed match and reports the end of planning",
   assert.equal(findNextArbitrationPassage(matches, "pool", "current").match.id, "next");
   assert.equal(findNextArbitrationPassage(matches, "pool", "next"), null);
 });
+
+
+test("two pools of one category stay contiguous", () => {
+  const matches = [
+    { pool: { id: "pool-1" }, poolOrder: 0, planningStart: 540, planningOrder: 1, match: { id: "p1-1", tatami: 3, ordre: 1, statut: "À jouer" } },
+    { pool: { id: "pool-2" }, poolOrder: 1, planningStart: 540, planningOrder: 1, match: { id: "p2-1", tatami: 3, ordre: 1, statut: "À jouer" } },
+    { pool: { id: "pool-1" }, poolOrder: 0, planningStart: 540, planningOrder: 1, match: { id: "p1-2", tatami: 3, ordre: 2, statut: "À jouer" } },
+    { pool: { id: "pool-2" }, poolOrder: 1, planningStart: 540, planningOrder: 1, match: { id: "p2-2", tatami: 3, ordre: 2, statut: "À jouer" } },
+  ];
+  const sorted = sort(matches);
+  assert.deepEqual(sorted.map(({ match }) => match.id), ["p1-1", "p1-2", "p2-1", "p2-2"]);
+  assert.equal(findNextArbitrationPassage(sorted, "pool-1", "p1-1").match.id, "p1-2");
+});

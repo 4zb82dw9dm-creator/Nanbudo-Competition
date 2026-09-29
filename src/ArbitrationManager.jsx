@@ -41,7 +41,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
       planning.entries.map((entry) => [String(entry.categoryId), entry])
     );
     const grouped = new Map();
-    pools.forEach((pool) => {
+    pools.forEach((pool, poolIndex) => {
       (pool.matches || []).forEach((match) => {
         const tatami = String(match.tatami || "Non affecté");
         if (!grouped.has(tatami)) grouped.set(tatami, []);
@@ -51,6 +51,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
           match,
           planningStart: planningEntry?.start ?? Number.MAX_SAFE_INTEGER,
           planningOrder: planningEntry?.order ?? Number.MAX_SAFE_INTEGER,
+          poolOrder: poolIndex,
         });
       });
     });
