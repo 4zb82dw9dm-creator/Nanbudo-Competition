@@ -495,6 +495,68 @@ footer span {
   font-weight: 800;
 }
 
+@media (min-width: 701px) and (max-width: 1100px) {
+  /* iPad/tablette : afficher les 11 colonnes sans dépendre d'un grand scroll horizontal. */
+  .public-registration,
+  .competitors-module,
+  .content:has(.public-registration),
+  .content:has(.competitors-module) {
+    width: 98vw;
+    max-width: 98vw;
+  }
+
+  .participants-section {
+    padding: 18px 10px;
+  }
+
+  .participants-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .participants-table {
+    min-width: 0;
+    width: 100%;
+    table-layout: auto;
+  }
+
+  .participants-table th,
+  .participants-table td {
+    padding: 5px 4px;
+    font-size: 11px;
+    width: auto !important;
+    min-width: 70px;
+  }
+
+  .participants-table th:first-child,
+  .participants-table td:first-child {
+    min-width: 36px;
+    width: 36px !important;
+  }
+
+  .participants-table input,
+  .participants-table select,
+  .participants-table textarea {
+    min-width: 0;
+    padding: 6px 5px;
+    font-size: 11px;
+  }
+
+  .participants-table th:nth-child(5),
+  .participants-table td:nth-child(5),
+  .participants-table th:nth-child(8),
+  .participants-table td:nth-child(8),
+  .participants-table th:nth-child(9),
+  .participants-table td:nth-child(9),
+  .participants-table th:nth-child(10),
+  .participants-table td:nth-child(10),
+  .participants-table th:nth-child(11),
+  .participants-table td:nth-child(11) {
+    min-width: 105px;
+  }
+}
+
 @media (max-width: 700px) {
   .header {
     padding: 28px 6%;
