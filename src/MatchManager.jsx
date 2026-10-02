@@ -115,7 +115,6 @@ function MatchManager({ match, onSave }) {
   });
   const draftMounted = useRef(false);
   const initialDraftSnapshotRef = useRef("");
-  const automaticSaveDone = useRef(false);
   const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
   const hasMai = match.discipline === "ju_randori" || match.discipline === "ju_randori_equipe";
   const isEditing = match.statut === "Terminé";
@@ -270,7 +269,6 @@ function MatchManager({ match, onSave }) {
     setMaiWarnings(nextScoreSheet.maiWarnings);
     setPenaltyEvents(nextScoreSheet.penaltyEvents || []);
     setMaiHistory((match?.matchHistory || []).filter((event) => event.type === "mai" || event.type === "mai_conversion" || event.type === "mai_removed"));
-    automaticSaveDone.current = false;
   }, [match.id]);
 
   useEffect(() => {
@@ -284,18 +282,18 @@ function MatchManager({ match, onSave }) {
     draft.markChanged();
   }, [draftPayload]);
 
-  useEffect(() => {
-    if (isKata || isEditing || automaticSaveDone.current) return;
-    if (!isDisqualified(penalties.aka) && !isDisqualified(penalties.shiro)) return;
-    automaticSaveDone.current = true;
-    save();
-  }, [isEditing, isKata, penalties, randoriScore.winner]);
+  const akaDisqualified = isDisqualified(penalties.aka);
+  const shiroDisqualified = isDisqualified(penalties.shiro);
+  const penaltyDisqualification = akaDisqualified || shiroDisqualified;
+  const disqualifiedSide = akaDisqualified && !shiroDisqualified ? "aka" : shiroDisqualified && !akaDisqualified ? "shiro" : null;
+  const disqualifiedCompetitor = disqualifiedSide ? match[disqualifiedSide] : null;
+  const winnerCompetitor = randoriScore.winner ? match[randoriScore.winner] : null;
 
   if (draft.pendingDraft) return <section className="match-manager"><DraftRecoveryNotice draft={draft.pendingDraft} onResume={draft.resume} onAbandon={draft.abandon} /></section>;
 
   if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save} disabled={!kataReady}>Valider le résultat</button></div></section>;
 
-  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} maiWarnings={maiWarnings} hasMai={hasMai} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} onRemoveMai={removeLastMai} disabled={isLocked} /><AssaultCards title={match.discipline === "randori" ? "Les 7 assauts · format court possible : Tsuki 1, Mae Geri 1, Mawashi 1" : "Les 7 assauts"} rows={assaults} disabled={isLocked} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} /><div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>Résultat du combat</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked || !randoriScore.complete}>{isLocked ? "Combat validé" : "Valider le combat"}</button></div></section>;
+  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} maiWarnings={maiWarnings} hasMai={hasMai} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} onRemoveMai={removeLastMai} disabled={isLocked} />{penaltyDisqualification && <div className="match-result winner-highlight" role="alert" aria-live="assertive" style={{ border: "3px solid #b71c1c", background: "#fff3f3", padding: "18px", margin: "18px 0", textAlign: "center" }}><h3 style={{ color: "#b71c1c", marginBottom: "10px" }}>⛔ DISQUALIFICATION — COMBAT TERMINÉ</h3>{disqualifiedSide ? <><p><strong>{disqualifiedSide.toUpperCase()} · {disqualifiedCompetitor?.nom} {disqualifiedCompetitor?.prenom}</strong> : PERDANT par disqualification</p><p><strong>{randoriScore.winner?.toUpperCase()} · {winnerCompetitor?.nom} {winnerCompetitor?.prenom}</strong> : VAINQUEUR</p></> : <p>Disqualification détectée. Vérifiez les sanctions avant validation.</p>}<p>Le résultat ne sera enregistré qu'après validation de l'arbitre.</p></div>}<AssaultCards title={match.discipline === "randori" ? "Les 7 assauts · format court possible : Tsuki 1, Mae Geri 1, Mawashi 1" : "Les 7 assauts"} rows={assaults} disabled={isLocked || penaltyDisqualification} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} /><div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>{penaltyDisqualification ? "Fin du combat par disqualification" : "Résultat du combat"}</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked || (!randoriScore.complete && !penaltyDisqualification)}>{isLocked ? "Combat validé" : penaltyDisqualification ? "Valider la fin du combat" : "Valider le combat"}</button></div></section>;
 }
 
 function ControlPanel({ match, score, penalties, maiWarnings, hasMai, onAddPenalty, onRemovePenalty, onRemoveMai, disabled }) { return <div className="randori-control-zone" aria-label="Console de pilotage du combat">{["aka", "shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} maiWarnings={maiWarnings[side]} hasMai={hasMai} onAddPenalty={(penalty) => onAddPenalty(side, penalty)} onRemovePenalty={(penaltyId) => onRemovePenalty(side, penaltyId)} onRemoveMai={() => onRemoveMai(side)} disabled={disabled} />)}</div>; }
