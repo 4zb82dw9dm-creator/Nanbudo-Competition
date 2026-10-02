@@ -1,0 +1,73 @@
+name: Patch SHUGO events
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-shugo-events.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Add SHUGO per assault and statistics
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/MatchManager.jsx')
+          s = p.read_text()
+
+          s = s.replace('    penaltyEvents: match?.penaltyEvents || [],\n', '    penaltyEvents: match?.penaltyEvents || [],\n    shugoEvents: match?.shugoEvents || [],\n', 1)
+          s = s.replace('  const [penaltyEvents, setPenaltyEvents] = useState(initialScoreSheet.penaltyEvents);\n', '  const [penaltyEvents, setPenaltyEvents] = useState(initialScoreSheet.penaltyEvents);\n  const [shugoEvents, setShugoEvents] = useState(initialScoreSheet.shugoEvents);\n', 1)
+          s = s.replace('const draftPayload = useMemo(() => ({ kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory, penaltyEvents }), [kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory, penaltyEvents]);', 'const draftPayload = useMemo(() => ({ kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory, penaltyEvents, shugoEvents }), [kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory, penaltyEvents, shugoEvents]);', 1)
+          s = s.replace('setMaiWarnings(saved.maiWarnings || { aka: [], shiro: [] }); setMaiHistory(saved.maiHistory || []); setPenaltyEvents(saved.penaltyEvents || []);', 'setMaiWarnings(saved.maiWarnings || { aka: [], shiro: [] }); setMaiHistory(saved.maiHistory || []); setPenaltyEvents(saved.penaltyEvents || []); setShugoEvents(saved.shugoEvents || []);', 1)
+          s = s.replace('    setPenaltyEvents(nextScoreSheet.penaltyEvents || []);\n', '    setPenaltyEvents(nextScoreSheet.penaltyEvents || []);\n    setShugoEvents(nextScoreSheet.shugoEvents || []);\n', 1)
+
+          marker = '  function buildHistory(winner) {\n'
+          addition = '''  function addShugo(assaultIndex) {\n    if (isLocked || assaultIndex < 0 || assaultIndex >= assaults.length) return;\n    const at = new Date().toISOString();\n    setShugoEvents((current) => [...current, { assaultIndex, assaultLabel: assaults[assaultIndex]?.label || ASSAULTS[assaultIndex], at }]);\n  }\n\n  function removeShugo(assaultIndex) {\n    if (isLocked) return;\n    setShugoEvents((current) => {\n      const index = [...current].map((event) => event.assaultIndex).lastIndexOf(assaultIndex);\n      return index < 0 ? current : current.filter((_, itemIndex) => itemIndex !== index);\n    });\n  }\n\n'''
+          if marker not in s: raise SystemExit('buildHistory marker missing')
+          s = s.replace(marker, addition + marker, 1)
+
+          old_history = '''      ...assaults.map((row) => ({ type: "assault", label: row.label, detail: voteResult(row.votes) || "En attente", votes: row.votes })),\n      ...maiHistory,'''
+          new_history = '''      ...assaults.flatMap((row, assaultIndex) => {\n        const result = voteResult(row.votes);\n        const shugoCount = shugoEvents.filter((event) => event.assaultIndex === assaultIndex).length;\n        if (!result && !shugoCount) return [];\n        return [\n          ...(result ? [{ type: "assault", label: row.label, detail: result, votes: row.votes }] : []),\n          ...(shugoCount ? [{ type: "shugo", label: `SHUGO · ${row.label}`, detail: shugoCount > 1 ? `${shugoCount} concertations arbitrales` : "Concertation arbitrale" }] : []),\n        ];\n      }),\n      ...maiHistory,'''
+          if old_history not in s: raise SystemExit('history assault block missing')
+          s = s.replace(old_history, new_history, 1)
+
+          s = s.replace('penaltyEvents, maiWarnings, akaNegative:', 'penaltyEvents, shugoEvents, maiWarnings, akaNegative:', 1)
+
+          old_call = '<AssaultCards title={match.discipline === "randori" ? "Les 7 assauts · format court possible : Tsuki 1, Mae Geri 1, Mawashi 1" : "Les 7 assauts"} rows={assaults} disabled={isLocked || penaltyDisqualification} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} />'
+          new_call = '<AssaultCards title={match.discipline === "randori" ? "Les 7 assauts · format court possible : Tsuki 1, Mae Geri 1, Mawashi 1" : "Les 7 assauts"} rows={assaults} disabled={isLocked || penaltyDisqualification} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} shugoEvents={shugoEvents} onAddShugo={addShugo} onRemoveShugo={removeShugo} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} />'
+          if old_call not in s: raise SystemExit('AssaultCards main call missing')
+          s = s.replace(old_call, new_call, 1)
+
+          old_func = 'function AssaultCards({ title, rows, onVote, disabled = false, hasMai = false, maiWarnings = { aka: [], shiro: [] }, onAddMai }) { return <div className="assaults-section"><h3>{title}</h3>{rows.map((row, rowIndex) => { const akaMaiCount = (maiWarnings.aka || []).filter((item) => item.assaultIndex === rowIndex).length; const shiroMaiCount = (maiWarnings.shiro || []).filter((item) => item.assaultIndex === rowIndex).length; return <article className="assault-card" key={row.label}><div className="assault-card-header"><span className="assault-label">{row.label}</span><strong className={`result-pill ${voteResult(row.votes).toLowerCase()}`}>{voteResult(row.votes) || "En attente"}</strong></div>'
+          new_func = 'function AssaultCards({ title, rows, onVote, disabled = false, hasMai = false, maiWarnings = { aka: [], shiro: [] }, onAddMai, shugoEvents = [], onAddShugo, onRemoveShugo }) { return <div className="assaults-section"><h3>{title}</h3>{rows.map((row, rowIndex) => { const akaMaiCount = (maiWarnings.aka || []).filter((item) => item.assaultIndex === rowIndex).length; const shiroMaiCount = (maiWarnings.shiro || []).filter((item) => item.assaultIndex === rowIndex).length; const shugoCount = shugoEvents.filter((item) => item.assaultIndex === rowIndex).length; return <article className="assault-card" key={row.label}><div className="assault-card-header"><span className="assault-label">{row.label}</span><div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}><button type="button" disabled={disabled} onClick={() => onAddShugo?.(rowIndex)} style={{ padding: "4px 8px", minHeight: "28px", fontSize: "11px", fontWeight: 800, borderRadius: "7px" }}>SHUGO{shugoCount ? ` ×${shugoCount}` : ""}</button>{shugoCount > 0 && <button type="button" disabled={disabled} onClick={() => onRemoveShugo?.(rowIndex)} title="Retirer le dernier SHUGO" style={{ padding: "3px 7px", minHeight: "28px", fontSize: "12px", borderRadius: "7px" }}>−</button>}<strong className={`result-pill ${voteResult(row.votes).toLowerCase()}`}>{voteResult(row.votes) || "En attente"}</strong></div></div>'
+          if old_func not in s: raise SystemExit('AssaultCards function prefix missing')
+          s = s.replace(old_func, new_func, 1)
+          p.write_text(s)
+
+          p = Path('src/StatisticsManager.jsx')
+          s = p.read_text()
+          s = s.replace('  ["mai", "Maï"],\n', '  ["mai", "Maï"],\n  ["shugo", "SHUGO"],\n', 1)
+          s = s.replace('  const counts = Object.fromEntries(PENALTY_TYPES.map(([id]) => [id, 0]));\n', '  const counts = Object.fromEntries(PENALTY_TYPES.map(([id]) => [id, 0]));\n  counts.shugo = Array.isArray(match.shugoEvents) ? match.shugoEvents.length : (match.matchHistory || []).filter((event) => event.type === "shugo").length;\n', 1)
+          s = s.replace('  const totalSanctions = totalPenalties.filter((item) => item.id !== "mai").reduce((sum, item) => sum + item.value, 0);', '  const totalSanctions = totalPenalties.filter((item) => item.id !== "mai" && item.id !== "shugo").reduce((sum, item) => sum + item.value, 0);', 1)
+          s = s.replace('  const totalMai = totalPenalties.find((item) => item.id === "mai")?.value || 0;\n', '  const totalMai = totalPenalties.find((item) => item.id === "mai")?.value || 0;\n  const totalShugo = totalPenalties.find((item) => item.id === "shugo")?.value || 0;\n', 1)
+          s = s.replace('<div className="statistics-penalty-cards"><article className="card"><span className="number">{totalMai}</span><h3>Maï constatés</h3><p>Événements techniques, distincts des sanctions.</p></article>{totalPenalties.filter((item) => item.id !== "mai").map', '<div className="statistics-penalty-cards"><article className="card"><span className="number">{totalMai}</span><h3>Maï constatés</h3><p>Événements techniques, distincts des sanctions.</p></article><article className="card"><span className="number">{totalShugo}</span><h3>SHUGO</h3><p>Concertations arbitrales enregistrées sur une attaque précise.</p></article>{totalPenalties.filter((item) => item.id !== "mai" && item.id !== "shugo").map', 1)
+          p.write_text(s)
+          PY
+          npm ci
+          npm run build
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/MatchManager.jsx src/StatisticsManager.jsx
+          git diff --cached --check
+          git commit -m 'feat: track SHUGO by assault' || exit 0
+          git push origin HEAD:main
