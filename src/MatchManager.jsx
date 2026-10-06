@@ -4,13 +4,13 @@ import { determineIndividualMatchWinner } from "./competitionLogic";
 import { applyMaiWarning } from "./maiRules";
 import { isJuRandoriDisqualified, juRandoriNegativeTotal, normalizeJuRandoriPenalties } from "./juRandoriPenaltyRules";
 import { DraftRecoveryNotice, useArbitrationDraft } from "./arbitrationDrafts";
+import { directFlagRowResult, isFullDirectFlagMatchResolved, isShortRandoriResolved, normalizeDirectFlagRows, scoreDirectFlagRows, setDirectFlagCount } from "./directFlagScoring";
 
 const FUKUSHIN = ["Fukushin 1", "Fukushin 2", "Fukushin 3"];
 const DECISIONS = ["AKA", "SHIRO", "HIKIWAKE"];
 const FINAL_DECISIONS = ["AKA", "SHIRO"];
 const ASSAULTS = ["Tsuki 1", "Tsuki 2", "Mae Geri 1", "Mae Geri 2", "Mawashi 1", "Mawashi 2", "Dernier Tsuki"];
 const TIE_BREAK_ASSAULTS = ["Tsuki", "Mae Geri", "Mawashi Geri"];
-const RANDORI_SHORT_ASSAULT_INDEXES = [0, 2, 4];
 const PENALTIES = [
   { id: "keikoku", label: "Keikoku", value: 0 },
   { id: "fujubun", label: "Fujubun (-1)", value: 1 },
@@ -18,344 +18,57 @@ const PENALTIES = [
   { id: "hansoku_chui", label: "Hansoku Chui (-3)", value: 3 },
   { id: "shikaku", label: "Shikaku", value: 0, disqualification: true },
 ];
-const PENALTY_FLOW = ["keikoku", "fujubun", "chui", "hansoku_chui", "shikaku"];
 const PENALTY_BY_ID = Object.fromEntries(PENALTIES.map((penalty) => [penalty.id, penalty]));
 const MANUAL_PENALTIES = PENALTIES.filter((penalty) => penalty.id !== "shikaku");
 
-function relabelVotes(rows, labels) {
-  return labels.map((label, index) => ({ ...(rows?.[index] || { votes: ["", "", ""] }), label }));
-}
-
-function voteResult(votes, allowDraw = true) {
-  const counts = votes.reduce((totals, vote) => ({ ...totals, [vote]: (totals[vote] || 0) + 1 }), {});
-  if (counts.AKA >= 2) return "AKA";
-  if (counts.SHIRO >= 2) return "SHIRO";
-  return allowDraw && votes.every(Boolean) ? "HIKIWAKE" : "";
-}
-
-function scoreRows(rows) {
-  return rows.reduce((score, row) => {
-    return row.votes.reduce((totals, vote) => {
-      if (vote === "AKA") return { ...totals, akaPositive: totals.akaPositive + 1 };
-      if (vote === "SHIRO") return { ...totals, shiroPositive: totals.shiroPositive + 1 };
-      if (vote === "HIKIWAKE") return { akaPositive: totals.akaPositive + 1, shiroPositive: totals.shiroPositive + 1 };
-      return totals;
-    }, score);
-  }, { akaPositive: 0, shiroPositive: 0 });
-}
-
-function normalizePenalties(penalties = []) {
-  return normalizeJuRandoriPenalties(penalties).map((penalty) => ({
-    ...PENALTY_BY_ID[penalty.id],
-    ...penalty,
-  }));
-}
-
-function penaltyTotal(penalties) {
-  return juRandoriNegativeTotal(penalties);
-}
-
-function isDisqualified(penalties) {
-  return isJuRandoriDisqualified(penalties);
-}
-
-function groupedPenalties(penalties) {
-  const counts = normalizePenalties(penalties).reduce((totals, penalty) => ({
-    ...totals,
-    [penalty.id]: (totals[penalty.id] || 0) + 1,
-  }), {});
-  return PENALTIES.map((penalty) => ({ ...penalty, count: counts[penalty.id] || 0 })).filter((penalty) => penalty.count > 0);
-}
-
-function removePenaltyFromChain(penalties, penaltyId) {
-  const directIndex = penalties.findIndex((penalty) => penalty.id === penaltyId);
-  if (directIndex >= 0) return penalties.filter((_, itemIndex) => itemIndex !== directIndex);
-  if (penaltyId !== "fujubun") return penalties;
-
-  let remaining = 3;
-  return penalties.filter((penalty) => {
-    if (remaining > 0 && penalty.id === "keikoku") {
-      remaining -= 1;
-      return false;
-    }
-    return true;
-  });
-}
+function relabelVotes(rows, labels) { return labels.map((label, index) => ({ ...(rows?.[index] || { votes: ["", "", ""] }), label })); }
+function voteResult(votes, allowDraw = true) { const counts = votes.reduce((totals, vote) => ({ ...totals, [vote]: (totals[vote] || 0) + 1 }), {}); if (counts.AKA >= 2) return "AKA"; if (counts.SHIRO >= 2) return "SHIRO"; return allowDraw && votes.every(Boolean) ? "HIKIWAKE" : ""; }
+function normalizePenalties(penalties = []) { return normalizeJuRandoriPenalties(penalties).map((penalty) => ({ ...PENALTY_BY_ID[penalty.id], ...penalty })); }
+function penaltyTotal(penalties) { return juRandoriNegativeTotal(penalties); }
+function isDisqualified(penalties) { return isJuRandoriDisqualified(penalties); }
+function groupedPenalties(penalties) { const counts = normalizePenalties(penalties).reduce((totals, penalty) => ({ ...totals, [penalty.id]: (totals[penalty.id] || 0) + 1 }), {}); return PENALTIES.map((penalty) => ({ ...penalty, count: counts[penalty.id] || 0 })).filter((penalty) => penalty.count > 0); }
+function removePenaltyFromChain(penalties, penaltyId) { const directIndex = penalties.findIndex((penalty) => penalty.id === penaltyId); if (directIndex >= 0) return penalties.filter((_, itemIndex) => itemIndex !== directIndex); if (penaltyId !== "fujubun") return penalties; let remaining = 3; return penalties.filter((penalty) => { if (remaining > 0 && penalty.id === "keikoku") { remaining -= 1; return false; } return true; }); }
 
 function createScoreSheetState(match) {
-  return {
-    kataAka: match?.kataAka || ["", "", ""],
-    kataShiro: match?.kataShiro || ["", "", ""],
-    assaults: relabelVotes(match?.assaults, ASSAULTS),
-    tieBreakAssaults: relabelVotes(match?.tieBreakAssaults, TIE_BREAK_ASSAULTS),
-    finalFlags: match?.finalFlags || ["", "", ""],
-    penalties: match?.penalties || { aka: [], shiro: [] },
-    maiWarnings: match?.maiWarnings || { aka: [], shiro: [] },
-    penaltyEvents: match?.penaltyEvents || [],
-  };
+  return { kataAka: match?.kataAka || ["", "", ""], kataShiro: match?.kataShiro || ["", "", ""], assaults: normalizeDirectFlagRows(match?.assaults, ASSAULTS), tieBreakAssaults: relabelVotes(match?.tieBreakAssaults, TIE_BREAK_ASSAULTS), finalFlags: match?.finalFlags || ["", "", ""], penalties: match?.penalties || { aka: [], shiro: [] }, maiWarnings: match?.maiWarnings || { aka: [], shiro: [] }, penaltyEvents: match?.penaltyEvents || [] };
 }
 
 function MatchManager({ match, onSave }) {
   const initialScoreSheet = createScoreSheetState(match);
-  const [kataAka, setKataAka] = useState(initialScoreSheet.kataAka);
-  const [kataShiro, setKataShiro] = useState(initialScoreSheet.kataShiro);
-  const [assaults, setAssaults] = useState(initialScoreSheet.assaults);
-  const [tieBreakAssaults, setTieBreakAssaults] = useState(initialScoreSheet.tieBreakAssaults);
-  const [finalFlags, setFinalFlags] = useState(initialScoreSheet.finalFlags);
-  const [penalties, setPenalties] = useState(initialScoreSheet.penalties);
-  const [maiWarnings, setMaiWarnings] = useState(initialScoreSheet.maiWarnings);
-  const [penaltyEvents, setPenaltyEvents] = useState(initialScoreSheet.penaltyEvents);
-  const [maiHistory, setMaiHistory] = useState(() => (match?.matchHistory || []).filter((event) => event.type === "mai" || event.type === "mai_conversion" || event.type === "mai_removed"));
-  const draftPayload = useMemo(() => ({ kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory, penaltyEvents }), [kataAka, kataShiro, assaults, tieBreakAssaults, finalFlags, penalties, maiWarnings, maiHistory, penaltyEvents]);
-  const draft = useArbitrationDraft(match, draftPayload, (saved) => {
-    setKataAka(saved.kataAka || ["", "", ""]); setKataShiro(saved.kataShiro || ["", "", ""]);
-    setAssaults(relabelVotes(saved.assaults, ASSAULTS)); setTieBreakAssaults(relabelVotes(saved.tieBreakAssaults, TIE_BREAK_ASSAULTS));
-    setFinalFlags(saved.finalFlags || ["", "", ""]); setPenalties(saved.penalties || { aka: [], shiro: [] });
-    setMaiWarnings(saved.maiWarnings || { aka: [], shiro: [] }); setMaiHistory(saved.maiHistory || []); setPenaltyEvents(saved.penaltyEvents || []);
-  });
-  const draftMounted = useRef(false);
-  const initialDraftSnapshotRef = useRef("");
-  const isKata = competitionRulesEngine.isKataDiscipline(match.discipline);
-  const hasMai = match.discipline === "ju_randori" || match.discipline === "ju_randori_equipe";
-  const isEditing = match.statut === "Terminé";
-  const isLocked = false;
-  const sum = (values) => values.reduce((total, value) => total + Number(value || 0), 0);
-  const kataScoreAka = sum(kataAka);
-  const kataScoreShiro = sum(kataShiro);
-  const kataReady = kataAka.every((value) => value !== "") && kataShiro.every((value) => value !== "") && kataScoreAka !== kataScoreShiro;
+  const [kataAka, setKataAka] = useState(initialScoreSheet.kataAka); const [kataShiro, setKataShiro] = useState(initialScoreSheet.kataShiro); const [assaults, setAssaults] = useState(initialScoreSheet.assaults); const [penalties, setPenalties] = useState(initialScoreSheet.penalties); const [maiWarnings, setMaiWarnings] = useState(initialScoreSheet.maiWarnings); const [penaltyEvents, setPenaltyEvents] = useState(initialScoreSheet.penaltyEvents); const [maiHistory, setMaiHistory] = useState(() => (match?.matchHistory || []).filter((event) => ["mai", "mai_conversion", "mai_removed"].includes(event.type)));
+  const draftPayload = useMemo(() => ({ kataAka, kataShiro, assaults, penalties, maiWarnings, maiHistory, penaltyEvents }), [kataAka, kataShiro, assaults, penalties, maiWarnings, maiHistory, penaltyEvents]);
+  const draft = useArbitrationDraft(match, draftPayload, (saved) => { setKataAka(saved.kataAka || ["", "", ""]); setKataShiro(saved.kataShiro || ["", "", ""]); setAssaults(normalizeDirectFlagRows(saved.assaults, ASSAULTS)); setPenalties(saved.penalties || { aka: [], shiro: [] }); setMaiWarnings(saved.maiWarnings || { aka: [], shiro: [] }); setMaiHistory(saved.maiHistory || []); setPenaltyEvents(saved.penaltyEvents || []); });
+  const draftMounted = useRef(false); const initialDraftSnapshotRef = useRef("");
+  const isKata = competitionRulesEngine.isKataDiscipline(match.discipline); const hasMai = match.discipline === "ju_randori" || match.discipline === "ju_randori_equipe"; const isLocked = false;
+  const sum = (values) => values.reduce((total, value) => total + Number(value || 0), 0); const kataScoreAka = sum(kataAka); const kataScoreShiro = sum(kataShiro); const kataReady = kataAka.every((value) => value !== "") && kataShiro.every((value) => value !== "") && kataScoreAka !== kataScoreShiro;
 
-  const randoriScore = useMemo(() => {
-    const main = scoreRows(assaults);
-    const akaNegative = penaltyTotal(penalties.aka);
-    const shiroNegative = penaltyTotal(penalties.shiro);
-    const akaDisqualified = isDisqualified(penalties.aka);
-    const shiroDisqualified = isDisqualified(penalties.shiro);
-    const akaTotal = main.akaPositive - akaNegative;
-    const shiroTotal = main.shiroPositive - shiroNegative;
-    const fullAssaultsResolved = assaults.every((row) => voteResult(row.votes));
-    const shortRandoriResolved = match.discipline === "randori"
-      && RANDORI_SHORT_ASSAULT_INDEXES.every((index) => voteResult(assaults[index]?.votes || []));
-    const phase = "main";
-    const winner = determineIndividualMatchWinner({ akaTotal, shiroTotal, akaDisqualified, shiroDisqualified });
+  const randoriScore = useMemo(() => { const main = scoreDirectFlagRows(assaults); const akaNegative = penaltyTotal(penalties.aka); const shiroNegative = penaltyTotal(penalties.shiro); const akaDisqualified = isDisqualified(penalties.aka); const shiroDisqualified = isDisqualified(penalties.shiro); const akaTotal = main.akaPositive - akaNegative; const shiroTotal = main.shiroPositive - shiroNegative; const fullAssaultsResolved = isFullDirectFlagMatchResolved(assaults); const shortRandoriResolved = match.discipline === "randori" && isShortRandoriResolved(assaults); const winner = determineIndividualMatchWinner({ akaTotal, shiroTotal, akaDisqualified, shiroDisqualified }); return { ...main, akaNegative, shiroNegative, akaTotal, shiroTotal, phase: "main", winner, complete: fullAssaultsResolved || shortRandoriResolved, fullAssaultsResolved, shortRandoriResolved }; }, [assaults, penalties, match.discipline]);
 
-    return {
-      ...main,
-      akaNegative,
-      shiroNegative,
-      akaTotal,
-      shiroTotal,
-      phase,
-      winner,
-      complete: fullAssaultsResolved || shortRandoriResolved,
-      fullAssaultsResolved,
-      shortRandoriResolved,
-    };
-  }, [assaults, tieBreakAssaults, finalFlags, penalties]);
+  function setFlagCount(rowIndex, side, value) { if (isLocked) return; setAssaults((current) => setDirectFlagCount(current, rowIndex, side, value)); }
+  function addPenalty(side, penalty) { if (isLocked || penalty.id === "shikaku") return; const at = new Date().toISOString(); setPenalties((current) => ({ ...current, [side]: [...current[side], { ...penalty, at }] })); setPenaltyEvents((events) => [...events, { penaltyId: penalty.id, side, action: "add", automatic: false, source: "manual", at }]); }
+  function removePenalty(side, penaltyId) { if (isLocked) return; const at = new Date().toISOString(); setPenalties((current) => ({ ...current, [side]: removePenaltyFromChain(current[side], penaltyId) })); setPenaltyEvents((events) => [...events, { penaltyId, side, action: "remove", automatic: false, source: "correction", at }]); }
+  function addMai(side, assaultIndex) { if (isLocked || !hasMai || assaultIndex < 0 || assaultIndex >= assaults.length) return; const at = new Date().toISOString(); const warning = { assaultIndex, assaultLabel: assaults[assaultIndex]?.label || ASSAULTS[assaultIndex], at }; const { activeWarnings, conversion } = applyMaiWarning(maiWarnings[side], warning); const conversions = conversion ? [{ ...conversion, at }] : []; setMaiWarnings((current) => ({ ...current, [side]: activeWarnings })); setPenalties((current) => ({ ...current, [side]: [...current[side], ...conversions.map((item) => ({ ...PENALTY_BY_ID.fujubun, at, automatic: true, source: "mai", maiConversion: item }))] })); setMaiHistory((current) => [...current, { type: "mai", label: `Maï ${side.toUpperCase()}`, detail: warning.assaultLabel, at }, ...conversions.map((item) => ({ type: "mai_conversion", label: `Conversion Maï ${side.toUpperCase()}`, detail: `${item.consumed.map((mai) => mai.assaultLabel).join(" + ")} → Fujubun`, at }))]); setPenaltyEvents((events) => [...events, { penaltyId: "mai", side, action: "add", automatic: false, source: "mai", assaultIndex, assaultLabel: warning.assaultLabel, at }, ...conversions.map(() => ({ penaltyId: "fujubun", side, action: "add", automatic: true, source: "mai_conversion", at }))]); }
+  function removeLastMai(side) { if (isLocked || !hasMai || !maiWarnings[side].length) return; const removed = maiWarnings[side][maiWarnings[side].length - 1]; const at = new Date().toISOString(); setMaiWarnings((current) => ({ ...current, [side]: current[side].slice(0, -1) })); setMaiHistory((current) => [...current, { type: "mai_removed", label: `Maï retiré ${side.toUpperCase()}`, detail: removed.assaultLabel, at }]); setPenaltyEvents((events) => [...events, { penaltyId: "mai", side, action: "remove", automatic: false, source: "correction", assaultIndex: removed.assaultIndex, assaultLabel: removed.assaultLabel, at }]); }
+  function buildHistory(winner) { return [{ type: "start", label: "Début du combat", detail: `${match.aka?.nom || "AKA"} vs ${match.shiro?.nom || "SHIRO"}` }, ...assaults.map((row) => ({ type: "assault", label: row.label, detail: directFlagRowResult(row) || "En attente", akaFlags: row.akaFlags || 0, shiroFlags: row.shiroFlags || 0 })), ...maiHistory, ...["aka", "shiro"].flatMap((side) => normalizePenalties(penalties[side]).map((penalty) => ({ type: "penalty", label: `Pénalité ${side.toUpperCase()}`, detail: penalty.label }))), { type: "final", label: "Résultat final", detail: winner ? winner.toUpperCase() : "Égalité" }]; }
+  async function save() { if (isKata) { if (!kataReady) return alert("Saisissez toutes les notes et départagez le match avant de valider."); return draft.finalize(() => onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : "shiro" })); } if (isLocked) return; const penaltyDisqualification = isDisqualified(penalties.aka) || isDisqualified(penalties.shiro); if (!randoriScore.complete && !penaltyDisqualification) return alert(match.discipline === "randori" ? "Pour valider un Randori, saisissez soit les 7 attaques, soit au minimum Tsuki 1, Mae Geri 1 et Mawashi 1." : "Saisissez le résultat des sept assauts avant de valider."); return draft.finalize(() => onSave({ assaults, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, penaltyEvents, maiWarnings, akaNegative: randoriScore.akaNegative, shiroNegative: randoriScore.shiroNegative, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) })); }
 
-  function setVote(section, rowIndex, judgeIndex, value) {
-    if (isLocked) return;
-    const setter = section === "main" ? setAssaults : setTieBreakAssaults;
-    setter((current) => current.map((row, index) => index === rowIndex ? { ...row, votes: row.votes.map((vote, itemIndex) => itemIndex === judgeIndex ? value : vote) } : row));
-  }
+  useEffect(() => { const scrollToTop = () => { window.scrollTo({ top: 0, left: 0, behavior: "auto" }); if (document.scrollingElement) document.scrollingElement.scrollTop = 0; }; scrollToTop(); const frame = window.requestAnimationFrame(scrollToTop); return () => window.cancelAnimationFrame(frame); }, [match.id]);
+  useEffect(() => { const next = createScoreSheetState(match); setKataAka(next.kataAka); setKataShiro(next.kataShiro); setAssaults(next.assaults); setPenalties(next.penalties); setMaiWarnings(next.maiWarnings); setPenaltyEvents(next.penaltyEvents || []); setMaiHistory((match?.matchHistory || []).filter((event) => ["mai", "mai_conversion", "mai_removed"].includes(event.type))); }, [match.id]);
+  useEffect(() => { const snapshot = JSON.stringify(draftPayload); if (!draftMounted.current) { draftMounted.current = true; initialDraftSnapshotRef.current = snapshot; return; } if (snapshot !== initialDraftSnapshotRef.current) draft.markChanged(); }, [draftPayload]);
 
-  function addPenalty(side, penalty) {
-    if (isLocked || penalty.id === "shikaku") return;
-    const at = new Date().toISOString();
-    setPenalties((current) => {
-      const nextSide = [...current[side], { ...penalty, at }];
-      setPenaltyEvents((events) => [
-        ...events,
-        { penaltyId: penalty.id, side, action: "add", automatic: false, source: "manual", at },
-      ]);
-      return { ...current, [side]: nextSide };
-    });
-  }
-
-  function removePenalty(side, penaltyId) {
-    if (isLocked) return;
-    const at = new Date().toISOString();
-    setPenalties((current) => ({ ...current, [side]: removePenaltyFromChain(current[side], penaltyId) }));
-    setPenaltyEvents((events) => [...events, { penaltyId, side, action: "remove", automatic: false, source: "correction", at }]);
-  }
-
-  function addMai(side, assaultIndex) {
-    if (isLocked || !hasMai || assaultIndex < 0 || assaultIndex >= assaults.length) return;
-    const at = new Date().toISOString();
-    const warning = {
-      assaultIndex,
-      assaultLabel: assaults[assaultIndex]?.label || ASSAULTS[assaultIndex],
-      at,
-    };
-    const { activeWarnings, conversion } = applyMaiWarning(maiWarnings[side], warning);
-    const conversions = conversion ? [{ ...conversion, at }] : [];
-
-    setMaiWarnings((current) => ({ ...current, [side]: activeWarnings }));
-    setPenalties((current) => ({
-      ...current,
-      [side]: [
-        ...current[side],
-        ...conversions.map((item) => ({ ...PENALTY_BY_ID.fujubun, at, automatic: true, source: "mai", maiConversion: item })),
-      ],
-    }));
-    setMaiHistory((current) => [
-      ...current,
-      { type: "mai", label: `Maï ${side.toUpperCase()}`, detail: warning.assaultLabel, at },
-      ...conversions.map((item) => ({
-        type: "mai_conversion",
-        label: `Conversion Maï ${side.toUpperCase()}`,
-        detail: `${item.consumed.map((mai) => mai.assaultLabel).join(" + ")} → Fujubun`,
-        at,
-      })),
-    ]);
-    setPenaltyEvents((events) => [
-      ...events,
-      { penaltyId: "mai", side, action: "add", automatic: false, source: "mai", assaultIndex, assaultLabel: warning.assaultLabel, at },
-      ...conversions.map(() => ({ penaltyId: "fujubun", side, action: "add", automatic: true, source: "mai_conversion", at })),
-    ]);
-  }
-
-  function removeLastMai(side) {
-    if (isLocked || !hasMai || !maiWarnings[side].length) return;
-    const removed = maiWarnings[side][maiWarnings[side].length - 1];
-    setMaiWarnings((current) => ({ ...current, [side]: current[side].slice(0, -1) }));
-    const at = new Date().toISOString();
-    setMaiHistory((current) => [...current, { type: "mai_removed", label: `Maï retiré ${side.toUpperCase()}`, detail: removed.assaultLabel, at }]);
-    setPenaltyEvents((events) => [...events, { penaltyId: "mai", side, action: "remove", automatic: false, source: "correction", assaultIndex: removed.assaultIndex, assaultLabel: removed.assaultLabel, at }]);
-  }
-
-  function buildHistory(winner) {
-    return [
-      { type: "start", label: "Début du combat", detail: `${match.aka?.nom || "AKA"} vs ${match.shiro?.nom || "SHIRO"}` },
-      ...assaults.map((row) => ({ type: "assault", label: row.label, detail: voteResult(row.votes) || "En attente", votes: row.votes })),
-      ...maiHistory,
-      ...["aka", "shiro"].flatMap((side) => normalizePenalties(penalties[side]).map((penalty) => ({ type: "penalty", label: `Pénalité ${side.toUpperCase()}`, detail: penalty.label }))),
-      { type: "final", label: "Résultat final", detail: winner ? winner.toUpperCase() : "Égalité" },
-    ];
-  }
-
-  async function save() {
-    if (isKata) {
-      if (!kataReady) return alert("Saisissez toutes les notes et départagez le match avant de valider.");
-      return draft.finalize(() => onSave({ kataAka, kataShiro, scoreAka: kataScoreAka, scoreShiro: kataScoreShiro, vainqueur: kataScoreAka > kataScoreShiro ? "aka" : "shiro" }));
-    }
-    if (isLocked) return;
-    const penaltyDisqualification = isDisqualified(penalties.aka) || isDisqualified(penalties.shiro);
-    if (!randoriScore.complete && !penaltyDisqualification) {
-      return alert(match.discipline === "randori"
-        ? "Pour valider un Randori, saisissez soit les 7 attaques, soit au minimum Tsuki 1, Mae Geri 1 et Mawashi 1."
-        : "Saisissez le résultat des sept assauts avant de valider.");
-    }
-    return draft.finalize(() => onSave({ assaults, penalties: { aka: normalizePenalties(penalties.aka), shiro: normalizePenalties(penalties.shiro) }, penaltyEvents, maiWarnings, akaNegative: randoriScore.akaNegative, shiroNegative: randoriScore.shiroNegative, scoreAka: randoriScore.akaTotal, scoreShiro: randoriScore.shiroTotal, akaScore: randoriScore.akaTotal, shiroScore: randoriScore.shiroTotal, vainqueur: randoriScore.winner, matchHistory: buildHistory(randoriScore.winner) }));
-  }
-
-  useEffect(() => {
-    const scrollToTop = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-      if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
-    };
-    scrollToTop();
-    const frame = window.requestAnimationFrame(scrollToTop);
-    return () => window.cancelAnimationFrame(frame);
-  }, [match.id]);
-
-  useEffect(() => {
-    const nextScoreSheet = createScoreSheetState(match);
-    setKataAka(nextScoreSheet.kataAka);
-    setKataShiro(nextScoreSheet.kataShiro);
-    setAssaults(nextScoreSheet.assaults);
-    setTieBreakAssaults(nextScoreSheet.tieBreakAssaults);
-    setFinalFlags(nextScoreSheet.finalFlags);
-    setPenalties(nextScoreSheet.penalties);
-    setMaiWarnings(nextScoreSheet.maiWarnings);
-    setPenaltyEvents(nextScoreSheet.penaltyEvents || []);
-    setMaiHistory((match?.matchHistory || []).filter((event) => event.type === "mai" || event.type === "mai_conversion" || event.type === "mai_removed"));
-  }, [match.id]);
-
-  useEffect(() => {
-    const snapshot = JSON.stringify(draftPayload);
-    if (!draftMounted.current) {
-      draftMounted.current = true;
-      initialDraftSnapshotRef.current = snapshot;
-      return;
-    }
-    if (snapshot === initialDraftSnapshotRef.current) return;
-    draft.markChanged();
-  }, [draftPayload]);
-
-  const akaDisqualified = isDisqualified(penalties.aka);
-  const shiroDisqualified = isDisqualified(penalties.shiro);
-  const penaltyDisqualification = akaDisqualified || shiroDisqualified;
-  const disqualifiedSide = akaDisqualified && !shiroDisqualified ? "aka" : shiroDisqualified && !akaDisqualified ? "shiro" : null;
-  const disqualifiedCompetitor = disqualifiedSide ? match[disqualifiedSide] : null;
-  const winnerCompetitor = randoriScore.winner ? match[randoriScore.winner] : null;
-
+  const akaDisqualified = isDisqualified(penalties.aka); const shiroDisqualified = isDisqualified(penalties.shiro); const penaltyDisqualification = akaDisqualified || shiroDisqualified; const disqualifiedSide = akaDisqualified && !shiroDisqualified ? "aka" : shiroDisqualified && !akaDisqualified ? "shiro" : null; const disqualifiedCompetitor = disqualifiedSide ? match[disqualifiedSide] : null; const winnerCompetitor = randoriScore.winner ? match[randoriScore.winner] : null;
   if (draft.pendingDraft) return <section className="match-manager"><DraftRecoveryNotice draft={draft.pendingDraft} onResume={draft.resume} onAbandon={draft.abandon} /></section>;
-
-  if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0, 1, 2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save} disabled={!kataReady}>Valider le résultat</button></div></section>;
-
-  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} maiWarnings={maiWarnings} hasMai={hasMai} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} onRemoveMai={removeLastMai} disabled={isLocked} />{penaltyDisqualification && <div className="match-result winner-highlight" role="alert" aria-live="assertive" style={{ border: "3px solid #b71c1c", background: "#fff3f3", padding: "18px", margin: "18px 0", textAlign: "center" }}><h3 style={{ color: "#b71c1c", marginBottom: "10px" }}>⛔ DISQUALIFICATION — COMBAT TERMINÉ</h3>{disqualifiedSide ? <><p><strong>{disqualifiedSide.toUpperCase()} · {disqualifiedCompetitor?.nom} {disqualifiedCompetitor?.prenom}</strong> : PERDANT par disqualification</p><p><strong>{randoriScore.winner?.toUpperCase()} · {winnerCompetitor?.nom} {winnerCompetitor?.prenom}</strong> : VAINQUEUR</p></> : <p>Disqualification détectée. Vérifiez les sanctions avant validation.</p>}<p>Le résultat ne sera enregistré qu'après validation de l'arbitre.</p></div>}<AssaultCards title={match.discipline === "randori" ? "Les 7 assauts · format court possible : Tsuki 1, Mae Geri 1, Mawashi 1" : "Les 7 assauts"} rows={assaults} disabled={isLocked || penaltyDisqualification} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} /><div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>{penaltyDisqualification ? "Fin du combat par disqualification" : "Résultat du combat"}</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked || (!randoriScore.complete && !penaltyDisqualification)}>{isLocked ? "Combat validé" : penaltyDisqualification ? "Valider la fin du combat" : "Valider le combat"}</button></div></section>;
+  if (isKata) return <section className="match-manager"><div className="manager-header"><div><p className="surtitle">KATA</p><h2>Feuille officielle de notation Kata</h2><p>{match.categoryName}</p></div></div><div className="assauts"><h3>Notes Kata</h3>{[0,1,2].map((index) => <div className="juge" key={index}><span>Juge {index + 1}</span><input type="number" step="0.1" value={kataAka[index]} onChange={(event) => setKataAka(kataAka.map((value, i) => i === index ? event.target.value : value))} placeholder="AKA" /><input type="number" step="0.1" value={kataShiro[index]} onChange={(event) => setKataShiro(kataShiro.map((value, i) => i === index ? event.target.value : value))} placeholder="SHIRO" /></div>)}</div><div className="match-result"><h3>Vainqueur</h3><p>{kataScoreAka > kataScoreShiro ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : kataScoreShiro > kataScoreAka ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité / à départager"}</p><button className="primary" onClick={save} disabled={!kataReady}>Valider le résultat</button></div></section>;
+  return <section className="match-manager randori-sheet"><div className="match-meta"><p><strong>Discipline</strong>{competitionRulesEngine.disciplineLabel(match.discipline)}</p><p><strong>Catégorie</strong>{match.categoryName || "Non renseignée"}</p><p><strong>Poule</strong>{match.poolName || match.poolId || "Non renseignée"}</p></div><ControlPanel match={match} score={randoriScore} penalties={penalties} maiWarnings={maiWarnings} hasMai={hasMai} onAddPenalty={addPenalty} onRemovePenalty={removePenalty} onRemoveMai={removeLastMai} disabled={isLocked} />{penaltyDisqualification && <div className="match-result winner-highlight" role="alert"><h3>⛔ DISQUALIFICATION — COMBAT TERMINÉ</h3>{disqualifiedSide ? <><p><strong>{disqualifiedSide.toUpperCase()} · {disqualifiedCompetitor?.nom} {disqualifiedCompetitor?.prenom}</strong> : PERDANT par disqualification</p><p><strong>{randoriScore.winner?.toUpperCase()} · {winnerCompetitor?.nom} {winnerCompetitor?.prenom}</strong> : VAINQUEUR</p></> : <p>Disqualification détectée. Vérifiez les sanctions avant validation.</p>}</div>}<DirectFlagAssaults rows={assaults} disabled={isLocked || penaltyDisqualification} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} onFlag={setFlagCount} /><div className={`match-result ${randoriScore.winner ? "winner-highlight" : ""}`}><h3>{penaltyDisqualification ? "Fin du combat par disqualification" : "Résultat du combat"}</h3><p>{randoriScore.winner === "aka" ? `AKA · ${match.aka?.nom} ${match.aka?.prenom}` : randoriScore.winner === "shiro" ? `SHIRO · ${match.shiro?.nom} ${match.shiro?.prenom}` : "Égalité"}</p><button className="primary kata-validate" onClick={save} disabled={isLocked || (!randoriScore.complete && !penaltyDisqualification)}>{penaltyDisqualification ? "Valider la fin du combat" : "Valider le combat"}</button></div></section>;
 }
 
-function ControlPanel({ match, score, penalties, maiWarnings, hasMai, onAddPenalty, onRemovePenalty, onRemoveMai, disabled }) { return <div className="randori-control-zone" aria-label="Console de pilotage du combat">{["aka", "shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} maiWarnings={maiWarnings[side]} hasMai={hasMai} onAddPenalty={(penalty) => onAddPenalty(side, penalty)} onRemovePenalty={(penaltyId) => onRemovePenalty(side, penaltyId)} onRemoveMai={() => onRemoveMai(side)} disabled={disabled} />)}</div>; }
-function CompetitorControlCard({ side, competitor, score, penalties, maiWarnings, hasMai, onAddPenalty, onRemovePenalty, onRemoveMai, disabled }) { const visiblePenalties = groupedPenalties(penalties); return <article className={`control-card ${side}`}><div className="control-fighter"><h2>{side.toUpperCase()} <span>{side === "aka" ? "Rouge" : "Blanc"}</span></h2><p><strong>{competitor?.nom || "-"} {competitor?.prenom || ""}</strong><span>{competitor?.club || "Club non renseigné"}</span></p><span className="fighter-present-callout">SE PRÉSENTE</span></div><div className="control-score-values"><p><span>Points +</span><strong>{score[`${side}Positive`]}</strong></p><p><span>Points -</span><strong>{score[`${side}Negative`]}</strong></p><p><span>Total</span><strong>{score[`${side}Total`]}</strong></p></div><div className="penalty-actions"><span className="penalty-title">Pénalités</span>{MANUAL_PENALTIES.map((penalty) => <button key={penalty.id} className={`penalty-button ${penalty.id}`} type="button" disabled={disabled} onClick={() => onAddPenalty(penalty)}>{penalty.label}</button>)}</div><div className="penalty-list" aria-live="polite">{hasMai && maiWarnings.length > 0 && <button type="button" disabled={disabled} onClick={onRemoveMai} title={`Dernier Maï : ${maiWarnings[maiWarnings.length - 1].assaultLabel}`}>Maï en cours ×{maiWarnings.length} <span aria-hidden="true">[-]</span></button>}{visiblePenalties.map((penalty) => <button key={penalty.id} type="button" disabled={disabled} onClick={() => onRemovePenalty(penalty.id)}>{penalty.label} ×{penalty.count} <span aria-hidden="true">[-]</span></button>)}</div></article>; }
-function DecisionButtons({ value, options = DECISIONS, onChange, disabled = false }) { return <div className="decision-buttons">{options.map((option) => { const selected = value === option; return <button key={option} type="button" disabled={disabled} aria-pressed={selected} className={`vote-button ${selected ? `selected ${option.toLowerCase()}` : ""}`} onClick={() => onChange(selected ? "" : option)}>{option}{selected ? <span className="vote-selected-mark" aria-hidden="true">✓</span> : null}</button>; })}</div>; }
-function AssaultCards({ title, rows, onVote, disabled = false, hasMai = false, maiWarnings = { aka: [], shiro: [] }, onAddMai }) { return <div className="assaults-section"><h3>{title}</h3>{rows.map((row, rowIndex) => { const akaMaiCount = (maiWarnings.aka || []).filter((item) => item.assaultIndex === rowIndex).length; const shiroMaiCount = (maiWarnings.shiro || []).filter((item) => item.assaultIndex === rowIndex).length; return <article className="assault-card" key={row.label}><div className="assault-card-header"><span className="assault-label">{row.label}</span><strong className={`result-pill ${voteResult(row.votes).toLowerCase()}`}>{voteResult(row.votes) || "En attente"}</strong></div>{hasMai && <div className="assault-mai-actions" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", margin: "12px 0" }}><button className="penalty-button mai" style={{ background: "#c62828", color: "#ffffff", borderColor: "#9b1c1c" }} type="button" disabled={disabled} onClick={() => onAddMai?.("aka", rowIndex)}>AKA MAÏ{akaMaiCount ? ` ×${akaMaiCount}` : ""}</button><button className="penalty-button mai" style={{ background: "#ffffff", color: "#14213d", borderColor: "#aeb7c2" }} type="button" disabled={disabled} onClick={() => onAddMai?.("shiro", rowIndex)}>SHIRO MAÏ{shiroMaiCount ? ` ×${shiroMaiCount}` : ""}</button></div>}<div className="judge-vote-grid">{FUKUSHIN.map((judge, judgeIndex) => <div className="judge-vote-card" key={`${row.label}-${judge}`}><strong>{judge}</strong><DecisionButtons value={row.votes[judgeIndex]} disabled={disabled} onChange={(value) => onVote(rowIndex, judgeIndex, value)} /></div>)}</div></article>; })}</div>; }
+function ControlPanel({ match, score, penalties, maiWarnings, hasMai, onAddPenalty, onRemovePenalty, onRemoveMai, disabled }) { return <div className="randori-control-zone">{["aka","shiro"].map((side) => <CompetitorControlCard key={side} side={side} competitor={match[side]} score={score} penalties={penalties[side]} maiWarnings={maiWarnings[side]} hasMai={hasMai} onAddPenalty={(p) => onAddPenalty(side,p)} onRemovePenalty={(id) => onRemovePenalty(side,id)} onRemoveMai={() => onRemoveMai(side)} disabled={disabled} />)}</div>; }
+function CompetitorControlCard({ side, competitor, score, penalties, maiWarnings, hasMai, onAddPenalty, onRemovePenalty, onRemoveMai, disabled }) { const visible = groupedPenalties(penalties); return <article className={`control-card ${side}`}><div className="control-fighter"><h2>{side.toUpperCase()} <span>{side === "aka" ? "Rouge" : "Blanc"}</span></h2><p><strong>{competitor?.nom || "-"} {competitor?.prenom || ""}</strong><span>{competitor?.club || "Club non renseigné"}</span></p><span className="fighter-present-callout">SE PRÉSENTE</span></div><div className="control-score-values"><p><span>Points +</span><strong>{score[`${side}Positive`]}</strong></p><p><span>Points -</span><strong>{score[`${side}Negative`]}</strong></p><p><span>Total</span><strong>{score[`${side}Total`]}</strong></p></div><div className="penalty-actions"><span className="penalty-title">Pénalités</span>{MANUAL_PENALTIES.map((p) => <button key={p.id} className={`penalty-button ${p.id}`} type="button" disabled={disabled} onClick={() => onAddPenalty(p)}>{p.label}</button>)}</div><div className="penalty-list">{hasMai && maiWarnings.length > 0 && <button type="button" disabled={disabled} onClick={onRemoveMai}>Maï en cours ×{maiWarnings.length} [-]</button>}{visible.map((p) => <button key={p.id} type="button" disabled={disabled} onClick={() => onRemovePenalty(p.id)}>{p.label} ×{p.count} [-]</button>)}</div></article>; }
 
-export function PoolTieBreakManager({ competitorIds, getCompetitor, onComplete }) {
-  const pairs = useMemo(() => competitorIds.flatMap((akaId, index) => competitorIds.slice(index + 1).map((shiroId) => ({ akaId, shiroId }))), [competitorIds]);
-  const [pairIndex, setPairIndex] = useState(0);
-  const [stageIndex, setStageIndex] = useState(0);
-  const [votes, setVotes] = useState(["", "", ""]);
-  const [flags, setFlags] = useState(["", "", ""]);
-  const [pairResults, setPairResults] = useState([]);
-  const [decisions, setDecisions] = useState([]);
-  const pair = pairs[pairIndex];
-  const stage = TIE_BREAK_ASSAULTS[stageIndex];
+function DirectFlagAssaults({ rows, onFlag, disabled=false, hasMai=false, maiWarnings={aka:[],shiro:[]}, onAddMai }) { return <div className="assaults-section direct-flags-section"><h3>Saisie directe des drapeaux</h3>{rows.map((row,rowIndex) => { const akaMai=(maiWarnings.aka||[]).filter((i)=>i.assaultIndex===rowIndex).length; const shiroMai=(maiWarnings.shiro||[]).filter((i)=>i.assaultIndex===rowIndex).length; return <article className="assault-card direct-flag-card" key={row.label}><div className="assault-card-header"><span className="assault-label">{row.label}</span></div>{hasMai && <div className="assault-mai-actions"><button className="penalty-button mai" type="button" disabled={disabled} onClick={()=>onAddMai?.("aka",rowIndex)}>AKA MAÏ{akaMai?` ×${akaMai}`:""}</button><button className="penalty-button mai shiro" type="button" disabled={disabled} onClick={()=>onAddMai?.("shiro",rowIndex)}>SHIRO MAÏ{shiroMai?` ×${shiroMai}`:""}</button></div>}<div className="direct-flag-grid">{["aka","shiro"].map((side)=>{const value=Number(row[side==="aka"?"akaFlags":"shiroFlags"]||0);return <section className={`direct-flag-side ${side}`} key={side}><h4>{side.toUpperCase()}</h4><div className="direct-flag-buttons">{[1,2,3].map((count)=><button key={count} type="button" disabled={disabled} aria-pressed={value===count} className={value===count?"selected":""} onClick={()=>onFlag(rowIndex,side,count)}><strong>{count}</strong><span>{count===1?"drapeau":"drapeaux"}</span></button>)}</div></section>})}</div></article>})}</div>; }
 
-  function finishPair(side) {
-    const nextDecisions = [...decisions, { ...pair, winnerId: side === "aka" ? pair.akaId : pair.shiroId }];
-    if (pairIndex + 1 < pairs.length) {
-      setDecisions(nextDecisions);
-      setPairIndex(pairIndex + 1);
-      setStageIndex(0);
-      setVotes(["", "", ""]);
-      setFlags(["", "", ""]);
-      setPairResults([]);
-      return;
-    }
-    const wins = new Map(competitorIds.map((id) => [id, 0]));
-    nextDecisions.forEach(({ winnerId }) => wins.set(winnerId, wins.get(winnerId) + 1));
-    const directWinner = new Map(nextDecisions.map(({ akaId, shiroId, winnerId }) => [[akaId, shiroId].sort().join("|"), winnerId]));
-    const order = [...competitorIds].sort((a, b) => wins.get(b) - wins.get(a) || (directWinner.get([a, b].sort().join("|")) === a ? -1 : 1));
-    onComplete(order);
-  }
+function DecisionButtons({ value, options=DECISIONS, onChange, disabled=false }) { return <div className="decision-buttons">{options.map((option)=>{const selected=value===option;return <button key={option} type="button" disabled={disabled} aria-pressed={selected} className={`vote-button ${selected?`selected ${option.toLowerCase()}`:""}`} onClick={()=>onChange(selected?"":option)}>{option}</button>})}</div>; }
+function AssaultCards({ title, rows, onVote, disabled=false }) { return <div className="assaults-section"><h3>{title}</h3>{rows.map((row,rowIndex)=><article className="assault-card" key={row.label}><div className="assault-card-header"><span className="assault-label">{row.label}</span><strong className={`result-pill ${voteResult(row.votes).toLowerCase()}`}>{voteResult(row.votes)||"En attente"}</strong></div><div className="judge-vote-grid">{FUKUSHIN.map((judge,judgeIndex)=><div className="judge-vote-card" key={`${row.label}-${judge}`}><strong>{judge}</strong><DecisionButtons value={row.votes[judgeIndex]} disabled={disabled} onChange={(value)=>onVote(rowIndex,judgeIndex,value)} /></div>)}</div></article>)}</div>; }
 
-  function validateStage() {
-    const result = voteResult(votes);
-    if (!result) return;
-    const nextPairResults = [...pairResults, result];
-
-    if (stageIndex + 1 < TIE_BREAK_ASSAULTS.length) {
-      setPairResults(nextPairResults);
-      setStageIndex(stageIndex + 1);
-      setVotes(["", "", ""]);
-      return;
-    }
-
-    const akaWins = nextPairResults.filter((item) => item === "AKA").length;
-    const shiroWins = nextPairResults.filter((item) => item === "SHIRO").length;
-    if (akaWins > shiroWins) return finishPair("aka");
-    if (shiroWins > akaWins) return finishPair("shiro");
-
-    setPairResults(nextPairResults);
-    setStageIndex(TIE_BREAK_ASSAULTS.length);
-    setVotes(["", "", ""]);
-  }
-
-  if (!pair) return null;
-  const aka = getCompetitor(pair.akaId);
-  const shiro = getCompetitor(pair.shiroId);
-  const flagResult = voteResult(flags, false);
-  return <section className="match-manager randori-sheet pool-tie-break"><div className="manager-header"><div><p className="surtitle">DÉPARTAGE DE LA POULE</p><h2>{competitorIds.map((id) => { const competitor = getCompetitor(id); return `${competitor?.nom || ""} ${competitor?.prenom || ""}`.trim(); }).join(" · ")}</h2><p>Chaque comparaison se joue entièrement sur Tsuki, Mae Geri et Mawashi Geri. Les drapeaux ne servent qu'en cas d'égalité après les trois attaques.</p></div></div><div className="match-meta"><p><strong>AKA</strong>{aka?.nom} {aka?.prenom}</p><p><strong>SHIRO</strong>{shiro?.nom} {shiro?.prenom}</p><p><strong>Progression</strong>Comparaison {pairIndex + 1} / {pairs.length}</p></div>{stageIndex < TIE_BREAK_ASSAULTS.length ? <><AssaultCards title={`Départage · ${stage}`} rows={[{ label: stage, votes }]} onVote={(_, judgeIndex, value) => setVotes((current) => current.map((vote, index) => index === judgeIndex ? value : vote))} /><button className="primary" disabled={!votes.every(Boolean)} onClick={validateStage}>{stageIndex + 1 < TIE_BREAK_ASSAULTS.length ? `Valider ${stage} et passer à ${TIE_BREAK_ASSAULTS[stageIndex + 1]}` : `Valider ${stage}`}</button></> : <div className="final-flags"><h3>Égalité après les 3 attaques · décision aux drapeaux</h3><div className="final-flag-cards">{flags.map((vote, index) => <article className="final-flag-card" key={FUKUSHIN[index]}><strong>{FUKUSHIN[index]}</strong><DecisionButtons value={vote} options={FINAL_DECISIONS} onChange={(value) => setFlags((current) => current.map((item, itemIndex) => index === itemIndex ? value : item))} /></article>)}</div><button className="primary" disabled={!flagResult} onClick={() => finishPair(flagResult.toLowerCase())}>Valider la décision aux drapeaux</button></div>}</section>;
-}
+export function PoolTieBreakManager({ competitorIds, getCompetitor, onComplete }) { const pairs=useMemo(()=>competitorIds.flatMap((akaId,index)=>competitorIds.slice(index+1).map((shiroId)=>({akaId,shiroId}))),[competitorIds]); const [pairIndex,setPairIndex]=useState(0); const [stageIndex,setStageIndex]=useState(0); const [votes,setVotes]=useState(["","",""]); const [flags,setFlags]=useState(["","",""]); const [pairResults,setPairResults]=useState([]); const [decisions,setDecisions]=useState([]); const pair=pairs[pairIndex]; const stage=TIE_BREAK_ASSAULTS[stageIndex]; function finishPair(side){const next=[...decisions,{...pair,winnerId:side==="aka"?pair.akaId:pair.shiroId}];if(pairIndex+1<pairs.length){setDecisions(next);setPairIndex(pairIndex+1);setStageIndex(0);setVotes(["","",""]);setFlags(["","",""]);setPairResults([]);return;}const wins=new Map(competitorIds.map((id)=>[id,0]));next.forEach(({winnerId})=>wins.set(winnerId,wins.get(winnerId)+1));const direct=new Map(next.map(({akaId,shiroId,winnerId})=>[[akaId,shiroId].sort().join("|"),winnerId]));onComplete([...competitorIds].sort((a,b)=>wins.get(b)-wins.get(a)||(direct.get([a,b].sort().join("|"))===a?-1:1)));} function validateStage(){const result=voteResult(votes);if(!result)return;const next=[...pairResults,result];if(stageIndex+1<TIE_BREAK_ASSAULTS.length){setPairResults(next);setStageIndex(stageIndex+1);setVotes(["","",""]);return;}const aw=next.filter((x)=>x==="AKA").length,sw=next.filter((x)=>x==="SHIRO").length;if(aw>sw)return finishPair("aka");if(sw>aw)return finishPair("shiro");setPairResults(next);setStageIndex(TIE_BREAK_ASSAULTS.length);setVotes(["","",""]);} if(!pair)return null; const aka=getCompetitor(pair.akaId),shiro=getCompetitor(pair.shiroId),flagResult=voteResult(flags,false); return <section className="match-manager randori-sheet pool-tie-break"><div className="manager-header"><div><p className="surtitle">DÉPARTAGE DE LA POULE</p><h2>{competitorIds.map((id)=>{const c=getCompetitor(id);return `${c?.nom||""} ${c?.prenom||""}`.trim()}).join(" · ")}</h2></div></div><div className="match-meta"><p><strong>AKA</strong>{aka?.nom} {aka?.prenom}</p><p><strong>SHIRO</strong>{shiro?.nom} {shiro?.prenom}</p><p><strong>Progression</strong>Comparaison {pairIndex+1} / {pairs.length}</p></div>{stageIndex<TIE_BREAK_ASSAULTS.length?<><AssaultCards title={`Départage · ${stage}`} rows={[{label:stage,votes}]} onVote={(_,judgeIndex,value)=>setVotes((current)=>current.map((vote,index)=>index===judgeIndex?value:vote))}/><button className="primary" disabled={!votes.every(Boolean)} onClick={validateStage}>Valider {stage}</button></>:<div className="final-flags"><h3>Égalité après les 3 attaques · décision aux drapeaux</h3><div className="final-flag-cards">{flags.map((vote,index)=><article className="final-flag-card" key={FUKUSHIN[index]}><strong>{FUKUSHIN[index]}</strong><DecisionButtons value={vote} options={FINAL_DECISIONS} onChange={(value)=>setFlags((current)=>current.map((item,i)=>index===i?value:item))}/></article>)}</div><button className="primary" disabled={!flagResult} onClick={()=>finishPair(flagResult.toLowerCase())}>Valider la décision aux drapeaux</button></div>}</section>; }
 export default MatchManager;
