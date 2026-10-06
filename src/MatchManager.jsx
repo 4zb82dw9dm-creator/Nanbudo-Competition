@@ -22,7 +22,7 @@ const PENALTY_BY_ID = Object.fromEntries(PENALTIES.map((penalty) => [penalty.id,
 const MANUAL_PENALTIES = PENALTIES.filter((penalty) => penalty.id !== "shikaku");
 
 function relabelVotes(rows, labels) { return labels.map((label, index) => ({ ...(rows?.[index] || { votes: ["", "", ""] }), label })); }
-function voteResult(votes, allowDraw = true) { const counts = votes.reduce((totals, vote) => ({ ...totals, [vote]: (totals[vote] || 0) + 1 }), {}; if (counts.AKA >= 2) return "AKA"; if (counts.SHIRO >= 2) return "SHIRO"; return allowDraw && votes.every(Boolean) ? "HIKIWAKE" : ""; }
+function voteResult(votes, allowDraw = true) { const counts = votes.reduce((totals, vote) => ({ ...totals, [vote]: (totals[vote] || 0) + 1 }), {}); if (counts.AKA >= 2) return "AKA"; if (counts.SHIRO >= 2) return "SHIRO"; return allowDraw && votes.every(Boolean) ? "HIKIWAKE" : ""; }
 function normalizePenalties(penalties = []) { return normalizeJuRandoriPenalties(penalties).map((penalty) => ({ ...PENALTY_BY_ID[penalty.id], ...penalty })); }
 function penaltyTotal(penalties) { return juRandoriNegativeTotal(penalties); }
 function isDisqualified(penalties) { return isJuRandoriDisqualified(penalties); }
