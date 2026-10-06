@@ -1,0 +1,89 @@
+name: Patch direct flags
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-direct-flags.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/direct-flag-entry-randori-v2
+          fetch-depth: 0
+      - name: Integrate direct flags in Randori and Ju-Randori
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/MatchManager.jsx')
+          s = p.read_text()
+          s = s.replace('import { DraftRecoveryNotice, useArbitrationDraft } from "./arbitrationDrafts";\n', 'import { DraftRecoveryNotice, useArbitrationDraft } from "./arbitrationDrafts";\nimport { directFlagRowResult, isFullDirectFlagMatchResolved, isShortRandoriResolved, normalizeDirectFlagRows, scoreDirectFlagRows, setDirectFlagCount } from "./directFlagScoring";\n', 1)
+          s = s.replace('    assaults: relabelVotes(match?.assaults, ASSAULTS),', '    assaults: normalizeDirectFlagRows(match?.assaults, ASSAULTS),', 1)
+          s = s.replace('    setAssaults(relabelVotes(saved.assaults, ASSAULTS)); setTieBreakAssaults(relabelVotes(saved.tieBreakAssaults, TIE_BREAK_ASSAULTS));', '    setAssaults(normalizeDirectFlagRows(saved.assaults, ASSAULTS)); setTieBreakAssaults(relabelVotes(saved.tieBreakAssaults, TIE_BREAK_ASSAULTS));', 1)
+          s = s.replace('    const main = scoreRows(assaults);', '    const main = scoreDirectFlagRows(assaults);', 1)
+          s = s.replace('    const fullAssaultsResolved = assaults.every((row) => voteResult(row.votes));\n    const shortRandoriResolved = match.discipline === "randori"\n      && RANDORI_SHORT_ASSAULT_INDEXES.every((index) => voteResult(assaults[index]?.votes || []));', '    const fullAssaultsResolved = isFullDirectFlagMatchResolved(assaults);\n    const shortRandoriResolved = match.discipline === "randori" && isShortRandoriResolved(assaults);', 1)
+          marker = '  function setVote(section, rowIndex, judgeIndex, value) {\n'
+          addition = '  function setFlagCount(rowIndex, side, value) {\n    if (isLocked) return;\n    setAssaults((current) => setDirectFlagCount(current, rowIndex, side, value));\n  }\n\n'
+          if marker not in s: raise SystemExit('setVote marker missing')
+          s = s.replace(marker, addition + marker, 1)
+          old_history = '      ...assaults.map((row) => ({ type: "assault", label: row.label, detail: voteResult(row.votes) || "En attente", votes: row.votes })),\n'
+          new_history = '      ...assaults.map((row) => ({ type: "assault", label: row.label, detail: directFlagRowResult(row) || "En attente", akaFlags: row.akaFlags || 0, shiroFlags: row.shiroFlags || 0 })),\n'
+          if old_history not in s: raise SystemExit('history marker missing')
+          s = s.replace(old_history, new_history, 1)
+          old_call = '<AssaultCards title={match.discipline === "randori" ? "Les 7 assauts · format court possible : Tsuki 1, Mae Geri 1, Mawashi 1" : "Les 7 assauts"} rows={assaults} disabled={isLocked || penaltyDisqualification} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} onVote={(rowIndex, judgeIndex, value) => setVote("main", rowIndex, judgeIndex, value)} />'
+          new_call = '<DirectFlagAssaults rows={assaults} disabled={isLocked || penaltyDisqualification} hasMai={hasMai} maiWarnings={maiWarnings} onAddMai={addMai} onFlag={setFlagCount} />'
+          if old_call not in s: raise SystemExit('main AssaultCards call missing')
+          s = s.replace(old_call, new_call, 1)
+          insert_before = 'function ControlPanel({ match, score, penalties, maiWarnings, hasMai, onAddPenalty, onRemovePenalty, onRemoveMai, disabled }) {'
+          component = '''function DirectFlagAssaults({ rows, onFlag, disabled = false, hasMai = false, maiWarnings = { aka: [], shiro: [] }, onAddMai }) {
+  const firstPending = rows.findIndex((row) => !(Number(row.akaFlags) > 0 && Number(row.shiroFlags) > 0));
+  const [selectedIndex, setSelectedIndex] = useState(firstPending >= 0 ? firstPending : Math.max(0, rows.length - 1));
+  useEffect(() => {
+    const nextPending = rows.findIndex((row) => !(Number(row.akaFlags) > 0 && Number(row.shiroFlags) > 0));
+    if (nextPending >= 0 && selectedIndex < nextPending && Number(rows[selectedIndex]?.akaFlags) > 0 && Number(rows[selectedIndex]?.shiroFlags) > 0) setSelectedIndex(nextPending);
+  }, [rows, selectedIndex]);
+  const row = rows[selectedIndex] || rows[0];
+  if (!row) return null;
+  const akaMaiCount = (maiWarnings.aka || []).filter((item) => item.assaultIndex === selectedIndex).length;
+  const shiroMaiCount = (maiWarnings.shiro || []).filter((item) => item.assaultIndex === selectedIndex).length;
+  return <div className="direct-flags-section">
+    <div className="direct-sequence-nav">{rows.map((item, index) => <button key={item.label} type="button" className={index === selectedIndex ? "active" : ""} onClick={() => setSelectedIndex(index)}>{index + 1}</button>)}</div>
+    <article className="direct-flag-card">
+      <p className="direct-sequence-kicker">SÉQUENCE EN COURS</p><h3>{row.label}</h3>
+      {hasMai && <div className="assault-mai-actions"><button className="penalty-button mai" type="button" disabled={disabled} onClick={() => onAddMai?.("aka", selectedIndex)}>AKA MAÏ{akaMaiCount ? ` ×${akaMaiCount}` : ""}</button><button className="penalty-button mai shiro" type="button" disabled={disabled} onClick={() => onAddMai?.("shiro", selectedIndex)}>SHIRO MAÏ{shiroMaiCount ? ` ×${shiroMaiCount}` : ""}</button></div>}
+      <div className="direct-flag-grid">{["aka", "shiro"].map((side) => { const value = Number(row[side === "aka" ? "akaFlags" : "shiroFlags"] || 0); return <section className={`direct-flag-side ${side}`} key={side}><h4>{side.toUpperCase()}</h4><div className="direct-flag-buttons">{[1,2,3].map((count) => <button key={count} type="button" disabled={disabled} aria-pressed={value === count} className={value === count ? "selected" : ""} onClick={() => onFlag(selectedIndex, side, count)}><strong>{count}</strong><span>{count === 1 ? "drapeau" : "drapeaux"}</span></button>)}</div></section>; })}</div>
+    </article>
+  </div>;
+}
+
+'''
+          if insert_before not in s: raise SystemExit('ControlPanel marker missing')
+          s = s.replace(insert_before, component + insert_before, 1)
+          p.write_text(s)
+
+          p = Path('src/directFlagScoring.js')
+          s = p.read_text()
+          s = s.replace('  return normalizeFlagCount(row?.akaFlags) > 0 || normalizeFlagCount(row?.shiroFlags) > 0;', '  return normalizeFlagCount(row?.akaFlags) > 0 && normalizeFlagCount(row?.shiroFlags) > 0;', 1)
+          p.write_text(s)
+
+          p = Path('src/style.css')
+          s = p.read_text()
+          s += '''\n/* Direct flag entry — Randori / Ju-Randori */\n.direct-flags-section{margin:18px 0}.direct-sequence-nav{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}.direct-sequence-nav button{width:38px;height:38px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;font-weight:800}.direct-sequence-nav button.active{background:#14213d;color:#fff;border-color:#14213d}.direct-flag-card{border:1px solid #dbe2ea;border-radius:18px;padding:18px;background:#fff;box-shadow:0 8px 24px rgba(20,33,61,.08)}.direct-sequence-kicker{text-align:center;font-size:12px;font-weight:900;letter-spacing:.12em;color:#64748b;margin:0}.direct-flag-card>h3{text-align:center;font-size:28px;margin:5px 0 18px}.direct-flag-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.direct-flag-side{border-radius:16px;padding:16px}.direct-flag-side.aka{background:#b71c1c;color:#fff}.direct-flag-side.shiro{background:#f8fafc;color:#14213d;border:2px solid #cbd5e1}.direct-flag-side h4{text-align:center;font-size:24px;margin:0 0 12px}.direct-flag-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.direct-flag-buttons button{min-height:82px;border-radius:14px;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.16);color:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center}.direct-flag-side.shiro .direct-flag-buttons button{background:#fff;border-color:#cbd5e1}.direct-flag-buttons button strong{font-size:28px}.direct-flag-buttons button span{font-size:12px;font-weight:700}.direct-flag-buttons button.selected{outline:4px solid #f4c95d;transform:translateY(-1px)}.direct-flag-card .assault-mai-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 14px}.direct-flag-card .assault-mai-actions .mai{background:#c62828;color:#fff;border-color:#9b1c1c}.direct-flag-card .assault-mai-actions .mai.shiro{background:#fff;color:#14213d;border-color:#aeb7c2}@media(max-width:700px){.direct-flag-grid{grid-template-columns:1fr}.direct-flag-buttons button{min-height:68px}.direct-flag-card{padding:12px}}\n'''
+          p.write_text(s)
+          PY
+          npm ci
+          npm test
+          npm run build
+          git diff --check
+      - name: Commit integration to test branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/MatchManager.jsx src/directFlagScoring.js src/style.css
+          git commit -m 'feat: integrate direct flags in Randori and Ju-Randori'
+          git push origin HEAD:fix/direct-flag-entry-randori-v2
