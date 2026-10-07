@@ -2755,3 +2755,45 @@ footer span {
     text-align: center;
   }
 }
+
+
+/* Competition OS · visual refresh */
+body { font-family: Inter, "Avenir Next", "Segoe UI", Arial, sans-serif; }
+.header { padding-top: 22px; padding-bottom: 22px; background: linear-gradient(110deg,#0751ad 0%,#0758b9 70%,#064a9c 100%); overflow: hidden; }
+.header::after { content:"南"; position:absolute; right:4%; top:50%; transform:translateY(-52%); font-family:serif; font-size:clamp(70px,9vw,130px); font-weight:900; color:rgba(255,255,255,.14); }
+.header-text { position:relative; z-index:2; }
+.header h1 { display:flex; align-items:baseline; flex-wrap:wrap; gap:.12em; margin:2px 0 4px; line-height:1; letter-spacing:-.035em; }
+.brand-nanbudo { position:relative; font-family:"Segoe Script","Bradley Hand","Brush Script MT",cursive; font-style:italic; font-size:1.18em; font-weight:900; letter-spacing:-.06em; }
+.brand-nanbudo::after { content:""; position:absolute; left:0; right:2%; bottom:-8px; height:4px; border-radius:99px; background:#d5aa1f; transform:skewX(-24deg); }
+.brand-competition { font-weight:850; }
+.brand-os { color:#e0ad16; font-family:"Segoe Script","Brush Script MT",cursive; font-style:italic; font-weight:900; font-size:1.08em; transform:rotate(-4deg); }
+.subtitle { font-size:15px; opacity:.88; }
+.competition-dashboard { --os-navy:#071a33; --os-gold:#d5a915; }
+.competition-dashboard-header { align-items:flex-start; gap:28px; margin-top:14px; }
+.competition-identity { min-width:0; flex:1; }
+.competition-dashboard-header h2 { margin:10px 0 16px; font-size:clamp(26px,3vw,38px); line-height:1.08; letter-spacing:-.035em; color:var(--os-navy); }
+.competition-dashboard-header .surtitle { display:flex; align-items:center; gap:12px; }
+.competition-dashboard-header .surtitle::after { content:""; width:48px; height:2px; background:var(--os-gold); }
+.competition-meta,.public-link,.registration-state { margin:10px 0; }
+.public-link { display:flex; align-items:center; gap:8px; min-width:0; }
+.public-link a { min-width:0; max-width:100%; overflow:hidden; }
+.public-link code { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:#eef2f7; padding:8px 12px; border-radius:8px; color:#334155; }
+.registration-state { font-size:16px; }
+.dashboard-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:14px; }
+.dashboard-actions .primary { margin-top:0; min-height:46px; background:var(--os-gold); border-radius:9px; box-shadow:0 5px 14px rgba(213,169,21,.2); }
+.dashboard-actions .manage-button { min-height:46px; padding:10px 18px; border-radius:9px; background:white; border:1px solid #d9e0e9; font-weight:800; }
+.competition-dashboard-header .status { display:inline-flex; align-items:center; gap:7px; padding:9px 14px; box-shadow:0 4px 14px rgba(7,26,51,.04); }
+.competition-menu { display:flex; gap:9px; overflow-x:auto; padding:18px 2px 5px; scrollbar-width:thin; }
+.competition-menu button { display:inline-flex; align-items:center; justify-content:center; gap:8px; white-space:nowrap; min-height:44px; padding:10px 15px; border:1px solid #dce2ea; border-radius:9px; background:white; color:var(--os-navy); font-weight:800; box-shadow:0 3px 10px rgba(7,26,51,.04); cursor:pointer; transition:transform .15s ease,background .15s ease,border-color .15s ease,color .15s ease; }
+.competition-menu button:hover { transform:translateY(-1px); border-color:var(--os-gold); background:#fffaf0; }
+.competition-menu button.active { background:var(--os-navy); color:white; border-color:var(--os-navy); box-shadow:0 6px 16px rgba(7,26,51,.18); }
+.dashboard { gap:16px; margin-top:20px; }
+.dashboard-kpi { display:flex; align-items:flex-start; gap:18px; min-height:165px; padding:24px; border-top:3px solid var(--os-gold); box-shadow:0 8px 22px rgba(7,26,51,.07); }
+.dashboard-kpi .kpi-icon { flex:0 0 52px; width:52px; height:52px; display:grid; place-items:center; border-radius:50%; background:#edf5ff; color:#0751ad; font-size:24px; font-weight:900; }
+.dashboard-kpi:nth-child(2) .kpi-icon { background:#eaf8ee; color:#159447; }
+.dashboard-kpi:nth-child(3) .kpi-icon { background:#fff3e8; color:#e98b2a; }
+.dashboard-kpi .number { font-size:34px; line-height:1; color:var(--os-gold); }
+.dashboard-kpi h3 { margin:6px 0 4px; font-size:20px; color:var(--os-navy); }
+.dashboard-kpi p { margin:0; }
+@media (max-width:900px) { .competition-dashboard-header { flex-direction:column; } .competition-dashboard-header .status { align-self:flex-start; } .dashboard { grid-template-columns:1fr; } }
+@media (max-width:700px) { .header { padding-top:18px; padding-bottom:18px; } .header h1 { font-size:clamp(24px,7vw,34px); } .brand-nanbudo::after { bottom:-5px; } .competition-dashboard-header h2 { font-size:27px; } }
