@@ -2797,3 +2797,22 @@ body { font-family: Inter, "Avenir Next", "Segoe UI", Arial, sans-serif; }
 .dashboard-kpi p { margin:0; }
 @media (max-width:900px) { .competition-dashboard-header { flex-direction:column; } .competition-dashboard-header .status { align-self:flex-start; } .dashboard { grid-template-columns:1fr; } }
 @media (max-width:700px) { .header { padding-top:18px; padding-bottom:18px; } .header h1 { font-size:clamp(24px,7vw,34px); } .brand-nanbudo::after { bottom:-5px; } .competition-dashboard-header h2 { font-size:27px; } }
+
+
+/* Competition OS · iPad landscape finishing pass */
+.brand-nanbudo { margin-right:.10em; }
+.brand-competition { letter-spacing:-.045em; }
+.brand-os { margin-left:.10em; }
+.public-link { max-width:min(820px,100%); }
+.public-link a { flex:1 1 420px; }
+.competition-dashboard-header .status { margin-top:28px; }
+.competition-menu button > span { font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:1; opacity:.88; }
+@media (orientation: landscape) and (min-width: 900px) and (max-width: 1400px) {
+  .content:has(.competition-dashboard) { width:94vw; max-width:1320px; }
+  .competition-menu { display:grid; grid-template-columns:1.45fr repeat(8,minmax(0,1fr)); gap:7px; overflow:visible; width:100%; }
+  .competition-menu button { min-width:0; padding:10px 7px; gap:5px; font-size:clamp(11px,1.05vw,14px); }
+  .competition-menu button > span { font-size:13px; }
+  .competition-dashboard-header { display:grid; grid-template-columns:minmax(0,1fr) auto; }
+  .competition-dashboard-header .status { margin-top:30px; }
+  .public-link { max-width:760px; }
+}
