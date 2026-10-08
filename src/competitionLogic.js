@@ -410,6 +410,28 @@ export function restoreMissingKataSecondRound(pool) {
   return { ...pool, matches: [...firstRound, ...secondRound], podium: null, rankingLocked: [], statut: "En cours" };
 }
 
+// Legacy competitions may already contain extra free/imposed Kata rounds.
+// Keep the earliest completed tie-break for each competitor as the imposed round;
+// remove subsequent rounds so the decision can move to flags.
+export function normalizeKataTieBreakRounds(pool) {
+  if (!competitionRulesEngine.isKataDiscipline(pool.discipline)) return pool;
+  const matches = pool.matches || [];
+  const ties = matches.filter((match) => match.isKataTieBreak);
+  if (!ties.length) return pool;
+  const firstByCompetitor = new Set();
+  const normalized = matches.filter((match) => {
+    if (!match.isKataTieBreak) return true;
+    const id = match.competitorId || match.akaId;
+    if (firstByCompetitor.has(id)) return false;
+    firstByCompetitor.add(id);
+    return true;
+  }).map((match) => match.isKataTieBreak && (match.kataTieBreakMode !== "Kata imposé" || match.kataTieBreakRound !== 1)
+    ? { ...match, kataTieBreakMode: "Kata imposé", kataTieBreakRound: 1 }
+    : match);
+  if (normalized.length === matches.length && normalized.every((match, index) => match === matches[index])) return pool;
+  return { ...pool, matches: normalized, podium: null, rankingLocked: [] };
+}
+
 export function isPoolComplete(pool) {
   if (!(pool.matches || []).length || !pool.matches.every((match) => match.statut === "Terminé")) return false;
   if (competitionRulesEngine.isKataDiscipline(pool.discipline)) {
