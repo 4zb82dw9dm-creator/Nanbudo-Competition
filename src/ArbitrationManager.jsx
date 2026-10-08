@@ -308,21 +308,36 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   }
 
   if (kataFlagTie) {
+    const eligibleIds = kataFlagTie.voteIds || kataFlagTie.ids;
     const votes = kataFlagVotes.filter(Boolean);
-    const counts = kataFlagTie.ids.map((id) => ({ id, count: votes.filter((vote) => vote === id).length }))
+    const counts = eligibleIds.map((id) => ({ id, count: votes.filter((vote) => vote === id).length }))
       .sort((a, b) => b.count - a.count);
-    const decided = votes.length === 5 && counts.every((item, index) => index === 0 || counts[index - 1].count > item.count);
-    return <section className="arbitration-manager match-manager"><h2>Départage Kata · décision aux drapeaux</h2><p>Égalité après le Kata imposé. Chaque juge désigne un compétiteur avec son drapeau : rouge, blanc ou bleu pour trois compétiteurs. Les cinq votes doivent permettre un classement sans égalité.</p>
-      {kataFlagVotes.map((vote, index) => <div key={index} className="match-meta"><strong>{index === 0 ? "Sushin" : `Fukushin ${index}`}</strong>{kataFlagTie.ids.map((id) => { const c = getCompetitor(id); const color = ["#c62f36", "#ffffff", "#2465d4"][kataFlagTie.ids.indexOf(id)] || "#777777"; return <button type="button" key={id} aria-pressed={vote === id} className={vote === id ? "primary" : "manage-button"} style={{ backgroundColor: color, color: color === "#ffffff" ? "#14213d" : "#ffffff", border: vote === id ? "3px solid #d4ad40" : "2px solid #8c96a8", fontWeight: 800 }} onClick={() => setKataFlagVotes((current) => current.map((value, i) => i === index ? id : value))}>{["ROUGE", "BLANC", "BLEU"][kataFlagTie.ids.indexOf(id)] || "DRAPEAU"} · {c?.nom} {c?.prenom}</button>; })}</div>)}
-      {votes.length === 5 && !decided && <p role="alert">Égalité aux drapeaux : les juges doivent départager les compétiteurs avant validation.</p>}
-      <button type="button" className="primary" disabled={!decided} onClick={() => {
-        const pool = pools.find((item) => item.id === kataFlagTie.poolId);
-        const ordered = counts.map((item) => item.id);
-        const updated = { ...pool, kataFlagOrder: ordered };
-        const result = calculatePoolPodium(updated);
-        onUpdateCompetition({ ...competition, pools: pools.map((item) => item.id === pool.id ? result.pool : item) });
-        setKataFlagTie(null);
-      }}>Valider la décision aux drapeaux</button>
+    const complete = votes.length === 5;
+    const tied = complete ? counts.filter((item) => counts.some((other) => other.id !== item.id && other.count === item.count)) : [];
+    const decided = complete && tied.length === 0;
+    function confirmFlagVote() {
+      if (!complete) return;
+      if (tied.length) {
+        // Preserve all settled places and revote only between tied competitors.
+        const tiedIds = tied.map((item) => item.id);
+        const settled = counts.filter((item) => !tiedIds.includes(item.id));
+        const prior = kataFlagTie.settled || [];
+        setKataFlagTie({ ...kataFlagTie, voteIds: tiedIds, settled: [...prior, ...settled], voteNumber: (kataFlagTie.voteNumber || 1) + 1 });
+        setKataFlagVotes(["", "", "", "", ""]);
+        return;
+      }
+      const pool = pools.find((item) => item.id === kataFlagTie.poolId);
+      const all = [...(kataFlagTie.settled || []), ...counts];
+      const ordered = all.sort((a, b) => b.count - a.count).map((item) => item.id);
+      const updated = { ...pool, kataFlagOrder: ordered };
+      const result = calculatePoolPodium(updated);
+      onUpdateCompetition({ ...competition, pools: pools.map((item) => item.id === pool.id ? result.pool : item) });
+      setKataFlagTie(null);
+    }
+    return <section className="arbitration-manager match-manager"><h2>Départage Kata · décision aux drapeaux</h2><p>Vote {kataFlagTie.voteNumber || 1} : chaque juge choisit un drapeau. En cas d'égalité, un nouveau vote oppose uniquement les compétiteurs encore ex æquo, sans nouveau Kata.</p>
+      {kataFlagVotes.map((vote, index) => <div key={index} className="match-meta"><strong>{index === 0 ? "Sushin" : `Fukushin ${index}`}</strong>{eligibleIds.map((id) => { const c = getCompetitor(id); const colorIndex = kataFlagTie.ids.indexOf(id); const color = ["#c62f36", "#ffffff", "#2465d4"][colorIndex] || "#777777"; return <button type="button" key={id} aria-pressed={vote === id} className={vote === id ? "primary" : "manage-button"} style={{ backgroundColor: color, color: color === "#ffffff" ? "#14213d" : "#ffffff", border: vote === id ? "3px solid #d4ad40" : "2px solid #8c96a8", fontWeight: 800 }} onClick={() => setKataFlagVotes((current) => current.map((value, i) => i === index ? id : value))}>{["ROUGE", "BLANC", "BLEU"][colorIndex] || "DRAPEAU"} · {c?.nom} {c?.prenom}</button>; })}</div>)}
+      {complete && tied.length > 0 && <p role="alert">Égalité aux drapeaux : un nouveau vote sera organisé uniquement entre les compétiteurs ex æquo.</p>}
+      <button type="button" className="primary" disabled={!complete} onClick={confirmFlagVote}>{complete && tied.length ? "Revoter avec les couleurs restantes" : "Valider la décision aux drapeaux"}</button>
     </section>;
   }
   if (pendingTieBreak) return <div className="arbitration-manager"><PoolTieBreakManager key={`${pendingTieBreak.poolId}-${pendingTieBreak.groupIndex}`} competitorIds={pendingTieBreak.tieGroups[pendingTieBreak.groupIndex]} getCompetitor={getCompetitor} onComplete={completeTieGroup} /></div>;
