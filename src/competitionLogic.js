@@ -230,7 +230,9 @@ export function calculateRanking(pool) {
     return pool.competitorIds.map((id) => {
       const scoreVector = kataScoreVector(pool, id);
       const score = scoreVector[0] ?? 0;
-      return { competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: score, scoreAgainst: 0, difference: score, finalScore: score, kataScoreVector: scoreVector };
+      const completedBaseRounds = (pool.matches || []).filter((match) => !match.isKataTieBreak && (match.competitorId === id || match.akaId === id) && match.statut === "Terminé").length;
+      const average = completedBaseRounds >= 2 ? Number((score / 2).toFixed(2)) : null;
+      return { competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: score, scoreAgainst: 0, difference: score, finalScore: score, kataTotal: score, kataAverage: average, kataRoundsCompleted: completedBaseRounds, kataScoreVector: scoreVector };
     }).sort((a, b) => compareScoreVectors(a.kataScoreVector, b.kataScoreVector));
   }
   const ranking = pool.competitorIds.map((id) => ({ competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: 0, scoreAgainst: 0, difference: 0, negativePoints: 0 }));
@@ -371,7 +373,15 @@ export function podiumFromPool(pool) {
 }
 
 export function isPoolComplete(pool) {
-  return (pool.matches || []).length > 0 && pool.matches.every((match) => match.statut === "Terminé");
+  if (!(pool.matches || []).length || !pool.matches.every((match) => match.statut === "Terminé")) return false;
+  if (competitionRulesEngine.isKataDiscipline(pool.discipline)) {
+    return (pool.competitorIds || []).every((id) => {
+      const rounds = pool.matches.filter((match) => !match.isKataTieBreak && (match.competitorId === id || match.akaId === id));
+      return rounds.some((match) => Number(match.kataRound || 1) === 1)
+        && rounds.some((match) => Number(match.kataRound || 1) === 2);
+    });
+  }
+  return true;
 }
 
 // Unique entry point used by the manual fallback button and automatic closing.
