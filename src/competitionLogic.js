@@ -198,7 +198,7 @@ function kataScoreVector(pool, competitorId) {
     .filter((match) => match.isKataTieBreak)
     .sort((a, b) => Number(a.kataTieBreakRound || 0) - Number(b.kataTieBreakRound || 0))
     .map(kataScore);
-  return [twoRoundTotal, ...tieBreakScores];
+  return [twoRoundTotal, ...tieBreakScores.slice(0, 1)];
 }
 
 function compareScoreVectors(a = [], b = []) {
@@ -233,7 +233,8 @@ export function calculateRanking(pool) {
       const completedBaseRounds = (pool.matches || []).filter((match) => !match.isKataTieBreak && (match.competitorId === id || match.akaId === id) && match.statut === "Terminé").length;
       const average = completedBaseRounds >= 2 ? Number((score / 2).toFixed(2)) : null;
       return { competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: score, scoreAgainst: 0, difference: score, finalScore: score, kataTotal: score, kataAverage: average, kataRoundsCompleted: completedBaseRounds, kataScoreVector: scoreVector };
-    }).sort((a, b) => compareScoreVectors(a.kataScoreVector, b.kataScoreVector));
+    }).sort((a, b) => compareScoreVectors(a.kataScoreVector, b.kataScoreVector)
+      || (pool.kataFlagOrder || []).indexOf(a.competitorId) - (pool.kataFlagOrder || []).indexOf(b.competitorId));
   }
   const ranking = pool.competitorIds.map((id) => ({ competitorId: id, victories: 0, defeats: 0, draws: 0, scoreFor: 0, scoreAgainst: 0, difference: 0, negativePoints: 0 }));
   (pool.matches || []).forEach((match) => {
@@ -278,7 +279,7 @@ function unresolvedKataTieGroups(pool) {
     if (end - start > 1 && start < 3) groups.push(ranking.slice(start, end).map((item) => item.competitorId));
     start = end;
   }
-  return groups;
+  return groups.filter((ids) => !ids.every((id) => (pool.kataFlagOrder || []).includes(id)));
 }
 
 function unresolvedJuRandoriTieGroups(pool) {
@@ -335,7 +336,7 @@ export function createKataTieBreakMatches(pool, tieGroups = []) {
       .filter((match) => match.isKataTieBreak && competitorIds.includes(match.competitorId || match.akaId))
       .reduce((maximum, match) => Math.max(maximum, Number(match.kataTieBreakRound || 0)), 0);
     const round = previousRound + 1;
-    const mode = round === 1 ? "Kata supplémentaire libre" : "Kata imposé";
+    const mode = "Kata imposé";
 
     competitorIds.forEach((competitorId, competitorIndex) => {
       const baseMatch = existingMatches.find((match) => !match.isKataTieBreak && (match.competitorId === competitorId || match.akaId === competitorId));
