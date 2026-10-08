@@ -176,6 +176,65 @@ export function createCompleteTestCompetition() {
   };
 }
 
+export const TEST_COMPETITION_2_NAME = "COMPÉTITION TEST 2 · 40 COMPÉTITEURS";
+
+export function createTestCompetition2() {
+  const ages = [7, 9, 11, 13, 15, 17, 19, 21, 26, 30];
+  const competitors = ages.flatMap((age, group) => Array.from({ length: 4 }, (_, member) => {
+    const index = group * 4 + member;
+    const sex = member % 2 === 0 ? "Homme" : "Femme";
+    const kataGroup = ageCompetitionRule(age)?.kataGroup || (age <= 7 ? "Kata 0" : age <= 11 ? "Kata 1" : "Kata 2");
+    return {
+      id: `test2-competitor-${index + 1}`,
+      nom: `${LAST_NAMES[index % LAST_NAMES.length].toUpperCase()}-${String(index + 1).padStart(3, "0")}`,
+      prenom: (sex === "Homme" ? MALE_FIRST_NAMES : FEMALE_FIRST_NAMES)[index % 12],
+      age, sexe: sex, dateNaissance: `${2026 - age}-06-15`,
+      ceinture: age >= 18 ? "1er Dan" : "4e Kyu", grade: age >= 18 ? "1er Dan" : "4e Kyu",
+      club: CLUBS[index % CLUBS.length], ville: CLUBS[index % CLUBS.length].replace("Nanbudo ", ""),
+      pays: "France", email: `test2.${index + 1}@example.test`,
+      categoriesInscription: ["Kata individuel", age <= 11 ? "Randori" : "Ju Randori"],
+      categorieInscription: "Kata individuel", discipline: "kata", typeInscription: "Compétiteur",
+      fonctionArbitrage: [], statutInscription: "Validée", kataGroup,
+    };
+  }));
+  const categories = [];
+  const adultIds = competitors.filter((c) => c.age >= 18).map((c) => c.id);
+  const youthAges = ages.filter((age) => age < 18);
+  for (const age of [...youthAges, "adultes"]) {
+    const ids = age === "adultes" ? adultIds : competitors.filter((c) => c.age === age).map((c) => c.id);
+    const representativeAge = age === "adultes" ? 26 : age;
+    const kataGroup = ageCompetitionRule(representativeAge)?.kataGroup || (representativeAge <= 7 ? "Kata 0" : representativeAge <= 11 ? "Kata 1" : "Kata 2");
+    const combat = representativeAge <= 11 ? "randori" : "ju_randori";
+    for (const discipline of ["kata_individuel", combat]) {
+      const kata = discipline === "kata_individuel";
+      const label = kata ? kataGroup : (combat === "randori" ? "Randori" : "Ju-Randori");
+      categories.push({
+        id: `test2-${age}-${discipline}`, nom: `${label} · ${age === "adultes" ? "Adultes 18–30 ans" : `${age} ans`} · Mixte`,
+        discipline, registrationCategory: kata ? "Kata individuel" : combat === "randori" ? "Randori" : "Ju Randori",
+        kataGroup: kata ? kataGroup : "", competitorIds: ids, ageGroup: age === "adultes" ? "Seniors" : `${age} ans`,
+        sexe: "Mixte", gradeGroup: age === "adultes" ? "Dan" : "Kyu", statut: "Prête", manual: true,
+      });
+    }
+  }
+  const assignments = balancedTatamiAssignments(categories, 3);
+  const pools = categories.flatMap((category, index) => buildPoolsForCategory(category, { tatamiCount: 3, startIndex: index })
+    .map((pool, poolIndex) => setPoolTatami({
+      ...pool, id: `test2-pool-${index + 1}-${poolIndex + 1}`,
+      nom: `${category.nom} · Poule ${poolIndex + 1}`,
+      matches: pool.matches.map((match, matchIndex) => ({
+        ...match, id: `test2-match-${index + 1}-${poolIndex + 1}-${matchIndex + 1}`,
+        ordre: matchIndex + 1, horaire: "",
+      })),
+    }, assignments.get(String(category.id)) || 1)));
+  return {
+    id: `test2-${crypto.randomUUID()}`, slug: `competition-test-2-${crypto.randomUUID().slice(0, 8)}`,
+    nom: TEST_COMPETITION_2_NAME, date: "2026-10-17", lieu: "Marseille", tatamis: 3,
+    horairesActifs: true, statut: "Tableaux générés", competitors, categories, pools,
+    planningAdjustments: {}, availableKatas: ["Kata 0", "Kata 1", "Kata 2"],
+    katas: ["Kata 0", "Kata 1", "Kata 2"], isDemoCompetition: true,
+  };
+}
+
 function simulatedKata(pool) {
   const totals = [8.30, 8.56, 8.82, 9.14];
   return pool.matches.map((match) => {
