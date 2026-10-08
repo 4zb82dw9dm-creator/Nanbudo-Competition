@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import CompetitionDashboard from "./CompetitionDashboard";
-import { COMPLETE_TEST_COMPETITION_NAME, createCompleteTestCompetition } from "./demoCompetitionData";
+import { COMPLETE_TEST_COMPETITION_NAME, createCompleteTestCompetition, TEST_COMPETITION_2_NAME, createTestCompetition2 } from "./demoCompetitionData";
 import { slugify } from "./routing";
 
 function CompetitionManager({ competitions, setCompetitions, initialCompetitionId = null, onCreateCompetition, onDeleteCompetition }) {
@@ -64,6 +64,22 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
     } catch (error) {
       console.error("Création de la compétition de démonstration impossible", error);
       alert("La compétition de démonstration n'a pas pu être enregistrée.");
+    }
+  }
+
+  async function createSecondTestCompetition() {
+    if (competitions.some((competition) => competition.nom === TEST_COMPETITION_2_NAME)) {
+      alert(`${TEST_COMPETITION_2_NAME} existe déjà.`);
+      return;
+    }
+    try {
+      const competition = createTestCompetition2();
+      if (onCreateCompetition) await onCreateCompetition(competition);
+      else setCompetitions((current) => [...current, competition]);
+      setSelectedCompetitionId(competition.id);
+    } catch (error) {
+      console.error("Création de la compétition test 2 impossible", error);
+      alert("La compétition test 2 n'a pas pu être enregistrée.");
     }
   }
 
@@ -167,7 +183,7 @@ function CompetitionManager({ competitions, setCompetitions, initialCompetitionI
 
   return (
     <section className="competition-manager">
-      <div className="manager-header"><div><p className="surtitle">COMPÉTITIONS</p><h2>Gestion des compétitions</h2><p>Créez une compétition puis suivez son cycle complet.</p></div><div className="competition-header-actions"><button className="primary" onClick={() => setShowForm((current) => !current)}>{showForm ? "Annuler" : "+ Nouvelle compétition"}</button><button className="manage-button" type="button" onClick={() => importInputRef.current?.click()}>Importer une compétition</button><input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={importCompetition} /><button className="manage-button" type="button" onClick={createTestCompetition}>Créer compétition de démonstration</button></div></div>
+      <div className="manager-header"><div><p className="surtitle">COMPÉTITIONS</p><h2>Gestion des compétitions</h2><p>Créez une compétition puis suivez son cycle complet.</p></div><div className="competition-header-actions"><button className="primary" onClick={() => setShowForm((current) => !current)}>{showForm ? "Annuler" : "+ Nouvelle compétition"}</button><button className="manage-button" type="button" onClick={() => importInputRef.current?.click()}>Importer une compétition</button><input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={importCompetition} /><button className="manage-button" type="button" onClick={createTestCompetition}>Créer compétition de démonstration</button><button className="manage-button" type="button" onClick={createSecondTestCompetition}>Créer compétition test 2 · 40 compétiteurs</button></div></div>
       {showForm && <form className="competition-form" onSubmit={createCompetition}><h3>Nouvelle compétition</h3><label>Nom<input name="nom" value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} required /></label><div className="form-row"><label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label>Lieu<input value={form.lieu} onChange={(e) => setForm({ ...form, lieu: e.target.value })} /></label></div><div className="form-row"><label>Tatamis<input type="number" min="1" value={form.tatamis} onChange={(e) => setForm({ ...form, tatamis: e.target.value })} /></label><label className="checkbox-line"><input type="checkbox" checked={form.horairesActifs} onChange={(e) => setForm({ ...form, horairesActifs: e.target.checked })} /> Activer la planification horaire</label></div><button className="primary" type="submit">Créer</button></form>}
       {competitions.length === 0 ? <div className="empty-state"><span className="empty-number">0</span><h3>Aucune compétition</h3><p>Créez votre première compétition pour recevoir les inscriptions.</p></div> : <div className="managed-competitions">{competitions.map((competition) => <article className="managed-competition" key={competition.id}><div className="competition-main"><span className="status">{competition.statut}</span><h3>{isWorldChampionshipLocked(competition) ? "🔒 " : ""}{competition.nom}</h3><p>{competition.lieu || "Lieu à définir"} · {competition.date || "Date à définir"}</p></div><div className="competition-stats"><div><strong>{competition.competitors?.length || 0}</strong><span>Inscriptions</span></div><div><strong>{competition.categories?.length || 0}</strong><span>Catégories</span></div></div><div className="competition-actions"><button className="manage-button" onClick={() => openCompetition(competition)}>Gérer</button><button className="delete-button" onClick={() => deleteCompetition(competition.id)}>Supprimer</button></div></article>)}</div>}
     </section>
