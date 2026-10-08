@@ -327,6 +327,8 @@ export function unresolvedPoolTieGroups(pool) {
 export function createKataTieBreakMatches(pool, tieGroups = []) {
   if (!competitionRulesEngine.isKataDiscipline(pool.discipline) || tieGroups.length === 0) return pool;
   const existingMatches = pool.matches || [];
+  // Never create another scored Kata round after the imposed Kata.
+  if (existingMatches.some((match) => match.isKataTieBreak)) return pool;
   let nextOrder = existingMatches.reduce((maximum, match) => Math.max(maximum, Number(match.ordre || 0)), 0) + 1;
   const createdAt = Date.now();
   const newMatches = [];
