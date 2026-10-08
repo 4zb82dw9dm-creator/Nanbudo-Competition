@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { arbitrationDraftKey, deleteArbitrationDraft, hasDraftIdentity, loadArbitrationDraft, saveArbitrationDraft } from "./arbitrationDraftStorage";
 
+// Keep an active scoring session uninterrupted by component remounts.
+// A full page reload clears this set and still offers explicit draft recovery.
+const activeDraftSessions = new Set();
+
 export function useArbitrationDraft(match, payload, restore) {
   const identityKey = useMemo(() => hasDraftIdentity(match) ? arbitrationDraftKey(match) : "", [match.competitionId, match.discipline, match.poolId, match.id, match.tatami]);
   const [pendingDraft, setPendingDraft] = useState(null);
@@ -25,8 +29,16 @@ export function useArbitrationDraft(match, payload, restore) {
       setDirty(false);
       return;
     }
+    if (saved && activeDraftSessions.has(identityKey)) {
+      restore(saved.payload);
+      setPendingDraft(null);
+      setEditingEnabled(true);
+      setDirty(true);
+      return;
+    }
     setPendingDraft(saved);
     setEditingEnabled(!saved);
+    if (!saved) activeDraftSessions.add(identityKey);
     setDirty(false);
   }, [identityKey, match.statut]);
 
@@ -43,11 +55,11 @@ export function useArbitrationDraft(match, payload, restore) {
     return () => { window.removeEventListener("pagehide", flush); document.removeEventListener("visibilitychange", flushWhenHidden); };
   }, [dirty, editingEnabled, identityKey]);
 
-  function resume() { restore(pendingDraft.payload); setPendingDraft(null); setEditingEnabled(true); setDirty(true); }
-  function abandon() { deleteArbitrationDraft(localStorage, match); setPendingDraft(null); setEditingEnabled(true); setDirty(false); }
+  function resume() { activeDraftSessions.add(identityKey); restore(pendingDraft.payload); setPendingDraft(null); setEditingEnabled(true); setDirty(true); }
+  function abandon() { activeDraftSessions.add(identityKey); deleteArbitrationDraft(localStorage, match); setPendingDraft(null); setEditingEnabled(true); setDirty(false); }
   async function finalize(save) {
     const saved = await save();
-    if (saved === true) { deleteArbitrationDraft(localStorage, match); setDirty(false); }
+    if (saved === true) { deleteArbitrationDraft(localStorage, match); activeDraftSessions.delete(identityKey); setDirty(false); }
     return saved;
   }
 
