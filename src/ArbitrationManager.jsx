@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MatchManager, { PoolTieBreakManager } from "./MatchManager";
 import KataSheet from "./KataSheet";
 import CompetitionControl from "./CompetitionControl";
-import { calculatePoolPodium, createKataTieBreakMatches, restoreMissingKataSecondRound, disciplineLabel } from "./competitionLogic";
+import { calculatePoolPodium, createKataTieBreakMatches, restoreMissingKataSecondRound, normalizeKataTieBreakRounds, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { findNextArbitrationPassage, sortArbitrationMatches } from "./arbitrationSorting";
 import { arbitrationSheetKey, loadArbitrationDraft } from "./arbitrationDraftStorage";
@@ -64,11 +64,23 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   // Older saved competitions can contain only one Kata passage per competitor.
   // Upgrade those pools on opening arbitration; never discard completed first-round notes.
   useEffect(() => {
-    const repairedPools = pools.map(restoreMissingKataSecondRound);
+    const repairedPools = pools.map((pool) => normalizeKataTieBreakRounds(restoreMissingKataSecondRound(pool)));
     if (repairedPools.some((pool, index) => pool !== pools[index])) {
       onUpdateCompetition({ ...competition, pools: repairedPools });
     }
   }, [competition, onUpdateCompetition]);
+
+  // A restored competition may already have finished its imposed Kata.
+  // Offer flags rather than scheduling any further scored Kata.
+  useEffect(() => {
+    if (kataFlagTie || selected || showControl) return;
+    const pool = pools.find((item) => item.matches?.some((match) => match.isKataTieBreak)
+      && item.matches.every((match) => match.statut === "Terminé")
+      && calculatePoolPodium(item).tieGroups.length);
+    if (!pool) return;
+    setKataFlagTie({ poolId: pool.id, ids: calculatePoolPodium(pool).tieGroups[0] });
+    setKataFlagVotes(["", "", "", "", ""]);
+  }, [pools, kataFlagTie, selected, showControl]);
 
   const tatamis = matchesByTatami.map((group) => group.tatami);
 
