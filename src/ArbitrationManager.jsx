@@ -348,6 +348,19 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     }
     return <section className="arbitration-manager match-manager"><h2>Départage Kata · décision aux drapeaux</h2><p>Vote {kataFlagTie.voteNumber || 1} : chaque juge choisit un drapeau. En cas d'égalité, un nouveau vote oppose uniquement les compétiteurs encore ex æquo, sans nouveau Kata.</p>
       {kataFlagVotes.map((vote, index) => <div key={index} className="match-meta"><strong>{index === 0 ? "Sushin" : `Fukushin ${index}`}</strong>{eligibleIds.map((id) => { const c = getCompetitor(id); const colorIndex = kataFlagTie.ids.indexOf(id); const color = ["#c62f36", "#ffffff", "#2465d4"][colorIndex] || "#777777"; return <button type="button" key={id} aria-pressed={vote === id} className={vote === id ? "primary" : "manage-button"} style={{ backgroundColor: color, color: color === "#ffffff" ? "#14213d" : "#ffffff", border: vote === id ? "3px solid #d4ad40" : "2px solid #8c96a8", fontWeight: 800 }} onClick={() => setKataFlagVotes((current) => current.map((value, i) => i === index ? id : value))}>{["ROUGE", "BLANC", "BLEU"][colorIndex] || "DRAPEAU"} · {c?.nom} {c?.prenom}</button>; })}</div>)}
+      <div aria-live="polite" style={{ padding: "18px", margin: "18px 0", background: "#f2f5fa", borderRadius: "14px", border: "2px solid #c8d1df" }}>
+        <h3 style={{ margin: "0 0 12px" }}>Résultat des drapeaux · {votes.length}/5 votes</h3>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>{eligibleIds.map((id) => {
+          const colorIndex = kataFlagTie.ids.indexOf(id);
+          const color = ["#c62f36", "#ffffff", "#2465d4"][colorIndex] || "#777";
+          const competitor = getCompetitor(id);
+          return <div key={id} style={{ flex: "1 1 150px", padding: "12px", background: color, color: color === "#ffffff" ? "#14213d" : "#ffffff", border: "2px solid #9aa8ba", borderRadius: "10px", textAlign: "center" }}>
+            <strong style={{ display: "block", fontSize: "1.6rem" }}>{counts.find((item) => item.id === id)?.count || 0}</strong>
+            <span>{["ROUGE", "BLANC", "BLEU"][colorIndex] || "DRAPEAU"} · {competitor?.nom} {competitor?.prenom}</span>
+          </div>;
+        })}</div>
+        {complete && <p style={{ margin: "12px 0 0", fontWeight: 700 }}>{tied.length ? "Égalité : nouveau vote nécessaire" : "Vote terminé : résultat prêt à valider"}</p>}
+      </div>
       {complete && tied.length > 0 && <p role="alert">Égalité aux drapeaux : un nouveau vote sera organisé uniquement entre les compétiteurs ex æquo.</p>}
       <button type="button" className="primary" disabled={!complete} onClick={confirmFlagVote}>{complete && tied.length ? "Revoter avec les couleurs restantes" : "Valider la décision aux drapeaux"}</button>
     </section>;
