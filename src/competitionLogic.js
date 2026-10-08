@@ -372,6 +372,41 @@ export function podiumFromPool(pool) {
   return { firstId: ranking[0]?.competitorId || null, secondId: ranking[1]?.competitorId || null, thirdId: ranking[2]?.competitorId || null };
 }
 
+// Repair legacy Kata pools created with only one round, without losing first-round scores.
+export function restoreMissingKataSecondRound(pool) {
+  if (!competitionRulesEngine.isKataDiscipline(pool.discipline)) return pool;
+  const original = pool.matches || [];
+  const regular = original.filter((match) => !match.isKataTieBreak);
+  const ids = pool.competitorIds || [];
+  if (!ids.length || regular.length !== ids.length) return pool;
+  if (!ids.every((id) => regular.filter((match) => (match.competitorId || match.akaId) === id).length === 1)) return pool;
+  const ordered = ids.map((id) => regular.find((match) => (match.competitorId || match.akaId) === id));
+  const firstRound = ordered.map((match, index) => ({ ...match, kataRound: 1, ordre: index + 1 }));
+  const secondRound = ordered.map((match, index) => ({
+    ...match,
+    id: `${match.id}-kata-round-2`,
+    kataRound: 2,
+    ordre: ids.length + index + 1,
+    kataName: "",
+    kataScores: [],
+    kataHighestRemoved: undefined,
+    kataLowestRemoved: undefined,
+    kataRetainedScores: undefined,
+    finalScore: null,
+    akaScore: null,
+    shiroScore: null,
+    scoreAka: null,
+    scoreShiro: null,
+    winnerId: null,
+    vainqueur: null,
+    startedAt: undefined,
+    endedAt: undefined,
+    durationSeconds: undefined,
+    statut: "À jouer",
+  }));
+  return { ...pool, matches: [...firstRound, ...secondRound], podium: null, rankingLocked: [], statut: "En cours" };
+}
+
 export function isPoolComplete(pool) {
   if (!(pool.matches || []).length || !pool.matches.every((match) => match.statut === "Terminé")) return false;
   if (competitionRulesEngine.isKataDiscipline(pool.discipline)) {
