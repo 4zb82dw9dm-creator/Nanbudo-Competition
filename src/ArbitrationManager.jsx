@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MatchManager, { PoolTieBreakManager } from "./MatchManager";
 import KataSheet from "./KataSheet";
 import CompetitionControl from "./CompetitionControl";
-import { calculatePoolPodium, createKataTieBreakMatches, disciplineLabel } from "./competitionLogic";
+import { calculatePoolPodium, createKataTieBreakMatches, restoreMissingKataSecondRound, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { findNextArbitrationPassage, sortArbitrationMatches } from "./arbitrationSorting";
 import { arbitrationSheetKey, loadArbitrationDraft } from "./arbitrationDraftStorage";
@@ -59,6 +59,15 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
       .sort(([tatamiA], [tatamiB]) => tatamiOrder(tatamiA) - tatamiOrder(tatamiB) || String(tatamiA).localeCompare(String(tatamiB)))
       .map(([tatami, matches]) => ({ tatami, matches: matches.sort(sortArbitrationMatches) }));
   }, [competition, pools]);
+  // Older saved competitions can contain only one Kata passage per competitor.
+  // Upgrade those pools on opening arbitration; never discard completed first-round notes.
+  useEffect(() => {
+    const repairedPools = pools.map(restoreMissingKataSecondRound);
+    if (repairedPools.some((pool, index) => pool !== pools[index])) {
+      onUpdateCompetition({ ...competition, pools: repairedPools });
+    }
+  }, [competition, onUpdateCompetition]);
+
   const tatamis = matchesByTatami.map((group) => group.tatami);
 
   useEffect(() => {
