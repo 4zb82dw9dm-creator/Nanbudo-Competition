@@ -25,6 +25,8 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   const [selected, setSelected] = useState(null);
   const [historyMatch, setHistoryMatch] = useState(null);
   const [pendingTieBreak, setPendingTieBreak] = useState(null);
+  const [kataFlagTie, setKataFlagTie] = useState(null);
+  const [kataFlagVotes, setKataFlagVotes] = useState(["", "", "", "", ""]);
   const [showControl, setShowControl] = useState(false);
   const [editingRefereeSlot, setEditingRefereeSlot] = useState(null);
   const [activeTatami, setActiveTatami] = useState(() => localStorage.getItem(FAVORITE_TATAMI_STORAGE_KEY) || ALL_TATAMIS);
@@ -243,6 +245,11 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
 
       if (calculation.tieGroups.length) {
         if (isKataMatch) {
+          if (changedPool.matches.some((match) => match.isKataTieBreak)) {
+            setKataFlagTie({ poolId: pool.id, ids: calculation.tieGroups[0] });
+            setKataFlagVotes(["", "", "", "", ""]);
+            return calculation.pool;
+          }
           return createKataTieBreakMatches(calculation.pool, calculation.tieGroups);
         }
         setPendingTieBreak({ poolId: pool.id, tieGroups: calculation.tieGroups, groupIndex: 0, order: [] });
@@ -300,6 +307,24 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     return <article className={`competition arbitration-match-card ${match.statut === "Terminé" ? "competition-terminee" : ""} ${isCurrent ? "competition-current" : ""}`} key={`${pool.id}-${match.id}`}><div className="match-card-main"><p className="surtitle">{match.isKataTieBreak ? `DÉPARTAGE KATA · ${match.kataTieBreakMode}` : `${disciplineLabel(match.discipline)}${isKata && Number(match.kataRound) === 2 ? " · 2e PASSAGE" : ""}`} · {category?.nom}</p><h3>#{match.ordre} Tatami {match.tatami} {match.horaire && `· ${match.horaire}`}</h3>{isKata ? <p>Passage : {competitor?.nom} {competitor?.prenom} · {competitor?.club || "Club non renseigné"}{match.finalScore ? ` · Note ${Number(match.finalScore).toFixed(2)}` : ""}{match.isKataTieBreak ? ` · Tour de départage ${match.kataTieBreakRound}` : ""}</p> : <p>AKA {getCompetitor(match.akaId)?.nom} {getCompetitor(match.akaId)?.prenom} vs SHIRO {getCompetitor(match.shiroId)?.nom} {getCompetitor(match.shiroId)?.prenom}</p>}{winner && !isKata && <p>Vainqueur : {winner.nom} {winner.prenom}</p>}{isCurrent && <span className="current-match-badge">{isKata ? "Kata en cours" : "Combat en cours"}</span>}</div><div className="arbitration-card-actions"><button className="manage-button" onClick={() => setSelected({ poolId: pool.id, matchId: match.id })}>{match.statut === "Terminé" ? "Modifier" : "Arbitrer"}</button>{!isKata && <button className="manage-button" onClick={() => setHistoryMatch({ poolId: pool.id, matchId: match.id })}>Historique</button>}</div></article>;
   }
 
+  if (kataFlagTie) {
+    const votes = kataFlagVotes.filter(Boolean);
+    const counts = kataFlagTie.ids.map((id) => ({ id, count: votes.filter((vote) => vote === id).length }))
+      .sort((a, b) => b.count - a.count);
+    const decided = votes.length === 5 && counts.every((item, index) => index === 0 || counts[index - 1].count > item.count);
+    return <section className="arbitration-manager match-manager"><h2>Départage Kata · décision aux drapeaux</h2><p>Égalité après le Kata imposé. Chaque juge désigne un compétiteur. Les cinq votes doivent permettre un classement sans égalité.</p>
+      {kataFlagVotes.map((vote, index) => <div key={index} className="match-meta"><strong>{index === 0 ? "Sushin" : `Fukushin ${index}`}</strong>{kataFlagTie.ids.map((id) => { const c = getCompetitor(id); return <button type="button" key={id} className={vote === id ? "primary" : "manage-button"} onClick={() => setKataFlagVotes((current) => current.map((value, i) => i === index ? id : value))}>{c?.nom} {c?.prenom}</button>; })}</div>)}
+      {votes.length === 5 && !decided && <p role="alert">Égalité aux drapeaux : les juges doivent départager les compétiteurs avant validation.</p>}
+      <button type="button" className="primary" disabled={!decided} onClick={() => {
+        const pool = pools.find((item) => item.id === kataFlagTie.poolId);
+        const ordered = counts.map((item) => item.id);
+        const updated = { ...pool, kataFlagOrder: ordered };
+        const result = calculatePoolPodium(updated);
+        onUpdateCompetition({ ...competition, pools: pools.map((item) => item.id === pool.id ? result.pool : item) });
+        setKataFlagTie(null);
+      }}>Valider la décision aux drapeaux</button>
+    </section>;
+  }
   if (pendingTieBreak) return <div className="arbitration-manager"><PoolTieBreakManager key={`${pendingTieBreak.poolId}-${pendingTieBreak.groupIndex}`} competitorIds={pendingTieBreak.tieGroups[pendingTieBreak.groupIndex]} getCompetitor={getCompetitor} onComplete={completeTieGroup} /></div>;
   if (historyMatch) {
     const pool = pools.find((item) => item.id === historyMatch.poolId);
