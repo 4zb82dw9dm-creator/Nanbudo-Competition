@@ -198,8 +198,8 @@ export function createTestCompetition2() {
     };
   }));
   const categories = [];
-  const adultIds = competitors.filter((c) => c.age >= 18).map((c) => c.id);
-  const youthAges = ages.filter((age) => age < 18);
+  const adultIds = competitors.filter((c) => c.age >= 24).map((c) => c.id);
+  const youthAges = ages.filter((age) => age < 24);
   for (const age of [...youthAges, "adultes"]) {
     const ids = age === "adultes" ? adultIds : competitors.filter((c) => c.age === age).map((c) => c.id);
     const representativeAge = age === "adultes" ? 26 : age;
@@ -209,7 +209,7 @@ export function createTestCompetition2() {
       const kata = discipline === "kata_individuel";
       const label = kata ? kataGroup : (combat === "randori" ? "Randori" : "Ju-Randori");
       categories.push({
-        id: `test2-${age}-${discipline}`, nom: `${label} · ${age === "adultes" ? "Adultes 18–30 ans" : `${age} ans`} · Mixte`,
+        id: `test2-${age}-${discipline}`, nom: `${label} · ${age === "adultes" ? "Adultes 24–30 ans" : `${age} ans`} · Mixte`,
         discipline, registrationCategory: kata ? "Kata individuel" : combat === "randori" ? "Randori" : "Ju Randori",
         kataGroup: kata ? kataGroup : "", competitorIds: ids, ageGroup: age === "adultes" ? "Seniors" : `${age} ans`,
         sexe: "Mixte", gradeGroup: age === "adultes" ? "Dan" : "Kyu", statut: "Prête", manual: true,
