@@ -7,7 +7,8 @@ export const minutesToTime = (minutes) => `${String(Math.floor(minutes / 60)).pa
 export function estimateCategoryDuration(pools = []) {
   const matches = pools.reduce((total, pool) => total + (pool.matches?.length || 0), 0);
   const passageMinutes = isKata(pools[0]?.discipline) ? 4 : 6;
-  return Math.max(15, Math.ceil((matches * passageMinutes) / 5) * 5) + 5;
+  const finalsMinutes = !isKata(pools[0]?.discipline) && pools.length === 2 ? 12 : 0;
+  return Math.max(15, Math.ceil(((matches * passageMinutes) + finalsMinutes) / 5) * 5) + 5;
 }
 
 function categoryLoad(category) {
@@ -38,6 +39,7 @@ export function buildPlanning(competition) {
     name: pools[0].nom?.replace(/ · Poule \d+$/, "") || "Catégorie", discipline: pools[0].discipline,
     competitors: [...new Set(pools.flatMap((pool) => pool.competitorIds || []))], duration: estimateCategoryDuration(pools),
     tatami: Number(adjustments[categoryId]?.tatami || pools[0].tatami || 1),
+    finals: !isKata(pools[0].discipline) && pools.length === 2 ? [{ label: "PETITE FINALE — 3e et 4e places", participants: "2e Poule A contre 2e Poule B" }, { label: "FINALE — 1re et 2e places", participants: "1er Poule A contre 1er Poule B" }] : [],
     requestedOrder: adjustments[categoryId]?.order == null ? null : Number(adjustments[categoryId].order),
     requestedStart: adjustments[categoryId]?.start == null ? null : Number(adjustments[categoryId].start) }));
   const busy = new Map();
