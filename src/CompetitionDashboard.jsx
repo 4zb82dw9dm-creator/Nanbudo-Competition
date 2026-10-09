@@ -124,7 +124,7 @@ function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
   function closeRegistrations() { if (competitors.length === 0) return alert("Ajoutez au moins une inscription avant la clôture."); const preservedWorldCategories = competition.categoryMode === "world_championship_2026" && Array.isArray(competition.categories) && competition.categories.length > 0; onUpdateCompetition({ ...competition, statut: "Catégories générées", categories: preservedWorldCategories ? competition.categories : buildAutomaticCategories(competitors), pools: [] }); setView("categories"); }
   function exportCompetition() { const blob = new Blob([JSON.stringify(competition, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "nanbudo-competition.json"; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); }
   function simulateDemoResults() {
-    if (competition.demoMarker !== DEMO_COMPETITION_MARKER) return;
+    if (competition.demoMarker !== DEMO_COMPETITION_MARKER && !(competition.isDemoCompetition && competition.nom === TEST_COMPETITION_2_NAME)) return;
     if (window.confirm("Remplir tous les résultats de cette compétition de démonstration ?")) onUpdateCompetition(simulateCompleteTestCompetition({ ...competition, demoMarker: DEMO_COMPETITION_MARKER }));
   }
   function sortBy(key) { setSort((current) => ({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" })); }
