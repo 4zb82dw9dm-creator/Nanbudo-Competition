@@ -5,9 +5,9 @@ export const isKata = (discipline = "") => String(discipline).startsWith("kata")
 export const minutesToTime = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}h${String(Math.round(minutes) % 60).padStart(2, "0")}`;
 
 export function estimateCategoryDuration(pools = []) {
-  const matches = pools.reduce((total, pool) => total + (pool.matches?.length || 0), 0);
+  const matches = pools.filter((pool) => !pool.isFinalsPool).reduce((total, pool) => total + (pool.matches?.length || 0), 0);
   const passageMinutes = isKata(pools[0]?.discipline) ? 4 : 6;
-  const finalsMinutes = !isKata(pools[0]?.discipline) && pools.length === 2 ? 12 : 0;
+  const finalsMinutes = !isKata(pools[0]?.discipline) && pools.filter((pool) => !pool.isFinalsPool).length === 2 ? 12 : 0;
   return Math.max(15, Math.ceil(((matches * passageMinutes) + finalsMinutes) / 5) * 5) + 5;
 }
 
@@ -35,13 +35,16 @@ export function buildPlanning(competition) {
   const groups = new Map();
   (competition.pools || []).forEach((pool) => { const key = String(pool.categoryId || pool.id); groups.set(key, [...(groups.get(key) || []), pool]); });
   const adjustments = competition.planningAdjustments || {};
-  const categories = [...groups].map(([categoryId, pools], sourceOrder) => ({ categoryId, pools, sourceOrder,
+  const categories = [...groups].map(([categoryId, allPools], sourceOrder) => { const pools = allPools.filter((pool) => !pool.isFinalsPool); const finalsPool = allPools.find((pool) => pool.isFinalsPool); return ({ categoryId, pools, sourceOrder,
     name: pools[0].nom?.replace(/ · Poule \d+$/, "") || "Catégorie", discipline: pools[0].discipline,
     competitors: [...new Set(pools.flatMap((pool) => pool.competitorIds || []))], duration: estimateCategoryDuration(pools),
     tatami: Number(adjustments[categoryId]?.tatami || pools[0].tatami || 1),
-    finals: !isKata(pools[0].discipline) && pools.length === 2 ? [{ label: "PETITE FINALE — 3e et 4e places", participants: "2e Poule A contre 2e Poule B" }, { label: "FINALE — 1re et 2e places", participants: "1er Poule A contre 1er Poule B" }] : [],
+    finals: !isKata(pools[0].discipline) && pools.length === 2 ? [
+      { label: "PETITE FINALE — 3e et 4e places", participants: "2e Poule 1 contre 2e Poule 2", match: finalsPool?.matches?.find((match) => match.finalType === "bronze") },
+      { label: "FINALE — 1re et 2e places", participants: "1re Poule 1 contre 1re Poule 2", match: finalsPool?.matches?.find((match) => match.finalType === "gold") },
+    ] : [],
     requestedOrder: adjustments[categoryId]?.order == null ? null : Number(adjustments[categoryId].order),
-    requestedStart: adjustments[categoryId]?.start == null ? null : Number(adjustments[categoryId].start) }));
+    requestedStart: adjustments[categoryId]?.start == null ? null : Number(adjustments[categoryId].start) }); });
   const busy = new Map();
   const session = (items, sessionStart, priority = () => 0) => {
     const cursors = { 1: sessionStart, 2: sessionStart, 3: sessionStart };
