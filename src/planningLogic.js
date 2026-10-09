@@ -33,7 +33,7 @@ function combatDisciplinePriority(discipline = "") {
 
 export function buildPlanning(competition) {
   const groups = new Map();
-  (competition.pools || []).forEach((pool) => { const key = String(pool.categoryId || pool.id); groups.set(key, [...(groups.get(key) || []), pool]); });
+  (competition.pools || []).filter((pool) => !pool.isManualFinal).forEach((pool) => { const key = String(pool.categoryId || pool.id); groups.set(key, [...(groups.get(key) || []), pool]); });
   const adjustments = competition.planningAdjustments || {};
   const categories = [...groups].map(([categoryId, allPools], sourceOrder) => { const pools = allPools.filter((pool) => !pool.isFinalsPool); const finalsPool = allPools.find((pool) => pool.isFinalsPool); return ({ categoryId, pools, sourceOrder,
     name: pools[0].nom?.replace(/ · Poule \d+$/, "") || "Catégorie", discipline: pools[0].discipline,
@@ -70,6 +70,17 @@ export function buildPlanning(competition) {
   const kataEnd = Math.max(540, ...kataEntries.map((item) => item.end));
   const combatStart = kataEnd;
   const combatEntries = session(categories.filter((item) => !isKata(item.discipline)), combatStart, (item) => combatDisciplinePriority(item.discipline));
+  const manualFinalEntries = (competition.pools || []).filter((pool) => pool.isManualFinal).map((pool, index) => {
+    const tatami = Number(pool.tatami) || 1;
+    const prior = combatEntries.filter((entry) => entry.tatami === tatami);
+    const earlierManual = (competition.pools || []).filter((p) => p.isManualFinal && Number(p.tatami || 1) === tatami).findIndex((p) => p.id === pool.id);
+    const start = Math.max(combatStart, ...prior.map((entry) => entry.end)) + earlierManual * 10;
+    return { categoryId: String(pool.id), pools: [pool], name: pool.nom, discipline: pool.discipline,
+      disciplineLabel: "FINALE MANUELLE", competitors: pool.competitorIds || [],
+      tatami, start, end: start + 10, duration: 10, order: prior.length + earlierManual + 1,
+      finals: [{ label: "FINALE MANUELLE", participants: "AKA contre SHIRO", match: pool.matches?.[0] }] };
+  });
+  combatEntries.push(...manualFinalEntries);
   const ceremonyStart = Math.max(combatStart, ...combatEntries.map((item) => item.end));
   return { entries: [...kataEntries, ...combatEntries], kataEnd, combatStart, morningEnd: kataEnd, afternoonStart: combatStart, ceremonyStart };
 }
