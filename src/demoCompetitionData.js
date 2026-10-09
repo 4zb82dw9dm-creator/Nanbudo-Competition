@@ -1,4 +1,4 @@
-import { buildPoolsForCategory, calculatePoolPodium, setPoolTatami } from "./competitionLogic.js";
+import { buildPoolsForCategory, calculatePoolPodium, calculateFinalsPodium, synchronizeTwoPoolFinals, setPoolTatami } from "./competitionLogic.js";
 import { balancedTatamiAssignments } from "./planningLogic.js";
 import { ageCompetitionRule } from "./categoryRules.js";
 
@@ -234,7 +234,7 @@ export function createTestCompetition2() {
     }, assignments.get(String(category.id)) || 1)));
   return {
     id: `test2-${crypto.randomUUID()}`, slug: `competition-test-2-${crypto.randomUUID().slice(0, 8)}`,
-    nom: TEST_COMPETITION_2_NAME, date: "2026-10-17", lieu: "Marseille", tatamis: 3,
+    demoMarker: DEMO_COMPETITION_MARKER, nom: TEST_COMPETITION_2_NAME, date: "2026-10-17", lieu: "Marseille", tatamis: 3,
     horairesActifs: true, statut: "Tableaux générés", competitors, categories, pools,
     planningAdjustments: {}, availableKatas: ["Kata 0", "Kata 1", "Kata 2"],
     katas: ["Kata 0", "Kata 1", "Kata 2"], isDemoCompetition: true,
@@ -270,9 +270,27 @@ function simulatedCombat(pool) {
 
 export function simulateCompleteTestCompetition(competition) {
   if (competition.demoMarker !== DEMO_COMPETITION_MARKER) return competition;
-  const pools = (competition.pools || []).map((pool) => {
+  // Simulate qualifying pools first, then create and complete the actual finals.
+  const qualifyingPools = (competition.pools || []).filter((pool) => !pool.isFinalsPool).map((pool) => {
     const matches = pool.discipline.startsWith("kata") ? simulatedKata(pool) : simulatedCombat(pool);
     return calculatePoolPodium({ ...pool, matches, poolTieBreakOrder: [], rankingLocked: [], podium: null }).pool;
+  });
+  const withFinals = synchronizeTwoPoolFinals(qualifyingPools);
+  const pools = withFinals.map((pool) => {
+    if (!pool.isFinalsPool) return pool;
+    const matches = pool.matches.map((match, index) => {
+      const winnerId = index % 2 === 0 ? match.akaId : match.shiroId;
+      return {
+        ...match, akaScore: winnerId === match.akaId ? 3 : 1,
+        shiroScore: winnerId === match.shiroId ? 3 : 1,
+        scoreAka: winnerId === match.akaId ? 3 : 1,
+        scoreShiro: winnerId === match.shiroId ? 3 : 1,
+        winnerId, vainqueur: winnerId === match.akaId ? "aka" : "shiro",
+        statut: "Terminé",
+        matchHistory: [{ type: "simulation", label: match.finalType === "gold" ? "Finale" : "Petite finale", detail: "Résultat fictif" }],
+      };
+    });
+    return calculateFinalsPodium({ ...pool, matches }).pool;
   });
   return { ...competition, pools, demoSimulatedAt: new Date().toISOString(), statut: "Résultats de démonstration simulés" };
 }
