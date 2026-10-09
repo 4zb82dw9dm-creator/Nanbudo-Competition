@@ -444,18 +444,18 @@ export function synchronizeTwoPoolFinals(pools) {
     }
     const [a, b] = qualifiers;
     const specs = [
-      { type: "bronze", akaId: a.podium.secondId, shiroId: b.podium.secondId, ordre: 1 },
-      { type: "gold", akaId: a.podium.firstId, shiroId: b.podium.firstId, ordre: 2 },
+      { finalType: "bronze", akaId: a.podium.secondId, shiroId: b.podium.secondId, ordre: 1 },
+      { finalType: "gold", akaId: a.podium.firstId, shiroId: b.podium.firstId, ordre: 2 },
     ];
     const existing = finalsIndex >= 0 ? result[finalsIndex] : null;
     const unchanged = existing && specs.every((spec) => {
-      const match = existing.matches?.find((item) => item.finalType === spec.type);
+      const match = existing.matches?.find((item) => item.finalType === spec.finalType);
       return match && match.akaId === spec.akaId && match.shiroId === spec.shiroId;
     });
     if (unchanged) continue;
     const tatami = a.tatami || b.tatami || 1;
     const matches = specs.map((spec) => ({
-      ...spec, id: `final-${categoryId}-${spec.type}`, categoryId: a.categoryId,
+      ...spec, id: `final-${categoryId}-${spec.finalType}`, categoryId: a.categoryId,
       discipline: a.discipline, tatami, horaire: "", statut: "À jouer",
       akaScore: null, shiroScore: null, winnerId: null,
     }));
