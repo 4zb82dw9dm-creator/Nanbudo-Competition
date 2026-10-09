@@ -151,39 +151,10 @@ export function splitCategoryBySex(category, competitors = []) {
   });
   if (groups.size <= 1) return [category];
 
-  const entries = [...groups.entries()].map(([sex, competitorIds]) => ({ sex, competitorIds }));
-  const completeGroups = entries.filter(({ competitorIds }) => competitorIds.length >= MINIMUM_POOL_SIZE);
-  const isolatedIds = entries.filter(({ competitorIds }) => competitorIds.length < MINIMUM_POOL_SIZE).flatMap(({ competitorIds }) => competitorIds);
-
-  // Every sex that can form a complete pool stays strictly separated.
-  if (isolatedIds.length === 0) {
-    return completeGroups.map(({ sex, competitorIds }, index) => categoryWithSex(category, sex, competitorIds, index));
-  }
-
-  // Several undersized groups may together form the only valid mixed pool.
-  if (isolatedIds.length >= MINIMUM_POOL_SIZE) {
-    return [
-      ...completeGroups.map(({ sex, competitorIds }, index) => categoryWithSex(category, sex, competitorIds, index)),
-      categoryWithSex(category, "Mixte", isolatedIds, completeGroups.length, { autoMixedFallback: true }),
-    ];
-  }
-
-  // Borrow only the minimum number of competitors from a complete group, and only
-  // when that group can still keep a complete non-mixed pool.
-  const needed = MINIMUM_POOL_SIZE - isolatedIds.length;
-  const donorIndex = completeGroups.findIndex(({ competitorIds }) => competitorIds.length - needed >= MINIMUM_POOL_SIZE);
-  if (donorIndex >= 0) {
-    const separated = completeGroups.map(({ sex, competitorIds }) => ({ sex, competitorIds: [...competitorIds] }));
-    const donors = separated[donorIndex].competitorIds.splice(-needed);
-    return [
-      ...separated.map(({ sex, competitorIds }, index) => categoryWithSex(category, sex, competitorIds, index)),
-      categoryWithSex(category, "Mixte", [...isolatedIds, ...donors], separated.length, { autoMixedFallback: true }),
-    ];
-  }
-
-  // Mixing the whole category is the last resort when separation would strand
-  // one or two competitors without any complete pool.
-  return [categoryWithSex(category, "Mixte", members.map(({ id }) => id), 0, { autoMixedFallback: true })];
+  // Never mix sexes automatically, including undersized groups.
+  return [...groups.entries()].map(([sex, competitorIds], index) =>
+    categoryWithSex(category, sex, competitorIds, index)
+  );
 }
 
 export function prepareCategoriesForPools(categories = [], competitors = []) {
