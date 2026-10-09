@@ -58,8 +58,10 @@ test("automatic podium closes a kata pool and is idempotent", () => {
     discipline: "kata_individuel",
     competitorIds: ["A", "B"],
     matches: [
-      { competitorId: "A", finalScore: 8.4, statut: "Terminé" },
-      { competitorId: "B", finalScore: 8.8, statut: "Terminé" },
+      { competitorId: "A", finalScore: 4.2, kataRound: 1, statut: "Terminé" },
+      { competitorId: "B", finalScore: 4.4, kataRound: 1, statut: "Terminé" },
+      { competitorId: "A", finalScore: 4.2, kataRound: 2, statut: "Terminé" },
+      { competitorId: "B", finalScore: 4.4, kataRound: 2, statut: "Terminé" },
     ],
   };
   const first = calculatePoolPodium(kataPool).pool;
