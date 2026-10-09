@@ -6,6 +6,11 @@ import { sortArbitrationMatches } from "./arbitrationSorting";
 
 function PlanningManager({ competition, onUpdateCompetition }) {
   const [planningNotice, setPlanningNotice] = useState("");
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualCategory, setManualCategory] = useState("");
+  const [manualAka, setManualAka] = useState("");
+  const [manualShiro, setManualShiro] = useState("");
+  const [manualTatami, setManualTatami] = useState(1);
   const planning = useMemo(() => buildPlanning(competition), [competition]);
   const competitors = new Map((competition.competitors || []).map((item) => [String(item.id), item]));
   const passageRows = useMemo(() => {
@@ -33,6 +38,21 @@ function PlanningManager({ competition, onUpdateCompetition }) {
     const planningAdjustments = {};
     onUpdateCompetition({ ...competition, pools, planningAdjustments });
     setPlanningNotice(reset ? "Planning réinitialisé : horaires et tatamis rééquilibrés. Résultats conservés." : "Planning recalculé : horaires et tatamis rééquilibrés. Résultats conservés.");
+  };
+  const manualCategories = (competition.categories || []).filter((category) => !isKata(category.discipline));
+  const selectedCategory = manualCategories.find((category) => String(category.id) === manualCategory);
+  const manualCompetitors = (competition.competitors || []).filter((person) => selectedCategory?.competitorIds?.some((id) => String(id) === String(person.id)));
+  const addManualFinal = () => {
+    if (!selectedCategory || !manualAka || !manualShiro || manualAka === manualShiro) {
+      setPlanningNotice("Choisis une catégorie et deux compétiteurs différents.");
+      return;
+    }
+    const id = "manual-final-" + Date.now();
+    const match = { id: id + "-match", categoryId: selectedCategory.id, discipline: selectedCategory.discipline, finalType: "gold", manualFinal: true, akaId: manualAka, shiroId: manualShiro, tatami: manualTatami, ordre: 1, horaire: "", statut: "À jouer", akaScore: null, shiroScore: null, winnerId: null };
+    const pool = { id, categoryId: selectedCategory.id, discipline: selectedCategory.discipline, nom: "Finale manuelle · " + selectedCategory.nom, isManualFinal: true, competitorIds: [manualAka, manualShiro], tatami: manualTatami, matches: [match], statut: "En cours", podium: null };
+    onUpdateCompetition({ ...competition, pools: [...(competition.pools || []), pool] });
+    setManualOpen(false);
+    setPlanningNotice("Finale manuelle ajoutée sans modifier les résultats existants.");
   };
   const exportPlanningPdf = async () => {
     const safeName = String(competition.nom || "Competition")
@@ -84,7 +104,15 @@ function PlanningManager({ competition, onUpdateCompetition }) {
   if (!(competition.pools || []).length) return <div className="empty-state"><h3>Planning indisponible</h3><p>Générez et validez d’abord les poules : le planning apparaîtra automatiquement, sans ressaisie.</p></div>;
   const kataEntries = planning.entries.filter((entry) => isKata(entry.discipline));
   const combatEntries = planning.entries.filter((entry) => !isKata(entry.discipline));
-  return <section className="planning-manager"><div className="manager-header planning-heading"><div><p className="surtitle">PROGRAMME AUTOMATIQUE</p><h2>Planning</h2><p>Les Kata sont terminés en premier sur l’ensemble des tatamis. Les Randori / Ju-Randori démarrent dès la fin du dernier Kata, même si celle-ci intervient avant midi.</p></div><div className="planning-actions"><button className="primary" onClick={() => recalculate(false)}>Recalculer automatiquement le planning</button><button onClick={() => recalculate(true)}>Réinitialiser le planning</button><button onClick={exportPlanningPdf}>Exporter / imprimer le déroulement détaillé</button><button onClick={() => window.print()}>Imprimer le planning</button></div></div>
+  return <section className="planning-manager"><div className="manager-header planning-heading"><div><p className="surtitle">PROGRAMME AUTOMATIQUE</p><h2>Planning</h2><p>Les Kata sont terminés en premier sur l’ensemble des tatamis. Les Randori / Ju-Randori démarrent dès la fin du dernier Kata, même si celle-ci intervient avant midi.</p></div><div className="planning-actions"><button type="button" onClick={() => setManualOpen((open) => !open)}>+ Finale manuelle</button><button className="primary" onClick={() => recalculate(false)}>Recalculer automatiquement le planning</button><button onClick={() => recalculate(true)}>Réinitialiser le planning</button><button onClick={exportPlanningPdf}>Exporter / imprimer le déroulement détaillé</button><button onClick={() => window.print()}>Imprimer le planning</button></div></div>
+    {manualOpen && <section className="card" style={{ padding: 16, marginBottom: 16 }}>
+      <h3>Ajouter une finale manuelle</h3>
+      <label>Catégorie <select value={manualCategory} onChange={(e) => { setManualCategory(e.target.value); setManualAka(""); setManualShiro(""); }}><option value="">Choisir</option>{manualCategories.map((c) => <option key={c.id} value={String(c.id)}>{c.nom}</option>)}</select></label>
+      <label>AKA <select value={manualAka} onChange={(e) => setManualAka(e.target.value)}><option value="">Choisir</option>{manualCompetitors.map((c) => <option key={c.id} value={String(c.id)}>{c.prenom} {c.nom}</option>)}</select></label>
+      <label>SHIRO <select value={manualShiro} onChange={(e) => setManualShiro(e.target.value)}><option value="">Choisir</option>{manualCompetitors.map((c) => <option key={c.id} value={String(c.id)}>{c.prenom} {c.nom}</option>)}</select></label>
+      <label>Tatami <select value={manualTatami} onChange={(e) => setManualTatami(Number(e.target.value))}>{PLANNING_TATAMIS.map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+      <button className="primary" type="button" onClick={addManualFinal}>Ajouter au planning</button>
+    </section>}
     {planningNotice && <p role="status" className="beta-note">{planningNotice}</p>}
     <Session title="PHASE 1 · KATA" entries={kataEntries} competitors={competitors} onChange={change} />
     <div className="planning-break"><strong>FIN DES KATA</strong><span>{minutesToTime(planning.kataEnd)} · Début immédiat des Randori / Ju-Randori</span></div>
