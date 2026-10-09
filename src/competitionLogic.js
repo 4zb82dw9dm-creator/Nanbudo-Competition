@@ -253,17 +253,12 @@ export function calculateRanking(pool) {
   ranking.forEach((item) => { item.difference = item.scoreFor - item.scoreAgainst; });
   const tieBreakPositions = new Map((pool.poolTieBreakOrder || []).map((competitorId, index) => [competitorId, index]));
 
-  if (usesJuRandoriPoolTieBreak(pool.discipline)) {
-    return ranking.sort((a, b) => b.victories - a.victories
-      || a.negativePoints - b.negativePoints
-      || (tieBreakPositions.get(a.competitorId) ?? Number.MAX_SAFE_INTEGER) - (tieBreakPositions.get(b.competitorId) ?? Number.MAX_SAFE_INTEGER));
-  }
-
   return ranking.sort((a, b) => b.victories - a.victories
-    || b.difference - a.difference
-    || b.scoreFor - a.scoreFor
     || a.negativePoints - b.negativePoints
-    || (tieBreakPositions.get(a.competitorId) ?? Number.MAX_SAFE_INTEGER) - (tieBreakPositions.get(b.competitorId) ?? Number.MAX_SAFE_INTEGER));
+    || ((tieBreakPositions.has(a.competitorId) && tieBreakPositions.has(b.competitorId))
+      ? tieBreakPositions.get(a.competitorId) - tieBreakPositions.get(b.competitorId) : 0)
+    || (directEncounterWinner(pool, a.competitorId, b.competitorId) === a.competitorId ? -1
+      : directEncounterWinner(pool, a.competitorId, b.competitorId) === b.competitorId ? 1 : 0));
 }
 
 function samePoolResult(a, b) {
@@ -282,43 +277,22 @@ function unresolvedKataTieGroups(pool) {
   return groups.filter((ids) => !ids.every((id) => (pool.kataFlagOrder || []).includes(id)));
 }
 
-function unresolvedJuRandoriTieGroups(pool) {
+export function unresolvedPoolTieGroups(pool) {
+  if (competitionRulesEngine.isKataDiscipline(pool.discipline)) return unresolvedKataTieGroups(pool);
   const ranking = calculateRanking({ ...pool, poolTieBreakOrder: [] });
   const resolved = new Set(pool.poolTieBreakOrder || []);
   const groups = [];
-
   for (let start = 0; start < ranking.length;) {
     let end = start + 1;
     while (end < ranking.length
       && ranking[end].victories === ranking[start].victories
       && ranking[end].negativePoints === ranking[start].negativePoints) end += 1;
-    const competitorIds = ranking.slice(start, end).map((item) => item.competitorId);
-
-    if (competitorIds.length > 1 && competitorIds.some((id) => !resolved.has(id))) {
-      groups.push(competitorIds);
+    const ids = ranking.slice(start, end).map((item) => item.competitorId);
+    if (ids.length === 2 && directEncounterWinner(pool, ids[0], ids[1])) {
+      start = end;
+      continue;
     }
-    start = end;
-  }
-  return groups;
-}
-
-export function unresolvedPoolTieGroups(pool) {
-  if (competitionRulesEngine.isKataDiscipline(pool.discipline)) return unresolvedKataTieGroups(pool);
-  if (usesJuRandoriPoolTieBreak(pool.discipline)) return unresolvedJuRandoriTieGroups(pool);
-  const ranking = calculateRanking({ ...pool, poolTieBreakOrder: [] });
-  const resolved = new Set(pool.poolTieBreakOrder || []);
-  const groups = [];
-  for (let start = 0; start < ranking.length;) {
-    let end = start + 1;
-    while (end < ranking.length && samePoolResult(ranking[start], ranking[end])) end += 1;
-    const resultGroup = ranking.slice(start, end);
-    for (let negativeStart = 0; negativeStart < resultGroup.length;) {
-      let negativeEnd = negativeStart + 1;
-      while (negativeEnd < resultGroup.length && resultGroup[negativeEnd].negativePoints === resultGroup[negativeStart].negativePoints) negativeEnd += 1;
-      const competitorIds = resultGroup.slice(negativeStart, negativeEnd).map((item) => item.competitorId);
-      if (competitorIds.length > 1 && competitorIds.some((id) => !resolved.has(id))) groups.push(competitorIds);
-      negativeStart = negativeEnd;
-    }
+    if (ids.length > 1 && ids.some((id) => !resolved.has(id))) groups.push(ids);
     start = end;
   }
   return groups;
