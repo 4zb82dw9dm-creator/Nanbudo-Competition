@@ -182,7 +182,7 @@ export function createTestCompetition2() {
   const ages = [7, 9, 11, 13, 15, 17, 19, 21, 26, 30];
   const competitors = ages.flatMap((age, group) => Array.from({ length: 4 }, (_, member) => {
     const index = group * 4 + member;
-    const sex = age >= 24 ? "Femme" : [11, 17].includes(age) ? (member % 2 === 0 ? "Homme" : "Femme") : (group % 2 === 0 ? "Homme" : "Femme");
+    const sex = age >= 24 ? "Femme" : (group % 2 === 0 ? "Homme" : "Femme");
     const kataGroup = ageCompetitionRule(age)?.kataGroup || (age <= 7 ? "Kata 0" : age <= 11 ? "Kata 1" : "Kata 2");
     return {
       id: `test2-competitor-${index + 1}`,
