@@ -182,7 +182,7 @@ export function createTestCompetition2() {
   const ages = [7, 9, 11, 13, 15, 17, 19, 21, 26, 30];
   const competitors = ages.flatMap((age, group) => Array.from({ length: 4 }, (_, member) => {
     const index = group * 4 + member;
-    const sex = member % 2 === 0 ? "Homme" : "Femme";
+    const sex = age >= 24 ? "Femme" : [11, 17].includes(age) ? (member % 2 === 0 ? "Homme" : "Femme") : (group % 2 === 0 ? "Homme" : "Femme");
     const kataGroup = ageCompetitionRule(age)?.kataGroup || (age <= 7 ? "Kata 0" : age <= 11 ? "Kata 1" : "Kata 2");
     return {
       id: `test2-competitor-${index + 1}`,
@@ -201,18 +201,24 @@ export function createTestCompetition2() {
   const adultIds = competitors.filter((c) => c.age >= 24).map((c) => c.id);
   const youthAges = ages.filter((age) => age < 24);
   for (const age of [...youthAges, "adultes"]) {
-    const ids = age === "adultes" ? adultIds : competitors.filter((c) => c.age === age).map((c) => c.id);
+    const members = age === "adultes" ? competitors.filter((c) => adultIds.includes(c.id)) : competitors.filter((c) => c.age === age);
     const representativeAge = age === "adultes" ? 26 : age;
     const kataGroup = ageCompetitionRule(representativeAge)?.kataGroup || (representativeAge <= 7 ? "Kata 0" : representativeAge <= 11 ? "Kata 1" : "Kata 2");
     const combat = representativeAge <= 11 ? "randori" : "ju_randori";
+    const sexes = [...new Set(members.map((c) => c.sexe))];
+    // Only the 11- and 17-year-old groups require a mixed fallback (2 girls / 2 boys).
+    // Every other category is strictly single-sex; the eight adult women form two pools.
+    const sex = sexes.length === 1 ? sexes[0] : "Mixte";
+    const ids = members.map((c) => c.id);
     for (const discipline of ["kata_individuel", combat]) {
       const kata = discipline === "kata_individuel";
       const label = kata ? kataGroup : (combat === "randori" ? "Randori" : "Ju-Randori");
       categories.push({
-        id: `test2-${age}-${discipline}`, nom: `${label} · ${age === "adultes" ? "Adultes 24–30 ans" : `${age} ans`} · Mixte`,
+        id: `test2-${age}-${discipline}`, nom: `${label} · ${age === "adultes" ? "Adultes 24–30 ans" : `${age} ans`} · ${sex}`,
         discipline, registrationCategory: kata ? "Kata individuel" : combat === "randori" ? "Randori" : "Ju Randori",
         kataGroup: kata ? kataGroup : "", competitorIds: ids, ageGroup: age === "adultes" ? "Seniors" : `${age} ans`,
-        sexe: "Mixte", gradeGroup: age === "adultes" ? "Dan" : "Kyu", statut: "Prête", manual: true,
+        sexe: sex, gradeGroup: age === "adultes" ? "Dan" : "Kyu", statut: "Prête", manual: true,
+        manualMixed: sex === "Mixte", autoMixedFallback: sex === "Mixte",
       });
     }
   }
