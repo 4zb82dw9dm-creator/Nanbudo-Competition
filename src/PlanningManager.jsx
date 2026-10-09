@@ -8,6 +8,7 @@ function PlanningManager({ competition, onUpdateCompetition }) {
   const [planningNotice, setPlanningNotice] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
   const [manualCategory, setManualCategory] = useState("");
+  const [manualCategoryName, setManualCategoryName] = useState("");
   const [manualAka, setManualAka] = useState("");
   const [manualShiro, setManualShiro] = useState("");
   const [manualTatami, setManualTatami] = useState(1);
@@ -41,17 +42,19 @@ function PlanningManager({ competition, onUpdateCompetition }) {
   };
   const manualCategories = (competition.categories || []).filter((category) => !isKata(category.discipline));
   const selectedCategory = manualCategories.find((category) => String(category.id) === manualCategory);
-  const manualCompetitors = (competition.competitors || []).filter((person) => selectedCategory?.competitorIds?.some((id) => String(id) === String(person.id)));
+  const manualCompetitors = competition.competitors || [];
   const addManualFinal = () => {
-    if (!selectedCategory || !manualAka || !manualShiro || manualAka === manualShiro) {
-      setPlanningNotice("Choisis une catégorie et deux compétiteurs différents.");
+    if (!manualCategoryName.trim() || !manualAka || !manualShiro || manualAka === manualShiro) {
+      setPlanningNotice("Saisis le nom de la catégorie et choisis deux compétiteurs différents.");
       return;
     }
     const id = "manual-final-" + Date.now();
-    const match = { id: id + "-match", categoryId: selectedCategory.id, discipline: selectedCategory.discipline, finalType: "gold", manualFinal: true, akaId: manualAka, shiroId: manualShiro, tatami: manualTatami, ordre: 1, horaire: "", statut: "À jouer", akaScore: null, shiroScore: null, winnerId: null };
-    const pool = { id, categoryId: selectedCategory.id, discipline: selectedCategory.discipline, nom: "Finale manuelle · " + selectedCategory.nom, isManualFinal: true, competitorIds: [manualAka, manualShiro], tatami: manualTatami, matches: [match], statut: "En cours", podium: null };
+    const discipline = selectedCategory?.discipline || "ju_randori";
+    const match = { id: id + "-match", categoryId: id, discipline, finalType: "gold", manualFinal: true, akaId: manualAka, shiroId: manualShiro, tatami: manualTatami, ordre: 1, horaire: "", statut: "À jouer", akaScore: null, shiroScore: null, winnerId: null };
+    const pool = { id, categoryId: id, discipline, nom: "Finale manuelle · " + manualCategoryName.trim(), isManualFinal: true, competitorIds: [manualAka, manualShiro], tatami: manualTatami, matches: [match], statut: "En cours", podium: null };
     onUpdateCompetition({ ...competition, pools: [...(competition.pools || []), pool] });
     setManualOpen(false);
+    setManualCategoryName("");
     setPlanningNotice("Finale manuelle ajoutée sans modifier les résultats existants.");
   };
   const exportPlanningPdf = async () => {
@@ -107,7 +110,7 @@ function PlanningManager({ competition, onUpdateCompetition }) {
   return <section className="planning-manager"><div className="manager-header planning-heading"><div><p className="surtitle">PROGRAMME AUTOMATIQUE</p><h2>Planning</h2><p>Les Kata sont terminés en premier sur l’ensemble des tatamis. Les Randori / Ju-Randori démarrent dès la fin du dernier Kata, même si celle-ci intervient avant midi.</p></div><div className="planning-actions"><button type="button" onClick={() => setManualOpen((open) => !open)}>+ Finale manuelle</button><button className="primary" onClick={() => recalculate(false)}>Recalculer automatiquement le planning</button><button onClick={() => recalculate(true)}>Réinitialiser le planning</button><button onClick={exportPlanningPdf}>Exporter / imprimer le déroulement détaillé</button><button onClick={() => window.print()}>Imprimer le planning</button></div></div>
     {manualOpen && <section className="card" style={{ padding: 16, marginBottom: 16 }}>
       <h3>Ajouter une finale manuelle</h3>
-      <label>Catégorie <select value={manualCategory} onChange={(e) => { setManualCategory(e.target.value); setManualAka(""); setManualShiro(""); }}><option value="">Choisir</option>{manualCategories.map((c) => <option key={c.id} value={String(c.id)}>{c.nom}</option>)}</select></label>
+      <label>Catégorie <input type="text" value={manualCategoryName} placeholder="Ex. Open seniors" onChange={(e) => setManualCategoryName(e.target.value)} /></label>
       <label>AKA <select value={manualAka} onChange={(e) => setManualAka(e.target.value)}><option value="">Choisir</option>{manualCompetitors.map((c) => <option key={c.id} value={String(c.id)}>{c.prenom} {c.nom}</option>)}</select></label>
       <label>SHIRO <select value={manualShiro} onChange={(e) => setManualShiro(e.target.value)}><option value="">Choisir</option>{manualCompetitors.map((c) => <option key={c.id} value={String(c.id)}>{c.prenom} {c.nom}</option>)}</select></label>
       <label>Tatami <select value={manualTatami} onChange={(e) => setManualTatami(Number(e.target.value))}>{PLANNING_TATAMIS.map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
