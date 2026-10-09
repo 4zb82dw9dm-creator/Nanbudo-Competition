@@ -17,9 +17,11 @@ function ResultsManager({ competition }) {
     );
   }
 
-  const finishedPools = pools.filter(
-    (pool) => pool.podium
-  );
+  const finishedPools = pools.filter((pool) => {
+    if (!pool.podium) return false;
+    const categoryPools = pools.filter((item) => String(item.categoryId) === String(pool.categoryId) && !item.isFinalsPool);
+    return pool.isFinalsPool || categoryPools.length !== 2;
+  });
 
   function competitorName(id) {
   const competitor = getCompetitor(id);

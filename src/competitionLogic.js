@@ -253,17 +253,12 @@ export function calculateRanking(pool) {
   ranking.forEach((item) => { item.difference = item.scoreFor - item.scoreAgainst; });
   const tieBreakPositions = new Map((pool.poolTieBreakOrder || []).map((competitorId, index) => [competitorId, index]));
 
-  if (usesJuRandoriPoolTieBreak(pool.discipline)) {
-    return ranking.sort((a, b) => b.victories - a.victories
-      || a.negativePoints - b.negativePoints
-      || (tieBreakPositions.get(a.competitorId) ?? Number.MAX_SAFE_INTEGER) - (tieBreakPositions.get(b.competitorId) ?? Number.MAX_SAFE_INTEGER));
-  }
-
   return ranking.sort((a, b) => b.victories - a.victories
-    || b.difference - a.difference
-    || b.scoreFor - a.scoreFor
     || a.negativePoints - b.negativePoints
-    || (tieBreakPositions.get(a.competitorId) ?? Number.MAX_SAFE_INTEGER) - (tieBreakPositions.get(b.competitorId) ?? Number.MAX_SAFE_INTEGER));
+    || ((tieBreakPositions.has(a.competitorId) && tieBreakPositions.has(b.competitorId))
+      ? tieBreakPositions.get(a.competitorId) - tieBreakPositions.get(b.competitorId) : 0)
+    || (directEncounterWinner(pool, a.competitorId, b.competitorId) === a.competitorId ? -1
+      : directEncounterWinner(pool, a.competitorId, b.competitorId) === b.competitorId ? 1 : 0));
 }
 
 function samePoolResult(a, b) {
@@ -282,43 +277,22 @@ function unresolvedKataTieGroups(pool) {
   return groups.filter((ids) => !ids.every((id) => (pool.kataFlagOrder || []).includes(id)));
 }
 
-function unresolvedJuRandoriTieGroups(pool) {
+export function unresolvedPoolTieGroups(pool) {
+  if (competitionRulesEngine.isKataDiscipline(pool.discipline)) return unresolvedKataTieGroups(pool);
   const ranking = calculateRanking({ ...pool, poolTieBreakOrder: [] });
   const resolved = new Set(pool.poolTieBreakOrder || []);
   const groups = [];
-
   for (let start = 0; start < ranking.length;) {
     let end = start + 1;
     while (end < ranking.length
       && ranking[end].victories === ranking[start].victories
       && ranking[end].negativePoints === ranking[start].negativePoints) end += 1;
-    const competitorIds = ranking.slice(start, end).map((item) => item.competitorId);
-
-    if (competitorIds.length > 1 && competitorIds.some((id) => !resolved.has(id))) {
-      groups.push(competitorIds);
+    const ids = ranking.slice(start, end).map((item) => item.competitorId);
+    if (ids.length === 2 && directEncounterWinner(pool, ids[0], ids[1])) {
+      start = end;
+      continue;
     }
-    start = end;
-  }
-  return groups;
-}
-
-export function unresolvedPoolTieGroups(pool) {
-  if (competitionRulesEngine.isKataDiscipline(pool.discipline)) return unresolvedKataTieGroups(pool);
-  if (usesJuRandoriPoolTieBreak(pool.discipline)) return unresolvedJuRandoriTieGroups(pool);
-  const ranking = calculateRanking({ ...pool, poolTieBreakOrder: [] });
-  const resolved = new Set(pool.poolTieBreakOrder || []);
-  const groups = [];
-  for (let start = 0; start < ranking.length;) {
-    let end = start + 1;
-    while (end < ranking.length && samePoolResult(ranking[start], ranking[end])) end += 1;
-    const resultGroup = ranking.slice(start, end);
-    for (let negativeStart = 0; negativeStart < resultGroup.length;) {
-      let negativeEnd = negativeStart + 1;
-      while (negativeEnd < resultGroup.length && resultGroup[negativeEnd].negativePoints === resultGroup[negativeStart].negativePoints) negativeEnd += 1;
-      const competitorIds = resultGroup.slice(negativeStart, negativeEnd).map((item) => item.competitorId);
-      if (competitorIds.length > 1 && competitorIds.some((id) => !resolved.has(id))) groups.push(competitorIds);
-      negativeStart = negativeEnd;
-    }
+    if (ids.length > 1 && ids.some((id) => !resolved.has(id))) groups.push(ids);
     start = end;
   }
   return groups;
@@ -453,4 +427,59 @@ export function calculatePoolPodium(pool) {
     pool: { ...pool, rankingLocked: calculateRanking(pool), podium: podiumFromPool(pool), statut: "Terminée" },
     tieGroups: [],
   };
+}
+
+/** Create one final and one bronze match once both qualifying pools are ranked. */
+export function synchronizeTwoPoolFinals(pools) {
+  const result = [...pools];
+  const categories = new Set(result.filter((pool) => !pool.isFinalsPool && !competitionRulesEngine.isKataDiscipline(pool.discipline)).map((pool) => String(pool.categoryId)));
+  for (const categoryId of categories) {
+    const qualifiers = result.filter((pool) => !pool.isFinalsPool && String(pool.categoryId) === categoryId);
+    if (qualifiers.length !== 2) continue;
+    const finalsIndex = result.findIndex((pool) => pool.isFinalsPool && String(pool.categoryId) === categoryId);
+    const ready = qualifiers.every((pool) => pool.statut === "Terminée" && pool.podium?.firstId && pool.podium?.secondId);
+    if (!ready) {
+      if (finalsIndex >= 0) result.splice(finalsIndex, 1);
+      continue;
+    }
+    const [a, b] = qualifiers;
+    const specs = [
+      { finalType: "bronze", akaId: a.podium.secondId, shiroId: b.podium.secondId, ordre: 1 },
+      { finalType: "gold", akaId: a.podium.firstId, shiroId: b.podium.firstId, ordre: 2 },
+    ];
+    const existing = finalsIndex >= 0 ? result[finalsIndex] : null;
+    const unchanged = existing && specs.every((spec) => {
+      const match = existing.matches?.find((item) => item.finalType === spec.finalType);
+      return match && match.akaId === spec.akaId && match.shiroId === spec.shiroId;
+    });
+    if (unchanged) continue;
+    const tatami = a.tatami || b.tatami || 1;
+    const matches = specs.map((spec) => ({
+      ...spec, id: `final-${categoryId}-${spec.finalType}`, categoryId: a.categoryId,
+      discipline: a.discipline, tatami, horaire: "", statut: "À jouer",
+      akaScore: null, shiroScore: null, winnerId: null,
+    }));
+    const finalsPool = {
+      id: `finals-${categoryId}`, categoryId: a.categoryId, discipline: a.discipline,
+      nom: "Finale et petite finale", isFinalsPool: true, closingMode: "finals",
+      competitorIds: [...new Set(matches.flatMap((match) => [match.akaId, match.shiroId]))],
+      tatami, matches, statut: "En cours", rankingLocked: [], podium: null,
+    };
+    if (finalsIndex >= 0) result[finalsIndex] = finalsPool;
+    else result.push(finalsPool);
+  }
+  return result;
+}
+
+export function calculateFinalsPodium(pool) {
+  const gold = pool.matches.find((match) => match.finalType === "gold");
+  const bronze = pool.matches.find((match) => match.finalType === "bronze");
+  if (!gold || !bronze || gold.statut !== "Terminé" || bronze.statut !== "Terminé" || !gold.winnerId || !bronze.winnerId) {
+    return { pool: { ...pool, statut: "En cours", podium: null }, tieGroups: [] };
+  }
+  return { pool: { ...pool, statut: "Terminée", podium: {
+    firstId: gold.winnerId,
+    secondId: gold.winnerId === gold.akaId ? gold.shiroId : gold.akaId,
+    thirdId: bronze.winnerId,
+  } }, tieGroups: [] };
 }

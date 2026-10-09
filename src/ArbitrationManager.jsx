@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MatchManager, { PoolTieBreakManager } from "./MatchManager";
 import KataSheet from "./KataSheet";
 import CompetitionControl from "./CompetitionControl";
-import { calculatePoolPodium, createKataTieBreakMatches, restoreMissingKataSecondRound, normalizeKataTieBreakRounds, disciplineLabel } from "./competitionLogic";
+import { calculatePoolPodium, calculateFinalsPodium, synchronizeTwoPoolFinals, createKataTieBreakMatches, restoreMissingKataSecondRound, normalizeKataTieBreakRounds, disciplineLabel } from "./competitionLogic";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { findNextArbitrationPassage, sortArbitrationMatches } from "./arbitrationSorting";
 import { arbitrationSheetKey, loadArbitrationDraft } from "./arbitrationDraftStorage";
@@ -253,7 +253,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
       }
 
       const changedPool = { ...pool, matches, poolTieBreakOrder: [], rankingLocked: [], podium: null };
-      const calculation = calculatePoolPodium(changedPool);
+      const calculation = changedPool.isFinalsPool ? calculateFinalsPodium(changedPool) : calculatePoolPodium(changedPool);
 
       if (calculation.tieGroups.length) {
         if (isKataMatch) {
@@ -268,7 +268,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
       }
       return calculation.pool;
     });
-    onUpdateCompetition({ ...competition, pools: updatedPools, statut: "Résultats disponibles" });
+    onUpdateCompetition({ ...competition, pools: synchronizeTwoPoolFinals(updatedPools), statut: "Résultats disponibles" });
     setSelected(null);
     return true;
   }
@@ -281,7 +281,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
       return;
     }
     const resolvedPool = calculatePoolPodium({ ...pool, poolTieBreakOrder: order }).pool;
-    onUpdateCompetition({ ...competition, pools: pools.map((item) => item.id === pool.id ? resolvedPool : item), statut: "Résultats disponibles" });
+    onUpdateCompetition({ ...competition, pools: synchronizeTwoPoolFinals(pools.map((item) => item.id === pool.id ? resolvedPool : item)), statut: "Résultats disponibles" });
     setPendingTieBreak(null);
   }
 
