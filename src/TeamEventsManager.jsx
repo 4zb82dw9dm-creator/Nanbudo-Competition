@@ -1,0 +1,46 @@
+import { useEffect, useState } from "react";
+import { competitionRulesEngine } from "./rules/competitionRulesEngine";
+const ATTACKS = ["Tsuki 1","Tsuki 2","Mae-geri 1","Mae-geri 2","Mawashi 1","Mawashi 2"];
+const label = (person) => [person.prenom,person.nom].filter(Boolean).join(" ");
+export default function TeamEventsManager({competition,onUpdateCompetition}) {
+ const teams=competition.teamEntries||[], bouts=competition.teamBouts||[];
+ const [kind,setKind]=useState("kata_equipe"),[name,setName]=useState(""),[members,setMembers]=useState(["","",""]),[left,setLeft]=useState(""),[right,setRight]=useState("");
+ const [active,setActive]=useState(null),[running,setRunning]=useState(false),[remaining,setRemaining]=useState(300),[phase,setPhase]=useState("normal"),[seq,setSeq]=useState(0),[a,setA]=useState(null),[b,setB]=useState(null),[notes,setNotes]=useState(["","","","",""]),[kataName,setKataName]=useState("");
+ const [confirmEnd,setConfirmEnd]=useState(false);
+ const people=competition.competitors||[];
+ const eligible=teams.filter(t=>t.kind===kind);
+ const match=bouts.find(x=>x.id===active);
+ useEffect(()=>{if(!running)return;const timer=setInterval(()=>setRemaining(v=>Math.max(0,v-1)),1000);return()=>clearInterval(timer)},[running]);
+ useEffect(()=>{if(remaining===0)setRunning(false)},[remaining]);
+ function saveTeam(){const count=kind==="kata_equipe"?3:members.length;if(!name.trim()||members.slice(0,count).some(x=>!x)||new Set(members.slice(0,count)).size!==count)return alert("Indique le nom et des membres distincts.");onUpdateCompetition({...competition,teamEntries:[...teams,{id:"team-"+Date.now(),kind,name:name.trim(),memberIds:members.slice(0,count)}]});setName("");setMembers(["","",""])}
+ function saveBouts(next){onUpdateCompetition({...competition,teamBouts:next})}
+ function newBout(){if(!left||!right||left===right)return alert("Choisis deux équipes différentes.");const id="team-bout-"+Date.now();saveBouts([...bouts,{id,kind,akaId:left,shiroId:right,rounds:[],scoreA:0,scoreB:0,status:"en_cours"}]);setActive(id);setRemaining(300);setPhase("normal");setSeq(0);setA(null);setB(null);setNotes(["","","","",""])}
+ function updateBout(patch){saveBouts(bouts.map(x=>x.id===active?{...x,...patch}:x))}
+ function recordFlags(){if(a===null&&b===null)return alert("Choisis les drapeaux.");const round={attack:ATTACKS[seq%6],aka:a||0,shiro:b||0};updateBout({rounds:[...match.rounds,round],scoreA:match.scoreA+round.aka,scoreB:match.scoreB+round.shiro});setSeq(x=>x+1);setA(null);setB(null)}
+ function endPeriod(){setRunning(false);setConfirmEnd(false);if(phase==="normal"&&match.scoreA===match.scoreB){setPhase("extension_ready")}else if(phase==="extension"&&match.scoreA===match.scoreB){setPhase("flags")}else{updateBout({status:"termine",winnerId:match.scoreA>match.scoreB?match.akaId:match.shiroId});setPhase("finished")}}
+ function saveKata(){const result=competitionRulesEngine.calculateKataPoints(notes);if(!result)return alert("Saisis les cinq notes.");if(result.requiresShugo)return alert("SHUGO : corriger les notes avant validation.");updateBout({rounds:[...match.rounds,{kataName,notes:notes.map(Number),score:Math.round(result.average*10)/10}],status:"termine"});setPhase("finished")}
+ const team=(id)=>teams.find(x=>x.id===id);
+ return <div className="card"><h2>Épreuves par équipe</h2><p>Les épreuves par équipe sont indépendantes des poules individuelles. La rotation des combattants est gérée par les arbitres, pas par l'application.</p>
+ <label>Discipline <select value={kind} onChange={e=>{setKind(e.target.value);setMembers(["","",""]);setLeft("");setRight("");setActive(null)}}><option value="kata_equipe">Kata par équipe</option><option value="ju_randori_equipe">Ju-Randori par équipe</option></select></label>
+ <h3>Inscrire une équipe</h3><label>Nom de l'équipe <input value={name} onChange={e=>setName(e.target.value)}/></label>
+ <div className="filters">{members.map((member,i)=><label key={i}>Membre {i+1}<select value={member} onChange={e=>setMembers(old=>old.map((x,j)=>i===j?e.target.value:x))}><option value="">Choisir un compétiteur</option>{people.map(p=><option key={p.id} value={String(p.id)}>{label(p)}</option>)}</select></label>)}</div>
+ {kind==="ju_randori_equipe"&&members.length<5&&<button type="button" onClick={()=>setMembers(x=>[...x,""])}>+ Membre</button>}
+ {kind==="ju_randori_equipe"&&members.length>3&&<button type="button" onClick={()=>setMembers(x=>x.slice(0,-1))}>− Membre</button>}
+ <button type="button" className="primary" onClick={saveTeam}>Enregistrer l'équipe</button>
+ <h3>Équipes inscrites</h3>{eligible.length===0?<p>Aucune équipe inscrite.</p>:<ul>{eligible.map(t=><li key={t.id}><strong>{t.name}</strong> — {t.memberIds.map(id=>label(people.find(p=>String(p.id)===String(id))||{})).join(", ")}</li>)}</ul>}
+ <h3>Nouvelle confrontation</h3><div className="filters"><label>AKA <select value={left} onChange={e=>setLeft(e.target.value)}><option value="">Équipe rouge</option>{eligible.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label><label>SHIRO <select value={right} onChange={e=>setRight(e.target.value)}><option value="">Équipe blanche</option>{eligible.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label></div><button className="primary" onClick={newBout}>Créer la confrontation</button>
+ <h3>Confrontations enregistrées</h3>{bouts.filter(x=>x.kind===kind).map(x=><button key={x.id} type="button" onClick={()=>{setActive(x.id);setRunning(false);setPhase(x.status==="termine"?"finished":"normal");setRemaining(300);setSeq(x.rounds.length);setA(null);setB(null)}}>{team(x.akaId)?.name} / {team(x.shiroId)?.name} — {x.status}</button>)}
+ {match&&match.kind===kind&&<section className="card"><h3>{team(match.akaId)?.name} (AKA) — {team(match.shiroId)?.name} (SHIRO)</h3>
+ {kind==="kata_equipe"?<><p>Notation collective : cinq juges, retrait de la note la plus haute et la plus basse.</p><label>Kata exécuté <input value={kataName} onChange={e=>setKataName(e.target.value)}/></label><div className="filters">{notes.map((n,i)=><label key={i}>Juge {i+1}<select value={n} onChange={e=>setNotes(v=>v.map((x,j)=>j===i?e.target.value:x))}><option value="">Note</option>{competitionRulesEngine.ruleset.kata.noteValues.map(v=><option key={v}>{v}</option>)}</select></label>)}</div><button onClick={saveKata}>Enregistrer la note de l'équipe</button></>:
+ <><div style={{textAlign:"center",padding:"1rem",borderRadius:12,background:remaining<=35?"#f7b955":"transparent",animation:remaining>0&&remaining<=35?"teamWarningBlink 1.4s ease-in-out infinite":"none"}}><strong style={{fontSize:"2.5rem"}}>{String(Math.floor(remaining/60)).padStart(2,"0")}:{String(remaining%60).padStart(2,"0")}</strong><p>{remaining===0?"TEMPS ÉCOULÉ — terminer la séquence ou clôturer":remaining<=35?"ALERTE : 30 SECONDES À ANNONCER":phase==="extension"?"PROLONGATION":"TEMPS RÉGLEMENTAIRE"}</p></div>
+ <div className="filters"><button disabled={remaining===0||phase==="finished"||phase==="flags"||phase==="extension_ready"} onClick={()=>setRunning(v=>!v)}>{running?"Pause":"Démarrer / Reprendre"}</button><button onClick={()=>setConfirmEnd(true)} disabled={phase==="finished"||phase==="extension_ready"||phase==="flags"}>Terminer l'épreuve sans note supplémentaire</button></div>
+ {confirmEnd&&<div role="alert"><p>Clôturer cette période sans noter la séquence en cours ?</p><button onClick={endPeriod}>Confirmer</button><button onClick={()=>setConfirmEnd(false)}>Annuler</button></div>}
+ <h3>Score collectif : AKA {match.scoreA} — SHIRO {match.scoreB}</h3>
+ {phase!=="finished"&&phase!=="flags"&&phase!=="extension_ready"&&<><h3>{ATTACKS[seq%6]}</h3><div className="filters">{[["AKA",a,setA],["SHIRO",b,setB]].map(([side,value,set])=><fieldset key={side}><legend>Drapeaux {side}</legend>{[1,2,3].map(n=><button key={n} type="button" style={{fontWeight:value===n?"bold":"normal",background:value===n?(side==="AKA"?"#dc4c4c":"#cbd5e1"):""}} onClick={()=>set(value===n?null:n)}>{n} drapeau{n>1?"x":""}</button>)}</fieldset>)}</div><button onClick={recordFlags}>Enregistrer les drapeaux et passer à la séquence suivante</button></>}
+ {phase==="extension_ready"&&<button onClick={()=>{setPhase("extension");setRemaining(120);setSeq(0)}}>Démarrer la prolongation de 2 minutes</button>}
+ {phase==="flags"&&<div><p>Égalité après prolongation : décision finale aux drapeaux.</p><button onClick={()=>{updateBout({status:"termine",winnerId:match.akaId,finalDecision:"AKA"});setPhase("finished")}}>Victoire AKA</button><button onClick={()=>{updateBout({status:"termine",winnerId:match.shiroId,finalDecision:"SHIRO"});setPhase("finished")}}>Victoire SHIRO</button></div>}
+ </>}
+ {phase==="finished"&&<p>Épreuve terminée. Résultat enregistré.</p>}</section>}
+ <style>{`@keyframes teamWarningBlink {0%,100%{opacity:1}50%{opacity:.55}}`}</style>
+ </div>;
+}
