@@ -428,3 +428,58 @@ export function calculatePoolPodium(pool) {
     tieGroups: [],
   };
 }
+
+/** Create one final and one bronze match once both qualifying pools are ranked. */
+export function synchronizeTwoPoolFinals(pools) {
+  const result = [...pools];
+  const categories = new Set(result.filter((pool) => !pool.isFinalsPool && !competitionRulesEngine.isKataDiscipline(pool.discipline)).map((pool) => String(pool.categoryId)));
+  for (const categoryId of categories) {
+    const qualifiers = result.filter((pool) => !pool.isFinalsPool && String(pool.categoryId) === categoryId);
+    if (qualifiers.length !== 2) continue;
+    const finalsIndex = result.findIndex((pool) => pool.isFinalsPool && String(pool.categoryId) === categoryId);
+    const ready = qualifiers.every((pool) => pool.statut === "Terminée" && pool.podium?.firstId && pool.podium?.secondId);
+    if (!ready) {
+      if (finalsIndex >= 0) result.splice(finalsIndex, 1);
+      continue;
+    }
+    const [a, b] = qualifiers;
+    const specs = [
+      { type: "bronze", akaId: a.podium.secondId, shiroId: b.podium.secondId, ordre: 1 },
+      { type: "gold", akaId: a.podium.firstId, shiroId: b.podium.firstId, ordre: 2 },
+    ];
+    const existing = finalsIndex >= 0 ? result[finalsIndex] : null;
+    const unchanged = existing && specs.every((spec) => {
+      const match = existing.matches?.find((item) => item.finalType === spec.type);
+      return match && match.akaId === spec.akaId && match.shiroId === spec.shiroId;
+    });
+    if (unchanged) continue;
+    const tatami = a.tatami || b.tatami || 1;
+    const matches = specs.map((spec) => ({
+      ...spec, id: `final-${categoryId}-${spec.type}`, categoryId: a.categoryId,
+      discipline: a.discipline, tatami, horaire: "", statut: "À jouer",
+      akaScore: null, shiroScore: null, winnerId: null,
+    }));
+    const finalsPool = {
+      id: `finals-${categoryId}`, categoryId: a.categoryId, discipline: a.discipline,
+      nom: "Finale et petite finale", isFinalsPool: true, closingMode: "finals",
+      competitorIds: [...new Set(matches.flatMap((match) => [match.akaId, match.shiroId]))],
+      tatami, matches, statut: "En cours", rankingLocked: [], podium: null,
+    };
+    if (finalsIndex >= 0) result[finalsIndex] = finalsPool;
+    else result.push(finalsPool);
+  }
+  return result;
+}
+
+export function calculateFinalsPodium(pool) {
+  const gold = pool.matches.find((match) => match.finalType === "gold");
+  const bronze = pool.matches.find((match) => match.finalType === "bronze");
+  if (!gold || !bronze || gold.statut !== "Terminé" || bronze.statut !== "Terminé" || !gold.winnerId || !bronze.winnerId) {
+    return { pool: { ...pool, statut: "En cours", podium: null }, tieGroups: [] };
+  }
+  return { pool: { ...pool, statut: "Terminée", podium: {
+    firstId: gold.winnerId,
+    secondId: gold.winnerId === gold.akaId ? gold.shiroId : gold.akaId,
+    thirdId: bronze.winnerId,
+  } }, tieGroups: [] };
+}
