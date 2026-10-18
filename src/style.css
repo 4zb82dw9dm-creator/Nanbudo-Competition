@@ -2816,3 +2816,27 @@ body { font-family: Inter, "Avenir Next", "Segoe UI", Arial, sans-serif; }
   .competition-dashboard-header .status { margin-top:30px; }
   .public-link { max-width:760px; }
 }
+
+
+/* Competition OS — refinement visuel 18 octobre 2026.
+   Surcharge purement graphique : aucun changement de logique. */
+:root { font-synthesis:none; }
+body { -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+.content:has(.competition-dashboard) { background:#fff; border:1px solid #e6ebf3; border-radius:15px; box-shadow:0 8px 30px rgba(12,34,66,.045); }
+.competition-dashboard { color:#0c1f3c; line-height:1.5; }
+.competition-dashboard h1,.competition-dashboard h2,.competition-dashboard h3 { letter-spacing:-.025em; line-height:1.2; }
+.competition-dashboard-header h2 { font-size:clamp(25px,2.7vw,38px); font-weight:800; }
+.competition-dashboard button { border-radius:9px; font-weight:700; transition:box-shadow .15s ease,transform .15s ease; }
+.competition-dashboard button:focus-visible { outline:3px solid #2e72d4; outline-offset:3px; }
+.competition-dashboard button:hover:not(:disabled) { box-shadow:0 4px 13px rgba(12,34,66,.12); }
+.competition-menu { row-gap:9px; }
+.competition-menu button { min-height:44px; border:1px solid #e0e6ef; box-shadow:0 2px 7px rgba(12,34,66,.045); }
+.competition-menu button.active,.competition-menu button[aria-current="page"] { border-bottom:3px solid #d9a918; }
+.public-link { background:#f3f6fb; border-radius:8px; padding:7px 10px; }
+.public-link a { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.competition-dashboard .status { font-weight:700; }
+@media(max-width:700px) {
+ .content:has(.competition-dashboard) { border-radius:10px; }
+ .competition-dashboard-header h2 { font-size:clamp(23px,6vw,30px); }
+ .competition-menu button { min-height:44px; }
+}
