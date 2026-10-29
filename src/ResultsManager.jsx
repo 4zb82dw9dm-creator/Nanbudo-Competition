@@ -200,25 +200,6 @@ async function exportResultsPdf() {
           <p>{competition.lieu || "Lieu à définir"} · {competition.date || "Date à définir"}</p>
         </header>
 
-        <section className="results-progressive" aria-label="Matchs validés">
-        <h3>Résultats des matchs validés ({validatedMatches.length})</h3>
-        <p>Consultation organisateurs · mise à jour après chaque validation.</p>
-        {validatedMatches.length === 0 ? <p>Aucun match validé pour le moment.</p> : (
-          <div className="competition-list">
-            {validatedMatches.map(({ match, pool, category }) => (
-              <article className="competition" key={`${pool.id}-${match.id}`}>
-                <p className="surtitle">{category?.nom || pool.nom || "Catégorie"} · {match.discipline || category?.discipline || "Combat"}</p>
-                <p><strong>AKA :</strong> {competitorName(match.akaId)} · <strong>SHIRO :</strong> {competitorName(match.shiroId)}</p>
-                <p><strong>Vainqueur :</strong> {matchWinner(match)}</p>
-                {(match.scoreAka != null || match.scoreShiro != null) && <p><strong>Score :</strong> AKA {match.scoreAka ?? "—"} / SHIRO {match.scoreShiro ?? "—"}</p>}
-                {match.endedAt && <p><small>Validé le {new Date(match.endedAt).toLocaleString("fr-FR")}</small></p>}
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <h3>Classements définitifs</h3>
       {finishedPools.length === 0 ? (
           <p className="results-print-empty">Aucun résultat définitif.</p>
         ) : (
@@ -273,6 +254,26 @@ async function exportResultsPdf() {
 >
   Exporter les résultats en PDF
 </button>      </div>
+
+        <section className="results-progressive" aria-label="Matchs validés">
+        <h3>Résultats des matchs validés ({validatedMatches.length})</h3>
+        <p>Consultation organisateurs · mise à jour après chaque validation.</p>
+        {validatedMatches.length === 0 ? <p>Aucun match validé pour le moment.</p> : (
+          <div className="competition-list">
+            {validatedMatches.map(({ match, pool, category }) => (
+              <article className="competition" key={`${pool.id}-${match.id}`}>
+                <p className="surtitle">{category?.nom || pool.nom || "Catégorie"} · {match.discipline || category?.discipline || "Combat"}</p>
+                <p><strong>AKA :</strong> {competitorName(match.akaId)} · <strong>SHIRO :</strong> {competitorName(match.shiroId)}</p>
+                <p><strong>Vainqueur :</strong> {matchWinner(match)}</p>
+                {(match.scoreAka != null || match.scoreShiro != null) && <p><strong>Score :</strong> AKA {match.scoreAka ?? "—"} / SHIRO {match.scoreShiro ?? "—"}</p>}
+                {match.endedAt && <p><small>Validé le {new Date(match.endedAt).toLocaleString("fr-FR")}</small></p>}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <h3>Classements définitifs</h3>
 
       {finishedPools.length === 0 ? (
         <div className="empty-state">
