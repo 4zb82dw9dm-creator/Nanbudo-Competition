@@ -9,11 +9,10 @@ export function applyMaiWarning(activeWarnings, warning) {
     };
   }
 
-  const distinctAssaults = new Set(warnings.map((item) => item.assaultIndex));
-  if (warnings.length === 3 && distinctAssaults.size === 3) {
+  if (warnings.length >= 3) {
     return {
       activeWarnings: [],
-      conversion: { consumed: warnings, rule: "distinct_assaults" },
+      conversion: { consumed: warnings, rule: "three_mai" },
     };
   }
 

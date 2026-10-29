@@ -59,3 +59,9 @@ test("removing a Maï leaves the remaining assault state available for recalcula
   assert.equal(state.fujubun, 0);
   assert.deepEqual(state.activeWarnings.map(({ assaultIndex }) => assaultIndex), [0, 2]);
 });
+
+test("three Maï in the combat convert regardless of assault distribution", () => {
+  let state = { activeWarnings: [], fujubun: 0 };
+  for (const assaultIndex of [0, 1, 0]) state = add(state, assaultIndex);
+  assert.deepEqual(state, { activeWarnings: [], fujubun: 1 });
+});
