@@ -17,6 +17,19 @@ function ResultsManager({ competition }) {
     );
   }
 
+  const validatedMatches = pools.flatMap((pool) => (pool.matches || [])
+    .filter((match) => match.statut === "Terminé")
+    .map((match) => ({ match, pool, category: getCategory(pool.categoryId) })))
+    .sort((a, b) => (b.match.endedAt || "").localeCompare(a.match.endedAt || ""));
+
+  function matchWinner(match) {
+    const winnerId = match.winnerId;
+    if (winnerId != null) return competitorName(winnerId);
+    if (match.vainqueur === "aka") return competitorName(match.akaId);
+    if (match.vainqueur === "shiro") return competitorName(match.shiroId);
+    return "Égalité / non renseigné";
+  }
+
   const finishedPools = pools.filter((pool) => {
     if (!pool.podium) return false;
     const categoryPools = pools.filter((item) => String(item.categoryId) === String(pool.categoryId) && !item.isFinalsPool);
@@ -187,7 +200,26 @@ async function exportResultsPdf() {
           <p>{competition.lieu || "Lieu à définir"} · {competition.date || "Date à définir"}</p>
         </header>
 
-        {finishedPools.length === 0 ? (
+        <section className="results-progressive" aria-label="Matchs validés">
+        <h3>Résultats des matchs validés ({validatedMatches.length})</h3>
+        <p>Consultation organisateurs · mise à jour après chaque validation.</p>
+        {validatedMatches.length === 0 ? <p>Aucun match validé pour le moment.</p> : (
+          <div className="competition-list">
+            {validatedMatches.map(({ match, pool, category }) => (
+              <article className="competition" key={`${pool.id}-${match.id}`}>
+                <p className="surtitle">{category?.nom || pool.nom || "Catégorie"} · {match.discipline || category?.discipline || "Combat"}</p>
+                <p><strong>AKA :</strong> {competitorName(match.akaId)} · <strong>SHIRO :</strong> {competitorName(match.shiroId)}</p>
+                <p><strong>Vainqueur :</strong> {matchWinner(match)}</p>
+                {(match.scoreAka != null || match.scoreShiro != null) && <p><strong>Score :</strong> AKA {match.scoreAka ?? "—"} / SHIRO {match.scoreShiro ?? "—"}</p>}
+                {match.endedAt && <p><small>Validé le {new Date(match.endedAt).toLocaleString("fr-FR")}</small></p>}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <h3>Classements définitifs</h3>
+      {finishedPools.length === 0 ? (
           <p className="results-print-empty">Aucun résultat définitif.</p>
         ) : (
           <div className="results-print-categories">
