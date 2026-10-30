@@ -2899,3 +2899,27 @@ body:has(.competition-dashboard) .dashboard > * {
  body:has(.competition-dashboard) .content:has(.competition-dashboard) { width:calc(100% - 20px); padding:16px 12px; margin:12px auto; }
  body:has(.competition-dashboard) .competition-menu button { min-height:46px; }
 }
+
+
+/* iPad: 14 registration columns, accessible horizontal scrolling. */
+.participants-section { min-width: 0; }
+.participants-table-wrap { min-width: 0; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+.participants-table { width: 2480px; min-width: 2480px; max-width: none; table-layout: fixed; }
+.participants-table th:nth-child(11), .participants-table th:nth-child(12),
+.participants-table th:nth-child(13),
+.participants-table td:nth-child(11), .participants-table td:nth-child(12),
+.participants-table td:nth-child(13) { width: 145px; min-width: 145px; text-align: center; }
+.participants-table th:nth-child(14), .participants-table td:nth-child(14) { width: 220px; }
+.participants-table input[type="checkbox"] { appearance: auto; -webkit-appearance: checkbox; width: 24px; height: 24px; min-height: 24px; padding: 0; margin: 8px auto; accent-color: #0758b9; cursor: pointer; }
+@media (min-width: 701px) and (max-width: 1400px) {
+ .participants-table { width: 2480px; min-width: 2480px; }
+ .participants-table-wrap { overflow-x: scroll; }
+ .participants-scroll-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+ .participants-scroll-controls button { border: 0; border-radius: 9px; background: #071a33; color: white; padding: 10px 14px; font-weight: 800; }
+}
+@media (max-width: 700px) {
+ .participants-table { width: 100%; min-width: 0; }
+ .participants-table th:nth-child(11), .participants-table th:nth-child(12),
+ .participants-table th:nth-child(13), .participants-table td:nth-child(11),
+ .participants-table td:nth-child(12), .participants-table td:nth-child(13) { width: auto; min-width: 0; text-align: left; }
+}
