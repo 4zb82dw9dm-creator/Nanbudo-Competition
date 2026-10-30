@@ -12,6 +12,9 @@ export const REGISTRATION_EXPORT_COLUMNS = [
   ["discipline", "Disciplines"],
   ["categoriesInscription", "Épreuves / catégories d’inscription"],
   ["fonctionArbitrage", "Fonctions d’arbitrage"],
+  ["kataEquipe", "Kata Équipe"],
+  ["juRandoriEquipe", "Ju-Randori Équipe"],
+  ["juRandoriOpen", "Ju-Randori Open"],
   ["statutInscription", "Statut"],
   ["club", "Club"],
   ["ville", "Ville"],
@@ -22,6 +25,7 @@ export const REGISTRATION_EXPORT_COLUMNS = [
 
 function cellValue(competitor, key) {
   const value = competitor[key] ?? (key === "categoriesInscription" ? competitor.categorieInscription : "");
+  if (["kataEquipe", "juRandoriEquipe", "juRandoriOpen"].includes(key)) return value === true ? "Oui" : "Non";
   return Array.isArray(value) ? value.join(", ") : value;
 }
 
