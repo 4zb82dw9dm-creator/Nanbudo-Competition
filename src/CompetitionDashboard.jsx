@@ -32,7 +32,7 @@ export function competitionDiscipline(categoriesInscription = []) {
 }
 
 export function isParticipantRowEmpty(row) {
-  return Object.values(row).every((value) => Array.isArray(value) ? value.length === 0 : !String(value || "").trim());
+  return Object.values(row).every((value) => Array.isArray(value) ? value.length === 0 : typeof value === "boolean" ? !value : !String(value || "").trim());
 }
 
 export function hasCompetitorRole(typeInscription) {
