@@ -1,3 +1,4 @@
+import { categoryFromBirthYear, registrationDisciplinesForCategory } from "./categoryRules";
 export const REGISTRATION_LOG_STEPS = {
   FORM_RECEIVED: "Formulaire reçu",
   VALIDATION_OK: "Validation OK",
@@ -43,7 +44,7 @@ export function validateRegistrationForm(form) {
 
   for (const [index, row] of filledRows.entries()) {
     if (!row.nom?.trim() || !row.prenom?.trim() || !row.sexe || !row.dateNaissance || !row.ceinture || !row.typeInscription) return `La ligne ${index + 1} est incomplète : nom, prénom, sexe, date de naissance, grade et type d’inscription sont obligatoires.`;
-    if (hasCompetitorRole(row.typeInscription) && (Array.isArray(row.discipline) ? row.discipline.length === 0 : !row.discipline)) return `La ligne ${index + 1} est incomplète : choisissez une discipline pour ce compétiteur.`;
+    if (hasCompetitorRole(row.typeInscription) && !(registrationDisciplinesForCategory(categoryFromBirthYear(row.dateNaissance)).length > 0 || (Array.isArray(row.discipline) ? row.discipline.length > 0 : Boolean(row.discipline)))) return `La ligne ${index + 1} est incomplète : choisissez une discipline pour ce compétiteur.`;
     if (hasRefereeRole(row.typeInscription) && (Array.isArray(row.fonctionArbitrage) ? row.fonctionArbitrage.length === 0 : !row.fonctionArbitrage)) return `La ligne ${index + 1} est incomplète : choisissez une fonction d’arbitrage.`;
   }
 
