@@ -3,7 +3,7 @@ import { disciplineLabel } from "./competitionLogic";
 
 const PENALTY_TYPES = [
   ["keikoku", "Keikoku"],
-  ["mai", "Maï"],
+  ["mai", "Maai"],
   ["fujubun", "Fujubun"],
   ["chui", "Chui"],
   ["hansoku_chui", "Hansoku Chui"],
@@ -106,14 +106,14 @@ function StatisticsManager({ competition }) {
     <div className="dashboard statistics-kpis">
       <div className="card"><span className="number">{rows.length}</span><h3>Passages terminés</h3><p>Kata, Randori et Ju-Randori confondus.</p></div>
       <div className="card"><span className="number">{formatDuration(average)}</span><h3>Temps moyen global</h3><p>Calculé sur les passages disposant d’un chronométrage.</p></div>
-      <div className="card"><span className="number">{totalSanctions}</span><h3>Sanctions enregistrées</h3><p>Keikoku, Fujubun, Chui et Hansoku Chui. Les Maï sont analysés séparément.</p></div>
+      <div className="card"><span className="number">{totalSanctions}</span><h3>Sanctions enregistrées</h3><p>Keikoku, Fujubun, Chui et Hansoku Chui. Les Maai sont analysés séparément.</p></div>
     </div>
-    <div className="statistics-penalty-cards"><article className="card"><span className="number">{totalMai}</span><h3>Maï constatés</h3><p>Événements techniques, distincts des sanctions.</p></article>{totalPenalties.filter((item) => item.id !== "mai").map((item) => <article className="card" key={item.id}><span className="number">{item.value}</span><h3>{item.label}</h3></article>)}</div>
+    <div className="statistics-penalty-cards"><article className="card"><span className="number">{totalMai}</span><h3>Maai constatés</h3><p>Événements techniques, distincts des sanctions.</p></article>{totalPenalties.filter((item) => item.id !== "mai").map((item) => <article className="card" key={item.id}><span className="number">{item.value}</span><h3>{item.label}</h3></article>)}</div>
     <StatsTable title="Analyse par discipline" rows={byDiscipline} firstColumn="Discipline" />
     <StatsTable title="Analyse par tatami" rows={byTatami} firstColumn="Tatami" />
     <StatsTable title="Analyse par Shushin" rows={byReferee.sort((a, b) => b.penaltiesPer10 - a.penaltiesPer10)} firstColumn="Shushin" sampleThreshold={5} />
     <StatsTable title="Analyse par catégorie" rows={byCategory} firstColumn="Catégorie" />
-    <div className="beta-note"><strong>Lecture recommandée</strong><p>Les Maï sont des événements techniques et ne sont pas additionnés aux sanctions. Le ratio « sanctions / 10 combats » sert à repérer des écarts d’arbitrage. Pour les Shushin, l’analyse est marquée « échantillon insuffisant » avant 5 passages ou combats.</p></div>
+    <div className="beta-note"><strong>Lecture recommandée</strong><p>Les Maai sont des événements techniques et ne sont pas additionnés aux sanctions. Le ratio « sanctions / 10 combats » sert à repérer des écarts d’arbitrage. Pour les Shushin, l’analyse est marquée « échantillon insuffisant » avant 5 passages ou combats.</p></div>
   </div>;
 }
 
