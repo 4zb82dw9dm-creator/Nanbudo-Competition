@@ -47,11 +47,11 @@ jobs:
           p.write_text(s)
           p = Path('src/StatisticsManager.jsx')
           s = p.read_text()
-          s = s.replace('  ["mai", "Maï"],\n', '  ["mai", "Maï"],\n  ["shugo", "SHUGO"],\n', 1)
+          s = s.replace('  ["mai", "Maai"],\n', '  ["mai", "Maai"],\n  ["shugo", "SHUGO"],\n', 1)
           s = s.replace('  const counts = Object.fromEntries(PENALTY_TYPES.map(([id]) => [id, 0]));\n', '  const counts = Object.fromEntries(PENALTY_TYPES.map(([id]) => [id, 0]));\n  counts.shugo = Array.isArray(match.shugoEvents) ? match.shugoEvents.length : (match.matchHistory || []).filter((event) => event.type === "shugo").length;\n', 1)
           s = s.replace('  const totalSanctions = totalPenalties.filter((item) => item.id !== "mai").reduce((sum, item) => sum + item.value, 0);', '  const totalSanctions = totalPenalties.filter((item) => item.id !== "mai" && item.id !== "shugo").reduce((sum, item) => sum + item.value, 0);', 1)
           s = s.replace('  const totalMai = totalPenalties.find((item) => item.id === "mai")?.value || 0;\n', '  const totalMai = totalPenalties.find((item) => item.id === "mai")?.value || 0;\n  const totalShugo = totalPenalties.find((item) => item.id === "shugo")?.value || 0;\n', 1)
-          s = s.replace('<div className="statistics-penalty-cards"><article className="card"><span className="number">{totalMai}</span><h3>Maï constatés</h3><p>Événements techniques, distincts des sanctions.</p></article>{totalPenalties.filter((item) => item.id !== "mai").map', '<div className="statistics-penalty-cards"><article className="card"><span className="number">{totalMai}</span><h3>Maï constatés</h3><p>Événements techniques, distincts des sanctions.</p></article><article className="card"><span className="number">{totalShugo}</span><h3>SHUGO</h3><p>Concertations arbitrales enregistrées sur une attaque précise.</p></article>{totalPenalties.filter((item) => item.id !== "mai" && item.id !== "shugo").map', 1)
+          s = s.replace('<div className="statistics-penalty-cards"><article className="card"><span className="number">{totalMai}</span><h3>Maai constatés</h3><p>Événements techniques, distincts des sanctions.</p></article>{totalPenalties.filter((item) => item.id !== "mai").map', '<div className="statistics-penalty-cards"><article className="card"><span className="number">{totalMai}</span><h3>Maai constatés</h3><p>Événements techniques, distincts des sanctions.</p></article><article className="card"><span className="number">{totalShugo}</span><h3>SHUGO</h3><p>Concertations arbitrales enregistrées sur une attaque précise.</p></article>{totalPenalties.filter((item) => item.id !== "mai" && item.id !== "shugo").map', 1)
           p.write_text(s)
           PY
           npm ci
