@@ -14,14 +14,14 @@ function add(state, assaultIndex) {
   };
 }
 
-test("test 1: two Maï in Tsuki 1 immediately give one Fujubun and reset Maï", () => {
+test("test 1: two Maai in Tsuki 1 immediately give one Fujubun and reset Maai", () => {
   let state = { activeWarnings: [], fujubun: 0 };
   state = add(state, 0);
   state = add(state, 0);
   assert.deepEqual(state, { activeWarnings: [], fujubun: 1 });
 });
 
-test("test 2: one Maï in each of two distinct assaults remains as two Maï", () => {
+test("test 2: one Maai in each of two distinct assaults remains as two Maai", () => {
   let state = { activeWarnings: [], fujubun: 0 };
   state = add(state, 0);
   state = add(state, 1);
@@ -29,19 +29,19 @@ test("test 2: one Maï in each of two distinct assaults remains as two Maï", ()
   assert.deepEqual(state.activeWarnings.map(({ assaultIndex }) => assaultIndex), [0, 1]);
 });
 
-test("test 3: Maï in three distinct assaults give one Fujubun and reset Maï", () => {
+test("test 3: Maai in three distinct assaults give one Fujubun and reset Maai", () => {
   let state = { activeWarnings: [], fujubun: 0 };
   for (const assaultIndex of [0, 1, 2]) state = add(state, assaultIndex);
   assert.deepEqual(state, { activeWarnings: [], fujubun: 1 });
 });
 
-test("test 4: a same-assault pair resets all accumulated Maï", () => {
+test("test 4: a same-assault pair resets all accumulated Maai", () => {
   let state = { activeWarnings: [], fujubun: 0 };
   for (const assaultIndex of [0, 1, 1]) state = add(state, assaultIndex);
   assert.deepEqual(state, { activeWarnings: [], fujubun: 1 });
 });
 
-test("test 5: AKA and SHIRO Maï states remain independent", () => {
+test("test 5: AKA and SHIRO Maai states remain independent", () => {
   let aka = { activeWarnings: [], fujubun: 0 };
   let shiro = { activeWarnings: [], fujubun: 0 };
   aka = add(add(aka, 0), 0);
@@ -51,7 +51,7 @@ test("test 5: AKA and SHIRO Maï states remain independent", () => {
   assert.deepEqual(shiro.activeWarnings.map(({ assaultIndex }) => assaultIndex), [1]);
 });
 
-test("removing a Maï leaves the remaining assault state available for recalculation", () => {
+test("removing a Maai leaves the remaining assault state available for recalculation", () => {
   let state = { activeWarnings: [], fujubun: 0 };
   state = add(add(state, 0), 1);
   state.activeWarnings = state.activeWarnings.slice(0, -1);
@@ -60,7 +60,7 @@ test("removing a Maï leaves the remaining assault state available for recalcula
   assert.deepEqual(state.activeWarnings.map(({ assaultIndex }) => assaultIndex), [0, 2]);
 });
 
-test("three Maï in the combat convert regardless of assault distribution", () => {
+test("three Maai in the combat convert regardless of assault distribution", () => {
   let state = { activeWarnings: [], fujubun: 0 };
   for (const assaultIndex of [0, 1, 0]) state = add(state, assaultIndex);
   assert.deepEqual(state, { activeWarnings: [], fujubun: 1 });
