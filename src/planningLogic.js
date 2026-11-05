@@ -68,7 +68,8 @@ export function buildPlanning(competition) {
   };
   const kataEntries = session(categories.filter((item) => isKata(item.discipline)), 540);
   const kataEnd = Math.max(540, ...kataEntries.map((item) => item.end));
-  const combatStart = kataEnd;
+  const lunchBreakMinutes = 120;
+  const combatStart = kataEnd + lunchBreakMinutes;
   const combatEntries = session(categories.filter((item) => !isKata(item.discipline)), combatStart, (item) => combatDisciplinePriority(item.discipline));
   const manualFinalEntries = (competition.pools || []).filter((pool) => pool.isManualFinal).map((pool, index) => {
     const tatami = Number(pool.tatami) || 1;
@@ -82,7 +83,7 @@ export function buildPlanning(competition) {
   });
   combatEntries.push(...manualFinalEntries);
   const ceremonyStart = Math.max(combatStart, ...combatEntries.map((item) => item.end));
-  return { entries: [...kataEntries, ...combatEntries], kataEnd, combatStart, morningEnd: kataEnd, afternoonStart: combatStart, ceremonyStart };
+  return { entries: [...kataEntries, ...combatEntries], kataEnd, combatStart, lunchBreakMinutes, morningEnd: kataEnd, afternoonStart: combatStart, ceremonyStart };
 }
 
 export function balancedTatamiAssignments(categories, tatamiCount = 3) {
