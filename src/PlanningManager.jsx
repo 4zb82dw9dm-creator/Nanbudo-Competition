@@ -107,7 +107,7 @@ function PlanningManager({ competition, onUpdateCompetition }) {
   if (!(competition.pools || []).length) return <div className="empty-state"><h3>Planning indisponible</h3><p>Générez et validez d’abord les poules : le planning apparaîtra automatiquement, sans ressaisie.</p></div>;
   const kataEntries = planning.entries.filter((entry) => isKata(entry.discipline));
   const combatEntries = planning.entries.filter((entry) => !isKata(entry.discipline));
-  return <section className="planning-manager"><div className="manager-header planning-heading"><div><p className="surtitle">PROGRAMME AUTOMATIQUE</p><h2>Planning</h2><p>Les Kata sont terminés en premier sur l’ensemble des tatamis. Les Randori / Ju-Randori démarrent dès la fin du dernier Kata, même si celle-ci intervient avant midi.</p></div><div className="planning-actions"><button type="button" onClick={() => setManualOpen((open) => !open)}>+ Finale manuelle</button><button className="primary" onClick={() => recalculate(false)}>Recalculer automatiquement le planning</button><button onClick={() => recalculate(true)}>Réinitialiser le planning</button><button onClick={exportPlanningPdf}>Exporter / imprimer le déroulement détaillé</button><button onClick={() => window.print()}>Imprimer le planning</button></div></div>
+  return <section className="planning-manager"><div className="manager-header planning-heading"><div><p className="surtitle">PROGRAMME AUTOMATIQUE</p><h2>Planning</h2><p>Les Kata sont terminés en premier sur l’ensemble des tatamis. Une pause méridienne de deux heures commence après la fin du dernier Kata sur les trois tatamis. Les Randori / Ju-Randori reprennent après cette pause.</p></div><div className="planning-actions"><button type="button" onClick={() => setManualOpen((open) => !open)}>+ Finale manuelle</button><button className="primary" onClick={() => recalculate(false)}>Recalculer automatiquement le planning</button><button onClick={() => recalculate(true)}>Réinitialiser le planning</button><button onClick={exportPlanningPdf}>Exporter / imprimer le déroulement détaillé</button><button onClick={() => window.print()}>Imprimer le planning</button></div></div>
     {manualOpen && <section className="card" style={{ padding: 16, marginBottom: 16 }}>
       <h3>Ajouter une finale manuelle</h3>
       <label>Catégorie <input type="text" value={manualCategoryName} placeholder="Ex. Open seniors" onChange={(e) => setManualCategoryName(e.target.value)} /></label>
@@ -118,7 +118,7 @@ function PlanningManager({ competition, onUpdateCompetition }) {
     </section>}
     {planningNotice && <p role="status" className="beta-note">{planningNotice}</p>}
     <Session title="PHASE 1 · KATA" entries={kataEntries} competitors={competitors} onChange={change} />
-    <div className="planning-break"><strong>FIN DES KATA</strong><span>{minutesToTime(planning.kataEnd)} · Début immédiat des Randori / Ju-Randori</span></div>
+    <div className="planning-break"><strong>FIN DES KATA</strong><span>{minutesToTime(planning.kataEnd)} · PAUSE MÉRIDIENNE (2 h) · Reprise à {minutesToTime(planning.combatStart)}</span></div>
     <Session title="PHASE 2 · RANDORI / JU-RANDORI" entries={combatEntries} competitors={competitors} onChange={change} />
     <div className="planning-ceremony">{minutesToTime(planning.ceremonyStart)} · REMISE DES MÉDAILLES / CÉRÉMONIE</div></section>;
 }
