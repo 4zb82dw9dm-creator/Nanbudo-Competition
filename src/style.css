@@ -2760,7 +2760,7 @@ footer span {
 /* Competition OS · visual refresh */
 body { font-family: Inter, "Avenir Next", "Segoe UI", Arial, sans-serif; }
 .header { padding-top: 22px; padding-bottom: 22px; background: linear-gradient(110deg,#0751ad 0%,#0758b9 70%,#064a9c 100%); overflow: hidden; }
-.header::after { content:""; position:absolute; right:4%; top:50%; transform:translateY(-50%); width:clamp(64px,8vw,108px); aspect-ratio:1; background:url("../public/assets/logo-wnf.png") center / contain no-repeat; pointer-events:none; }
+.header::after { content:"南"; position:absolute; right:4%; top:50%; transform:translateY(-52%); font-family:serif; font-size:clamp(70px,9vw,130px); font-weight:900; color:rgba(255,255,255,.14); }
 .header-text { position:relative; z-index:2; }
 .header h1 { display:flex; align-items:baseline; flex-wrap:wrap; gap:.12em; margin:2px 0 4px; line-height:1; letter-spacing:-.035em; }
 .brand-nanbudo { position:relative; font-family:"Segoe Script","Bradley Hand","Brush Script MT",cursive; font-style:italic; font-size:1.18em; font-weight:900; letter-spacing:-.06em; }
