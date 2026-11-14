@@ -48,7 +48,9 @@ export function parseClubWorkbook(buffer) {
     } }, crypto.randomUUID());
     return { ...person, poids: get("Poids (kg)"), numeroEquipe: clean(get("N° Equipe")), categorieExcel: clean(get("Cat.")), sourceImportExcel: true };
   });
-  const arbitres = extract(sheetRows(workbook, "ARBITRES"), ["CLUB", "NOM", "Prénom"], (row, get, line) => {
+  const refereeRows = sheetRows(workbook, "ARBITRES");
+  const coachSectionIndex = refereeRows.findIndex((row) => row.some((cell) => key(cell) === "coach"));
+  const arbitres = extract(coachSectionIndex >= 0 ? refereeRows.slice(0, coachSectionIndex) : refereeRows, ["CLUB", "NOM", "Prénom"], (row, get, line) => {
     const nom = clean(get("NOM")), prenom = clean(get("Prénom"));
     if (!nom && !prenom) return null;
     const club = clean(get("CLUB"));
@@ -58,8 +60,8 @@ export function parseClubWorkbook(buffer) {
       fonctionArbitrage: [truthy(get("Arbitre Champs")) ? "Shushin" : "", truthy(get("Arbitre de table")) ? "Arbitre de table" : ""].filter(Boolean),
       roleArbitre: "Arbitre", competiteurDeclare: truthy(get("Compétiteurs (Oui, Non)")), sourceImportExcel: true };
   });
-  const coachRows = sheetRows(workbook, "ARBITRES");
-  const coachStart = coachRows.findIndex((r) => r.some((c) => key(c) === "coach"));
+  const coachRows = refereeRows;
+  const coachStart = coachSectionIndex;
   const coaches = coachStart < 0 ? [] : extract(coachRows.slice(coachStart + 1), ["CLUB", "NOM", "Prénom"], (row, get) => {
     const nom = clean(get("NOM")), prenom = clean(get("Prénom"));
     return nom && prenom && !(key(nom) === "nom" && key(prenom) === "prenom") ? { club: clean(get("CLUB")), nom, prenom, email: clean(get("email")) } : null;
