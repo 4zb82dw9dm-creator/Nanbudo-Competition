@@ -4,8 +4,10 @@ import { normalizeCompetitor } from "./CompetitionDashboard";
 
 const clean = (v) => String(v ?? "").trim();
 const key = (v) => clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
-const truthy = (v) => /^(oui|yes|x|1|vrai|true)$/i.test(clean(v));
+const truthy = (v) => /^(oui|yes|x|1|vrai|true|kata(?:\s*\/\s*equipe)?)$/i.test(clean(v));
+const selected = (v) => Boolean(clean(v)) && !/^(non|no|0|false)$/i.test(clean(v));
 const dateValue = (v) => {
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,"0")}-${String(v.getDate()).padStart(2,"0")}`;
   if (typeof v === "number") {
     const d = XLSX.SSF.parse_date_code(v);
     return d ? `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}` : "";
@@ -16,7 +18,7 @@ const dateValue = (v) => {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
 };
 function sheetRows(workbook, name) {
-  const sheet = workbook.SheetNames.find((n) => key(n) === key(name));
+  const sheet = workbook.SheetNames.find((n) => key(n) === key(name) || (key(name) === "arbitres" && key(n) === "arbitrescoach"));
   if (!sheet) throw new Error(`Onglet « ${name} » introuvable.`);
   return XLSX.utils.sheet_to_json(workbook.Sheets[sheet], { header: 1, defval: "", raw: true });
 }
@@ -36,13 +38,13 @@ export function parseClubWorkbook(buffer) {
     const club = clean(get("CLUB"));
     const dateNaissance = dateValue(get("Date de naissance (XX/XX/XX)"));
     if (!club || !nom || !prenom || !dateNaissance || !clean(get("Grade"))) errors.push(`Compétiteurs ligne ${line} : club, identité, date et grade obligatoires.`);
-    const combat = truthy(get("Combat")), kata = truthy(get("Kata"));
+    const combat = selected(get("Combat")), kata = selected(get("Kata"));
     const categoriesInscription = [...(kata ? ["Kata"] : []), ...(combat ? ["Ju-Randori"] : [])];
-    if (!categoriesInscription.length && !truthy(get("Kata/Equipe"))) errors.push(`Compétiteurs ligne ${line} : aucune discipline sélectionnée.`);
+    if (!categoriesInscription.length && !selected(get("Kata/Equipe")) && !selected(get("Ju Randori Equipe"))) errors.push(`Compétiteurs ligne ${line} : aucune discipline sélectionnée.`);
     const person = normalizeCompetitor({ club, ville: "", email: "", responsableClub: "", participant: {
       nom, prenom, sexe: clean(get("Sexe (M ou F)")).toUpperCase(), dateNaissance,
       ceinture: clean(get("Grade")), typeInscription: "Compétiteur", categoriesInscription,
-      kataEquipe: truthy(get("Kata/Equipe")), observations: clean(get("N° Equipe")),
+      kataEquipe: selected(get("Kata/Equipe")), juRandoriEquipe: selected(get("Ju Randori Equipe")), observations: clean(get("N° Equipe")),
     } }, crypto.randomUUID());
     return { ...person, poids: get("Poids (kg)"), numeroEquipe: clean(get("N° Equipe")), categorieExcel: clean(get("Cat.")), sourceImportExcel: true };
   });
