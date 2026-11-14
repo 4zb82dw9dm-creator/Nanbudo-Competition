@@ -66,16 +66,33 @@ export function parseClubWorkbook(buffer) {
     const nom = clean(get("NOM")), prenom = clean(get("Prénom"));
     return nom && prenom && !(key(nom) === "nom" && key(prenom) === "prenom") ? { club: clean(get("CLUB")), nom, prenom, email: clean(get("email")) } : null;
   });
-  const clubs = [...new Set([...participants, ...arbitres, ...coaches].map((p) => p.club).filter(Boolean))];
+  // One person can compete and referee: keep a single registration and its real birth date.
+  const participantByIdentity = new Map(participants.map((p) => [[key(p.club), key(p.nom), key(p.prenom)].join("|"), p]));
+  const unmatchedReferees = [];
+  for (const referee of arbitres) {
+    const identity = [key(referee.club), key(referee.nom), key(referee.prenom)].join("|");
+    const participant = participantByIdentity.get(identity);
+    if (!participant) {
+      // Referee-only records have no birth date; never classify them as mini-poussins.
+      unmatchedReferees.push({ ...referee, age: null, categorie: "", dateNaissance: "" });
+      continue;
+    }
+    participant.typeInscription = "Compétiteur + Arbitre";
+    participant.fonctionArbitrage = referee.fonctionArbitrage;
+    participant.roleArbitre = referee.fonctionArbitrage.join(", ") || "Arbitre";
+    participant.gradeArbitre = referee.grade;
+    participant.competiteurDeclare = true;
+  }
+  const clubs = [...new Set([...participants, ...unmatchedReferees, ...coaches].map((p) => p.club).filter(Boolean))];
   if (clubs.length !== 1) errors.push(`Le fichier doit concerner un seul club (détectés : ${clubs.join(", ") || "aucun"}).`);
   if (!participants.length && !arbitres.length) errors.push("Aucune inscription trouvée.");
   const identities = new Set();
-  for (const p of [...participants, ...arbitres]) {
+  for (const p of [...participants, ...unmatchedReferees]) {
     const identity = [key(p.club), key(p.nom), key(p.prenom)].join("|");
     if (identities.has(identity) && p.typeInscription !== "Arbitre") errors.push(`Doublon dans le fichier : ${p.nom} ${p.prenom}.`);
     identities.add(identity);
   }
-  return { club: clubs[0] || "", participants, arbitres, coaches, errors };
+  return { club: clubs[0] || "", participants, arbitres: unmatchedReferees, refereeCount: arbitres.length, coaches, errors };
 }
 export default function ClubExcelImport({ competition, onUpdateCompetition }) {
   const [preview, setPreview] = useState(null);
@@ -112,7 +129,7 @@ export default function ClubExcelImport({ competition, onUpdateCompetition }) {
     <input type="file" accept=".xlsx" onChange={chooseFile} aria-label="Fichier Excel du club" />
     {error && <p role="alert" style={{ color: "#b3261e" }}>{error}</p>}
     {preview && <div><h4>{preview.club || "Club non identifié"} — {preview.filename}</h4>
-      <p>{preview.participants.length} compétiteur(s), {preview.arbitres.length} arbitre(s), {preview.coaches.length} coach(s).</p>
+      <p>{preview.participants.length} compétiteur(s), {(preview.refereeCount ?? preview.arbitres.length)} arbitre(s), {preview.coaches.length} coach(s).</p>
       {preview.errors.map((e, i) => <p role="alert" key={i} style={{ color: "#b3261e" }}>{e}</p>)}
       <button type="button" disabled={preview.errors.length > 0} onClick={confirmImport}>Confirmer le remplacement du club</button>
       <button type="button" onClick={() => setPreview(null)}>Annuler</button>
