@@ -34,7 +34,7 @@ export function parseClubWorkbook(buffer) {
   const errors = [];
   const participants = extract(sheetRows(workbook, "COMPETITEURS"), ["CLUB", "NOM", "Prénom", "Grade"], (row, get, line) => {
     const nom = clean(get("NOM")), prenom = clean(get("Prénom"));
-    if (!nom && !prenom) return null;
+    if ((!nom && !prenom) || (key(nom) === "nom" && key(prenom) === "prenom")) return null;
     const club = clean(get("CLUB"));
     const dateNaissance = dateValue(get("Date de naissance (XX/XX/XX)"));
     if (!club || !nom || !prenom || !dateNaissance || !clean(get("Grade"))) errors.push(`Compétiteurs ligne ${line} : club, identité, date et grade obligatoires.`);
@@ -62,7 +62,7 @@ export function parseClubWorkbook(buffer) {
   const coachStart = coachRows.findIndex((r) => r.some((c) => key(c) === "coach"));
   const coaches = coachStart < 0 ? [] : extract(coachRows.slice(coachStart + 1), ["CLUB", "NOM", "Prénom"], (row, get) => {
     const nom = clean(get("NOM")), prenom = clean(get("Prénom"));
-    return nom && prenom ? { club: clean(get("CLUB")), nom, prenom, email: clean(get("email")) } : null;
+    return nom && prenom && !(key(nom) === "nom" && key(prenom) === "prenom") ? { club: clean(get("CLUB")), nom, prenom, email: clean(get("email")) } : null;
   });
   const clubs = [...new Set([...participants, ...arbitres, ...coaches].map((p) => p.club).filter(Boolean))];
   if (clubs.length !== 1) errors.push(`Le fichier doit concerner un seul club (détectés : ${clubs.join(", ") || "aucun"}).`);
