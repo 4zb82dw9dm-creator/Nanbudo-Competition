@@ -27,7 +27,12 @@ function extract(rows, expected, mapper) {
   if (headerIndex < 0) throw new Error(`En-têtes introuvables : ${expected.join(", ")}.`);
   const header = rows[headerIndex].map(key);
   const get = (row, name) => row[header.indexOf(key(name))] ?? "";
-  return rows.slice(headerIndex + 1).map((row, i) => mapper(row, (name) => get(row, name), headerIndex + i + 2)).filter(Boolean);
+  let previousClub = "";
+  return rows.slice(headerIndex + 1).map((row, i) => {
+    const currentClub = clean(get(row, "CLUB"));
+    if (currentClub) previousClub = currentClub;
+    return mapper(row, (name) => key(name) === "club" ? (currentClub || previousClub) : get(row, name), headerIndex + i + 2);
+  }).filter(Boolean);
 }
 export function parseClubWorkbook(buffer) {
   const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
@@ -38,15 +43,17 @@ export function parseClubWorkbook(buffer) {
     const club = clean(get("CLUB"));
     const dateNaissance = dateValue(get("Date de naissance (XX/XX/XX)"));
     if (!club || !nom || !prenom || !dateNaissance || !clean(get("Grade"))) errors.push(`Compétiteurs ligne ${line} : club, identité, date et grade obligatoires.`);
-    const combat = selected(get("Combat")), kata = selected(get("Kata"));
-    const categoriesInscription = [...(kata ? ["Kata"] : []), ...(combat ? ["Ju-Randori"] : [])];
+    const combatValue = clean(get("Combat"));
+    const combat = selected(combatValue), kata = selected(get("Kata"));
+    const combatDiscipline = /^randori$/i.test(combatValue) ? "Randori" : /^ju[ -]?randori/i.test(combatValue) ? "Ju-Randori" : (combat ? "Ju-Randori" : "");
+    const categoriesInscription = [...(kata ? ["Kata"] : []), ...(combat ? [combatDiscipline] : [])];
     if (!categoriesInscription.length && !selected(get("Kata/Equipe")) && !selected(get("Ju Randori Equipe"))) errors.push(`Compétiteurs ligne ${line} : aucune discipline sélectionnée.`);
     const person = normalizeCompetitor({ club, ville: "", email: "", responsableClub: "", participant: {
       nom, prenom, sexe: clean(get("Sexe (M ou F)")).toUpperCase(), dateNaissance,
       ceinture: clean(get("Grade")), typeInscription: "Compétiteur", categoriesInscription,
       kataEquipe: selected(get("Kata/Equipe")), juRandoriEquipe: selected(get("Ju Randori Equipe")), observations: clean(get("N° Equipe")),
     } }, crypto.randomUUID());
-    return { ...person, poids: get("Poids (kg)"), numeroEquipe: clean(get("N° Equipe")), categorieExcel: clean(get("Cat.")), sourceImportExcel: true };
+    return { ...person, disciplineCombat: combatDiscipline, poids: get("Poids (kg)"), numeroEquipe: clean(get("N° Equipe")), categorieExcel: clean(get("Cat.")), sourceImportExcel: true };
   });
   const refereeRows = sheetRows(workbook, "ARBITRES");
   const coachSectionIndex = refereeRows.findIndex((row) => row.some((cell) => key(cell) === "coach"));
@@ -84,7 +91,7 @@ export function parseClubWorkbook(buffer) {
     participant.competiteurDeclare = true;
   }
   const clubs = [...new Set([...participants, ...unmatchedReferees, ...coaches].map((p) => p.club).filter(Boolean))];
-  if (clubs.length !== 1) errors.push(`Le fichier doit concerner un seul club (détectés : ${clubs.join(", ") || "aucun"}).`);
+
   if (!participants.length && !arbitres.length) errors.push("Aucune inscription trouvée.");
   const identities = new Set();
   for (const p of [...participants, ...unmatchedReferees]) {
@@ -92,7 +99,7 @@ export function parseClubWorkbook(buffer) {
     if (identities.has(identity) && p.typeInscription !== "Arbitre") errors.push(`Doublon dans le fichier : ${p.nom} ${p.prenom}.`);
     identities.add(identity);
   }
-  return { club: clubs[0] || "", participants, arbitres: unmatchedReferees, refereeCount: arbitres.length, coaches, errors };
+  return { club: clubs[0] || "", clubs, participants, arbitres: unmatchedReferees, refereeCount: arbitres.length, coaches, errors };
 }
 export default function ClubExcelImport({ competition, onUpdateCompetition }) {
   const [preview, setPreview] = useState(null);
@@ -108,30 +115,58 @@ export default function ClubExcelImport({ competition, onUpdateCompetition }) {
   }
   function confirmImport() {
     if (!preview || preview.errors.length) return;
-    const old = (competition.competitors || []).filter((p) => key(p.club) === key(preview.club));
-    const oldIds = new Set(old.map((p) => String(p.id)));
-    const hasDependencies = (competition.pools || []).some((p) => (p.competitorIds || []).some((id) => oldIds.has(String(id))) ||
-      (p.matches || []).some((m) => [m.competitorId, m.akaId, m.shiroId].some((id) => oldIds.has(String(id)))));
-    if (hasDependencies || (competition.categories || []).some((c) => (c.competitorIds || []).some((id) => oldIds.has(String(id))))) {
-      setError("Remplacement bloqué : des tableaux, catégories ou matchs utilisent déjà les inscrits de ce club. Corriger ces dépendances avant de remplacer.");
-      return;
+    const identity = (p) => [key(p.club), key(p.nom), key(p.prenom)].join("|");
+    const existing = competition.competitors || [];
+    const byIdentity = new Map(existing.map((p, i) => [identity(p), i]));
+    const merged = [...existing];
+    let added = 0, updatedCount = 0;
+    for (const incoming of [...preview.participants, ...preview.arbitres]) {
+      const id = identity(incoming);
+      if (!byIdentity.has(id)) {
+        byIdentity.set(id, merged.length);
+        merged.push(incoming);
+        added++;
+        continue;
+      }
+      const index = byIdentity.get(id);
+      const previous = merged[index];
+      const wasCompetitor = (previous.categoriesInscription || []).length > 0 || /Compétiteur/i.test(previous.typeInscription || "");
+      const isCompetitor = (incoming.categoriesInscription || []).length > 0 || /Compétiteur/i.test(incoming.typeInscription || "");
+      const roles = [...new Set([...(previous.fonctionArbitrage || []), ...(incoming.fonctionArbitrage || [])])];
+      const hasReferee = roles.length > 0 || /Arbitre/i.test(previous.typeInscription || "") || /Arbitre/i.test(incoming.typeInscription || "");
+      const mergedPerson = { ...previous, ...incoming, id: previous.id,
+        dateNaissance: incoming.dateNaissance || previous.dateNaissance,
+        age: incoming.dateNaissance ? incoming.age : previous.age,
+        categorie: incoming.dateNaissance ? incoming.categorie : previous.categorie,
+        categoriesInscription: isCompetitor ? incoming.categoriesInscription : previous.categoriesInscription,
+        fonctionArbitrage: roles,
+        typeInscription: (wasCompetitor || isCompetitor) && hasReferee ? "Compétiteur + Arbitre" :
+          (wasCompetitor || isCompetitor) ? "Compétiteur" : "Arbitre" };
+      merged[index] = mergedPerson;
+      updatedCount++;
     }
-    if (!window.confirm(`Remplacer ${old.length} inscription(s) du club « ${preview.club} » par ${preview.participants.length + preview.arbitres.length} inscription(s) du fichier ${preview.filename} ? Cette opération est irréversible.`)) return;
-    const others = (competition.competitors || []).filter((p) => key(p.club) !== key(preview.club));
-    const updated = { ...competition, competitors: [...others, ...preview.participants, ...preview.arbitres],
-      coaches: [...(competition.coaches || []).filter((p) => key(p.club) !== key(preview.club)), ...preview.coaches],
-      excelImportHistory: [...(competition.excelImportHistory || []), { club: preview.club, filename: preview.filename, date: new Date().toISOString(), replaced: old.length, imported: preview.participants.length + preview.arbitres.length }] };
-    onUpdateCompetition(updated); setPreview(null); setError("");
+    const coaches = [...(competition.coaches || [])];
+    const coachIndex = new Map(coaches.map((p, i) => [identity(p), i]));
+    for (const coach of preview.coaches) {
+      const id = identity(coach);
+      if (coachIndex.has(id)) coaches[coachIndex.get(id)] = { ...coaches[coachIndex.get(id)], ...coach };
+      else { coachIndex.set(id, coaches.length); coaches.push(coach); }
+    }
+    if (!window.confirm(`Importer ${preview.filename} : ${added} ajout(s), ${updatedCount} mise(s) à jour, ${preview.coaches.length} coach(s) à fusionner ? Les identifiants existants et les résultats seront conservés.`)) return;
+    onUpdateCompetition({ ...competition, competitors: merged, coaches,
+      excelImportHistory: [...(competition.excelImportHistory || []),
+        { club: preview.clubs.join(", "), filename: preview.filename, date: new Date().toISOString(), added, updated: updatedCount, imported: added + updatedCount }] });
+    setPreview(null); setError("");
   }
   return <section className="card" style={{ padding: 18, marginBottom: 16 }}>
-    <h3>Importer les inscriptions Excel d'un club</h3>
-    <p>Un fichier .xlsx par club. Le remplacement concerne uniquement ce club et nécessite une confirmation.</p>
+    <h3>Importer les inscriptions Excel — un ou plusieurs clubs</h3>
+    <p>Import global ou par club (.xlsx). Les inscriptions existantes sont mises à jour sans doublons ; les autres sont conservées.</p>
     <input type="file" accept=".xlsx" onChange={chooseFile} aria-label="Fichier Excel du club" />
     {error && <p role="alert" style={{ color: "#b3261e" }}>{error}</p>}
-    {preview && <div><h4>{preview.club || "Club non identifié"} — {preview.filename}</h4>
+    {preview && <div><h4>{preview.clubs.join(", ") || "Club non identifié"} — {preview.filename}</h4>
       <p>{preview.participants.length} compétiteur(s), {(preview.refereeCount ?? preview.arbitres.length)} arbitre(s), {preview.coaches.length} coach(s).</p>
       {preview.errors.map((e, i) => <p role="alert" key={i} style={{ color: "#b3261e" }}>{e}</p>)}
-      <button type="button" disabled={preview.errors.length > 0} onClick={confirmImport}>Confirmer le remplacement du club</button>
+      <button type="button" disabled={preview.errors.length > 0} onClick={confirmImport}>Confirmer l’ajout et la mise à jour</button>
       <button type="button" onClick={() => setPreview(null)}>Annuler</button>
     </div>}
     {(competition.excelImportHistory || []).length > 0 && <details><summary>Historique des imports Excel</summary><ul>{competition.excelImportHistory.map((item, i) => <li key={i}>{item.club} — {item.filename} — {new Date(item.date).toLocaleString("fr-FR")} — {item.imported} inscriptions</li>)}</ul></details>}
