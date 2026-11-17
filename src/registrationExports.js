@@ -8,6 +8,8 @@ export const REGISTRATION_EXPORT_COLUMNS = [
   ["age", "Âge"],
   ["ageGroup", "Catégorie d’âge"],
   ["ceinture", "Grade / ceinture"],
+  ["niveauKata", "Niveau Kata"],
+  ["poids", "Poids (kg)"],
   ["typeInscription", "Type d’inscription"],
   ["discipline", "Disciplines"],
   ["categoriesInscription", "Épreuves / catégories d’inscription"],
