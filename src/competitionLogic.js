@@ -72,18 +72,20 @@ export function buildAutomaticCategories(inscriptions) {
       const discipline = disciplineIdFromRegistrationCategory(registrationCategory);
       const age = inscription.age ?? calculateAge(inscription.dateNaissance);
       const birthCategory = categoryFromBirthYear(inscription.dateNaissance, age);
-      const key = [registrationCategory, birthCategory, inscription.sexe, gradeBand(inscription.grade)].join("|");
+      const isKata = competitionRulesEngine.isKataDiscipline(discipline);
+      const kataLevel = inscription.niveauKata || (categoryCompetitionRule(birthCategory)?.kataGroup || ageCompetitionRule(age)?.kataGroup || DEFAULT_KATA_GROUP);
+      const key = [isKata ? kataLevel : registrationCategory, birthCategory, inscription.sexe, isKata ? kataLevel : gradeBand(inscription.grade)].join("|");
       if (!groups.has(key)) {
         groups.set(key, {
           id: `${discipline}-${key}`.replace(/\s+/g, "-").toLowerCase(),
-          nom: `${registrationCategory} · ${birthCategory} · ${inscription.sexe} · ${gradeBand(inscription.grade)}`,
+          nom: `${isKata ? kataLevel : registrationCategory} · ${birthCategory} · ${inscription.sexe} · ${isKata ? kataLevel : gradeBand(inscription.grade)}`,
           discipline,
           registrationCategory,
           ageGroup: birthCategory,
           sexe: inscription.sexe,
           gradeGroup: gradeBand(inscription.grade),
           competitorIds: [],
-          kataGroup: competitionRulesEngine.isKataDiscipline(discipline) ? (categoryCompetitionRule(birthCategory)?.kataGroup || ageCompetitionRule(age)?.kataGroup || DEFAULT_KATA_GROUP) : "",
+          kataGroup: isKata ? kataLevel : "",
           statut: "À valider",
         });
       }
@@ -159,12 +161,28 @@ export function setPoolTatami(pool, tatami) {
 }
 
 export function buildPoolsForCategory(category, options = {}) {
-  const { tatamiCount = 1, startIndex = 0 } = options;
+  const { tatamiCount = 1, startIndex = 0, competitors = [] } = options;
   const normalizedTatamiCount = Math.max(1, Number(tatamiCount) || 1);
-  const shuffled = shuffle(category.competitorIds);
+  const isCombat = ["randori", "ju_randori"].includes(category.discipline);
+  const weights = new Map(competitors.map((competitor) => [String(competitor.id), Number(competitor.poids)]));
+  const shuffled = isCombat ? [...category.competitorIds].sort((a, b) => {
+    const wa = weights.get(String(a)); const wb = weights.get(String(b));
+    const va = Number.isFinite(wa) && wa > 0 ? wa : Number.POSITIVE_INFINITY;
+    const vb = Number.isFinite(wb) && wb > 0 ? wb : Number.POSITIVE_INFINITY;
+    return va - vb;
+  }) : shuffle(category.competitorIds);
   const poolCount = Math.max(1, Math.ceil(shuffled.length / 4));
   const buckets = Array.from({ length: poolCount }, () => []);
-  shuffled.forEach((id, index) => buckets[index % poolCount].push(id));
+  if (isCombat) {
+    const base = Math.floor(shuffled.length / poolCount);
+    const remainder = shuffled.length % poolCount;
+    let offset = 0;
+    buckets.forEach((bucket, index) => {
+      const count = base + (index < remainder ? 1 : 0);
+      bucket.push(...shuffled.slice(offset, offset + count));
+      offset += count;
+    });
+  } else shuffled.forEach((id, index) => buckets[index % poolCount].push(id));
   return buckets.filter((ids) => ids.length > 0).map((ids, index) => {
     const tatami = ((startIndex + index) % normalizedTatamiCount) + 1;
     return {
