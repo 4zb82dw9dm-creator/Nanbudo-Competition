@@ -171,7 +171,11 @@ export function buildPoolsForCategory(category, options = {}) {
     const vb = Number.isFinite(wb) && wb > 0 ? wb : Number.POSITIVE_INFINITY;
     return va - vb;
   }) : shuffle(category.competitorIds);
-  const poolCount = Math.max(1, Math.ceil(shuffled.length / 4));
+  // Randori et Ju-Randori : poule unique jusqu’à 5, puis répartition habituelle.
+  // Les poules déjà enregistrées ne sont pas modifiées.
+  const poolCount = isCombat && shuffled.length <= 5
+    ? 1
+    : Math.max(1, Math.ceil(shuffled.length / 4));
   const buckets = Array.from({ length: poolCount }, () => []);
   if (isCombat) {
     const base = Math.floor(shuffled.length / poolCount);
