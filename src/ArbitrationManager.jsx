@@ -33,7 +33,7 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
   const lastDraftSyncRef = useRef("");
   const matchStartRef = useRef({});
   const callupRef = useRef(null);
-  function getCompetitor(id) { return competitors.find((competitor) => competitor.id === id); }
+  function getCompetitor(id) { return competitors.find((competitor) => id != null && String(competitor.id) === String(id)); }
   function getCategory(id) { return categories.find((category) => category.id === id); }
   const matchesByTatami = useMemo(() => {
     // L'arbitrage doit suivre exactement le planning bleu : phase KATA d'abord
@@ -187,9 +187,21 @@ function ArbitrationManager({ competition, onUpdateCompetition }) {
     .sort((a, b) => `${a.nom || ""} ${a.prenom || ""}`.localeCompare(`${b.nom || ""} ${b.prenom || ""}`, "fr"));
 
   function updateTatamiReferee(tatami, slot, refereeId) {
+    const selectedId = String(refereeId || "");
+    const assignments = competition.refereeAssignments || {};
+    const alreadyAssigned = selectedId && Object.entries(assignments).some(([otherTatami, team]) =>
+      Object.entries(team || {}).some(([otherSlot, assignment]) =>
+        !(String(otherTatami) === String(tatami) && otherSlot === slot) &&
+        String(assignment?.refereeId || "") === selectedId
+      )
+    );
+    if (alreadyAssigned) {
+      window.alert("Cet arbitre est déjà affecté à un autre poste. Libérez son affectation avant de le déplacer.");
+      return;
+    }
     onUpdateCompetition({
       ...competition,
-      refereeAssignments: replaceCompetitionReferee(competition.refereeAssignments || {}, tatami, slot, refereeId),
+      refereeAssignments: replaceCompetitionReferee(assignments, tatami, slot, selectedId),
     });
     setEditingRefereeSlot(null);
   }
