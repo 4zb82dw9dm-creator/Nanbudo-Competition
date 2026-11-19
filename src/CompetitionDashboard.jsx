@@ -169,11 +169,11 @@ function multiSelectValues(event) {
 }
 
 export function FrenchBirthDateInput({ value, onChange }) {
-  const format = (iso) => /^\\d{4}-\\d{2}-\\d{2}$/.test(iso || "") ? iso.slice(8,10) + "/" + iso.slice(5,7) + "/" + iso.slice(0,4) : (iso || "");
+  const format = (iso) => /^\d{4}-\d{2}-\d{2}$/.test(iso || "") ? iso.slice(8,10) + "/" + iso.slice(5,7) + "/" + iso.slice(0,4) : (iso || "");
   const [draft, setDraft] = useState(format(value));
   useEffect(() => setDraft(format(value)), [value]);
   function commit() {
-    const match = draft.trim().match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);
+    const match = draft.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (!match) { setDraft(format(value)); return; }
     const iso = match[3] + "-" + match[2].padStart(2,"0") + "-" + match[1].padStart(2,"0");
     const date = new Date(iso + "T12:00:00");
