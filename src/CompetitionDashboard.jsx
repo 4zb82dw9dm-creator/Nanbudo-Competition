@@ -116,12 +116,44 @@ function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
   function clearParticipantRows() { if (window.confirm("Effacer toutes les lignes d’inscription ?")) setForm((current) => ({ ...current, participants: createEmptyParticipantRows(15) })); }
   function addParticipantRows(count = 5) { setForm((current) => ({ ...current, participants: [...current.participants, ...createEmptyParticipantRows(count)] })); }
   function resetForm() { setForm(INITIAL_REGISTRATION_FORM); setEditingId(null); setShowForm(false); }
+  function syncCategoriesForRegistrations(nextCompetitors) {
+    const existingCategories = competition.categories || [];
+    if (!existingCategories.length) return existingCategories;
+    const generated = buildAutomaticCategories(nextCompetitors);
+    const nextCategories = existingCategories.map((category) => ({ ...category, competitorIds: [...(category.competitorIds || [])] }));
+    const assigned = new Set(nextCategories.flatMap((category) => category.competitorIds.map(String)));
+    const byId = new Map(nextCompetitors.map((competitor) => [String(competitor.id), competitor]));
+    for (const generatedCategory of generated) {
+      for (const id of generatedCategory.competitorIds) {
+        if (assigned.has(String(id))) continue;
+        const target = nextCategories.find((category) =>
+          !category.manual &&
+          category.discipline === generatedCategory.discipline &&
+          category.ageGroup === generatedCategory.ageGroup &&
+          category.sexe === generatedCategory.sexe &&
+          (category.gradeGroup || "") === (generatedCategory.gradeGroup || "") &&
+          (category.kataGroup || "") === (generatedCategory.kataGroup || "")
+        );
+        if (target) {
+          target.competitorIds.push(id);
+        } else {
+          nextCategories.push({ ...generatedCategory, id: `${generatedCategory.id}-added-${id}`, competitorIds: [id] });
+        }
+        assigned.add(String(id));
+      }
+    }
+    return nextCategories.map((category) => ({
+      ...category,
+      competitorIds: category.competitorIds.filter((id) => byId.has(String(id))),
+    })).filter((category) => category.competitorIds.length > 0);
+  }
   function saveCompetitor(event) {
     event.preventDefault();
     const validationError = validateRegistrationForm(form);
     if (validationError) return alert(validationError);
     const newCompetitors = form.participants.filter((row) => !isParticipantRowEmpty(row)).map((participant) => normalizeCompetitor({ ...form, participant }));
-    onUpdateCompetition({ ...competition, competitors: editingId ? competitors.map((item) => item.id === editingId ? { ...newCompetitors[0], id: editingId } : item) : [...competitors, ...newCompetitors] });
+    const updatedCompetitors = editingId ? competitors.map((item) => item.id === editingId ? { ...newCompetitors[0], id: editingId } : item) : [...competitors, ...newCompetitors];
+    onUpdateCompetition({ ...competition, competitors: updatedCompetitors, categories: syncCategoriesForRegistrations(updatedCompetitors) });
     resetForm();
   }
   function editCompetitor(competitor) { setEditingId(competitor.id); setForm({ club: competitor.club || "", ville: competitor.ville || "", responsableClub: competitor.responsableClub || "", email: competitor.email || "", telephoneResponsable: competitor.telephoneResponsable || "", participants: [{ nom: competitor.nom || "", prenom: competitor.prenom || "", sexe: competitor.sexe || "", dateNaissance: competitor.dateNaissance || "", ceinture: competitor.ceinture || "", niveauKata: competitor.niveauKata || "", typeCombat: competitor.typeCombat || "", poids: competitor.poids ?? "", typeInscription: competitor.typeInscription || "Compétiteur", discipline: competitor.categoriesInscription || (competitor.categorieInscription ? [competitor.categorieInscription] : []), fonctionArbitrage: Array.isArray(competitor.fonctionArbitrage) ? competitor.fonctionArbitrage : (competitor.fonctionArbitrage || competitor.roleArbitre ? String(competitor.fonctionArbitrage || competitor.roleArbitre).split(",").map((value) => value.trim()).filter(Boolean) : []), kataEquipe: Boolean(competitor.kataEquipe), juRandoriEquipe: Boolean(competitor.juRandoriEquipe), juRandoriOpen: Boolean(competitor.juRandoriOpen), observations: competitor.observations || "" }] }); setShowForm(true); }
