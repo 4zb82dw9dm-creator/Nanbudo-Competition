@@ -184,7 +184,7 @@ export function FrenchBirthDateInput({ value, onChange }) {
   return <input type="text" inputMode="numeric" aria-label="Date de naissance (JJ/MM/AAAA)" placeholder="JJ/MM/AAAA" style={{width:135,minWidth:135,boxSizing:"border-box"}} value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} />;
 }
 
-function RegistrationForm({ form, onClubChange, onParticipantChange, onClearRows, onAddRows, onSubmit, submitLabel = "Enregistrer l’inscription" }) {
+export function RegistrationForm({ form, onClubChange, onParticipantChange, onClearRows, onAddRows, onSubmit, submitLabel = "Enregistrer l’inscription" }) {
   const rows = form.participants;
   const participantsTableRef = useRef(null);
   const scrollParticipants = (direction) => participantsTableRef.current?.scrollBy({ left: direction * Math.max(320, participantsTableRef.current.clientWidth * 0.75), behavior: "smooth" });
