@@ -73,7 +73,7 @@ export function buildAutomaticCategories(inscriptions) {
       const birthCategory = categoryFromBirthYear(inscription.dateNaissance, age);
       const isKata = competitionRulesEngine.isKataDiscipline(discipline);
       const kataLevel = inscription.niveauKata || (categoryCompetitionRule(birthCategory)?.kataGroup || ageCompetitionRule(age)?.kataGroup || DEFAULT_KATA_GROUP);
-      const juLevel = discipline === "ju_randori" ? (String(registrationCategory).match(/(?:ju[\\s-]*randori)\\s*([12])\\b/i)?.[1] || "") : "";
+      const juLevel = discipline === "ju_randori" ? (String(registrationCategory).match(/(?:ju[\s-]*randori)\s*([12])\b/i)?.[1] || "") : "";
       const key = [isKata ? kataLevel : discipline, juLevel, birthCategory, inscription.sexe, isKata ? kataLevel : gradeBand(inscription.grade)].join("|");
       if (!groups.has(key)) {
         groups.set(key, {
