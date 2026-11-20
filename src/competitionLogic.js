@@ -43,12 +43,11 @@ export function nextPoolTieBreakStep(stageIndex, result) {
 }
 
 export function disciplineIdFromRegistrationCategory(registrationCategory = "") {
-  const normalized = registrationCategory.toLowerCase();
-  if (normalized.includes("kata") && normalized.includes("équipe")) return "kata_equipe";
-  if (normalized.includes("kata")) return "kata_individuel";
-  if (normalized.includes("ju randori") && normalized.includes("équipe")) return "ju_randori_equipe";
-  if (normalized.includes("ju randori")) return "ju_randori";
-  if (normalized.includes("dantai")) return "dantai_randori";
+  const normalized = String(registrationCategory).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[-‐‑–—_]+/g, " ").replace(/\s+/g, " ").trim();
+  const isTeam = /\bequipe\b/.test(normalized);
+  if (/\bkata\b/.test(normalized)) return isTeam ? "kata_equipe" : "kata_individuel";
+  if (/\bju\s*randori\b/.test(normalized)) return isTeam ? "ju_randori_equipe" : "ju_randori";
+  if (/\bdantai\b/.test(normalized)) return "dantai_randori";
   return "randori";
 }
 
@@ -74,7 +73,8 @@ export function buildAutomaticCategories(inscriptions) {
       const birthCategory = categoryFromBirthYear(inscription.dateNaissance, age);
       const isKata = competitionRulesEngine.isKataDiscipline(discipline);
       const kataLevel = inscription.niveauKata || (categoryCompetitionRule(birthCategory)?.kataGroup || ageCompetitionRule(age)?.kataGroup || DEFAULT_KATA_GROUP);
-      const key = [isKata ? kataLevel : registrationCategory, birthCategory, inscription.sexe, isKata ? kataLevel : gradeBand(inscription.grade)].join("|");
+      const juLevel = discipline === "ju_randori" ? (String(registrationCategory).match(/(?:ju[\\s-]*randori)\\s*([12])\\b/i)?.[1] || "") : "";
+      const key = [isKata ? kataLevel : discipline, juLevel, birthCategory, inscription.sexe, isKata ? kataLevel : gradeBand(inscription.grade)].join("|");
       if (!groups.has(key)) {
         groups.set(key, {
           id: `${discipline}-${key}`.replace(/\s+/g, "-").toLowerCase(),
