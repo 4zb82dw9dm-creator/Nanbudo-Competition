@@ -45,6 +45,12 @@ export function buildPlanning(competition) {
     ] : [],
     requestedOrder: adjustments[categoryId]?.order == null ? null : Number(adjustments[categoryId].order),
     requestedStart: adjustments[categoryId]?.start == null ? null : Number(adjustments[categoryId].start) }); });
+  for (const bout of competition.teamBouts || []) {
+    const teams = (competition.teamEntries || []).filter(t => t.id === bout.akaId || t.id === bout.shiroId);
+    const categoryId = "team-planning-" + bout.id;
+    const label = isKata(bout.kind) ? "Kata par équipe" : "Ju-Randori par équipe";
+    categories.push({categoryId, pools: [], sourceOrder: categories.length, name: label + " · " + teams.map(t=>t.name).join(" / "), discipline: bout.kind, teamBoutId: bout.id, teamNames: teams.map(t=>t.name), competitors: [...new Set(teams.flatMap(t=>t.memberIds || []))], duration: isKata(bout.kind) ? 10 : 10, tatami: Number(adjustments[categoryId]?.tatami || 1), finals: [], requestedOrder: adjustments[categoryId]?.order ?? null, requestedStart: adjustments[categoryId]?.start ?? null});
+  }
   const busy = new Map();
   const session = (items, sessionStart, priority = () => 0) => {
     const cursors = { 1: sessionStart, 2: sessionStart, 3: sessionStart };
@@ -63,7 +69,7 @@ export function buildPlanning(competition) {
       do { conflict = item.competitors.flatMap((id) => busy.get(String(id)) || []).find((slot) => start < slot.end && end > slot.start); if (conflict) { start = conflict.end; end = start + item.duration; } } while (conflict);
       item.competitors.forEach((id) => busy.set(String(id), [...(busy.get(String(id)) || []), { start, end }])); cursors[tatami] = end;
       const order = ++displayOrders[tatami];
-      return { ...item, tatami, order, start, end, disciplineLabel: disciplineLabel(item.discipline) };
+      return { ...item, tatami, order, start, end, disciplineLabel: item.teamBoutId ? (isKata(item.discipline) ? "Kata par équipe" : "Ju-Randori par équipe") : disciplineLabel(item.discipline) };
     });
   };
   const kataEntries = session(categories.filter((item) => isKata(item.discipline)), 540);
