@@ -60,7 +60,7 @@ function mergePools(localPools = [], remotePools = []) {
   const remoteById = new Map(remotePools.map((pool) => [String(pool.id), pool]));
   const ids = [...new Set([...localById.keys(), ...remoteById.keys()])];
 
-  return ids.map((id) => {
+  const merged = ids.map((id) => {
     const localPool = localById.get(id);
     const remotePool = remoteById.get(id);
     if (!localPool) return remotePool;
@@ -78,10 +78,22 @@ function mergePools(localPools = [], remotePools = []) {
       matches: mergeMatches(localPool.matches || [], remotePool.matches || []),
     };
   });
+  // A manually merged pool supersedes its original, unplayed pools.
+  // Keep any pool with recorded progress rather than silently deleting results.
+  const uniquePools = merged.filter((pool) => String(pool.id).endsWith("-fusion") && / · Poule unique$/.test(pool.nom || ""));
+  return merged.filter((pool) => {
+    if (pool.podium || (pool.matches || []).some((match) => match.statut !== "À jouer")) return true;
+    return !uniquePools.some((replacement) => {
+      if (String(replacement.id) === String(pool.id) || String(replacement.categoryId) !== String(pool.categoryId) || replacement.discipline !== pool.discipline) return false;
+      if (String(pool.id).endsWith("-fusion")) return false;
+      const ids = new Set((replacement.competitorIds || []).map(String));
+      return (pool.competitorIds || []).length > 0 && pool.competitorIds.every((id) => ids.has(String(id)));
+    });
+  });
 }
 
 function mergeCompetition(localCompetition, remoteCompetition) {
-  if (!localCompetition) return remoteCompetition;
+  if (!localCompetition) return { ...remoteCompetition, pools: mergePools([], remoteCompetition.pools || []) };
   return {
     ...remoteCompetition,
     pools: mergePools(localCompetition.pools || [], remoteCompetition.pools || []),
