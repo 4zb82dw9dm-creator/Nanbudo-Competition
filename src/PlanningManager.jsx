@@ -31,7 +31,7 @@ function PlanningManager({ competition, onUpdateCompetition }) {
     });
     return rows.sort(sortArbitrationMatches);
   }, [planning, competition.pools]);
-  const change = (entry, patch) => { const planningAdjustments = { ...(competition.planningAdjustments || {}), [entry.categoryId]: { ...(competition.planningAdjustments?.[entry.categoryId] || {}), ...patch } }; const pools = patch.tatami ? competition.pools.map((pool) => String(pool.categoryId || pool.id) === entry.categoryId ? setPoolTatami(pool, Number(patch.tatami)) : pool) : competition.pools; onUpdateCompetition({ ...competition, pools, planningAdjustments }); };
+  const change = (entry, patch) => { const planningAdjustments = { ...(competition.planningAdjustments || {}), [entry.categoryId]: { ...(competition.planningAdjustments?.[entry.categoryId] || {}), ...patch } }; const pools = patch.tatami ? (competition.pools || []).map((pool) => String(pool.categoryId || pool.id) === entry.categoryId ? setPoolTatami(pool, Number(patch.tatami)) : pool) : competition.pools; onUpdateCompetition({ ...competition, pools, planningAdjustments }); };
   const recalculate = (reset = false) => {
     if (reset && !window.confirm("Réinitialiser les horaires et les affectations des tatamis ? Les résultats seront conservés.")) return;
     const assignments = balancedTatamiAssignments(competition.categories || [], PLANNING_TATAMIS.length);
@@ -92,6 +92,7 @@ function PlanningManager({ competition, onUpdateCompetition }) {
           const nextRow = rows[rows.indexOf(rows.find((row) => row.match.id === match.id)) + 1];
           if (!nextRow || String(nextRow.pool.id) !== String(pool.id)) lines.push("");
         });
+        planning.entries.filter(e=>e.teamBoutId && e.tatami===tatami).forEach(e=>lines.push(`${minutesToTime(e.start)} · ${e.name} · ${e.duration} min`));
         lines.push("");
       });
     };
@@ -104,7 +105,7 @@ function PlanningManager({ competition, onUpdateCompetition }) {
       landscape: true,
     });
   };
-  if (!(competition.pools || []).length) return <div className="empty-state"><h3>Planning indisponible</h3><p>Générez et validez d’abord les poules : le planning apparaîtra automatiquement, sans ressaisie.</p></div>;
+  if (!planning.entries.length) return <div className="empty-state"><h3>Planning indisponible</h3><p>Générez et validez d’abord les poules : le planning apparaîtra automatiquement, sans ressaisie.</p></div>;
   const kataEntries = planning.entries.filter((entry) => isKata(entry.discipline));
   const combatEntries = planning.entries.filter((entry) => !isKata(entry.discipline));
   return <section className="planning-manager"><div className="manager-header planning-heading"><div><p className="surtitle">PROGRAMME AUTOMATIQUE</p><h2>Planning</h2><p>Les Kata sont terminés en premier sur l’ensemble des tatamis. Une pause méridienne de deux heures commence après la fin du dernier Kata sur les trois tatamis. Les Randori / Ju-Randori reprennent après cette pause.</p></div><div className="planning-actions"><button type="button" onClick={() => setManualOpen((open) => !open)}>+ Finale manuelle</button><button className="primary" onClick={() => recalculate(false)}>Recalculer automatiquement le planning</button><button onClick={() => recalculate(true)}>Réinitialiser le planning</button><button onClick={exportPlanningPdf}>Exporter / imprimer le déroulement détaillé</button><button onClick={() => window.print()}>Imprimer le planning</button></div></div>
