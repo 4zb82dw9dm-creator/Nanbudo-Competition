@@ -49,7 +49,7 @@ export function buildPlanning(competition) {
     if (bout.kind === "kata_equipe" && !bout.kataPool) continue;
     const teams = (competition.teamEntries || []).filter(t => bout.teamIds ? bout.teamIds.includes(t.id) : t.id === bout.akaId || t.id === bout.shiroId);
     const categoryId = "team-planning-" + bout.id;
-    const label = isKata(bout.kind) ? "Kata par équipe" : "Ju-Randori par équipe";
+    const label = isKata(bout.kind) ? (bout.kataGroup || "Kata") + " par équipe" : "Ju-Randori par équipe";
     categories.push({categoryId, pools: [], sourceOrder: categories.length, name: label + " · " + teams.map(t=>t.name).join(" / "), discipline: bout.kind, teamBoutId: bout.id, teamNames: teams.map(t=>t.name), competitors: [...new Set(teams.flatMap(t=>t.memberIds || []))], duration: isKata(bout.kind) ? Math.max(15, Math.ceil((bout.kataPool.matches.length * 4) / 5) * 5) + 5 : 10, tatami: Number(adjustments[categoryId]?.tatami || 1), finals: [], requestedOrder: adjustments[categoryId]?.order ?? null, requestedStart: adjustments[categoryId]?.start ?? null});
   }
   const busy = new Map();
