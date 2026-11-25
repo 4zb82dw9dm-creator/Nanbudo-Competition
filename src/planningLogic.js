@@ -64,7 +64,7 @@ export function buildPlanning(competition) {
     });
     const orderFor = (item) => item.requestedOrder ?? defaultOrders.get(item.categoryId) ?? 1;
     const displayOrders = { 1: 0, 2: 0, 3: 0 };
-    return [...items].sort((a, b) => priority(a) - priority(b) || orderFor(a) - orderFor(b) || a.sourceOrder - b.sourceOrder).map((item) => {
+    return [...items].sort((a, b) => orderFor(a) - orderFor(b) || priority(a) - priority(b) || a.sourceOrder - b.sourceOrder).map((item) => {
       const tatami = PLANNING_TATAMIS.includes(item.tatami) ? item.tatami : 1;
       let start = Math.max(cursors[tatami], item.requestedStart ?? sessionStart), end = start + item.duration, conflict;
       do { conflict = item.competitors.flatMap((id) => busy.get(String(id)) || []).find((slot) => start < slot.end && end > slot.start); if (conflict) { start = conflict.end; end = start + item.duration; } } while (conflict);
