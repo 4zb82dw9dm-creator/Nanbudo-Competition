@@ -75,7 +75,7 @@ export function buildPlanning(competition) {
   };
   const kataEntries = session(categories.filter((item) => isKata(item.discipline)), 540);
   const kataEnd = Math.max(540, ...kataEntries.map((item) => item.end));
-  const lunchBreakMinutes = 120;
+  const lunchBreakMinutes = 90;
   const combatStart = kataEnd + lunchBreakMinutes;
   const combatEntries = session(categories.filter((item) => !isKata(item.discipline)), combatStart, (item) => combatDisciplinePriority(item.discipline));
   const manualFinalEntries = (competition.pools || []).filter((pool) => pool.isManualFinal).map((pool, index) => {
