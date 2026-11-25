@@ -193,7 +193,7 @@ export function buildPoolsForCategory(category, options = {}) {
       competitorIds: ids,
       tatami,
       matches: generateMatches(ids, category, index, tatami),
-      statut: "À valider",
+      statut: "Tableau généré",
       rankingLocked: [],
       podium: null,
     };
