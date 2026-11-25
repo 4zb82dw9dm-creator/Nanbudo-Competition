@@ -8,7 +8,7 @@ import PlanningManager from "./PlanningManager";
 import TeamEventsManager from "./TeamEventsManager";
 import RefereeManager from "./RefereeManager";
 import StatisticsManager from "./StatisticsManager";
-import { ageBand, buildAutomaticCategories, calculateAge, DISCIPLINES, gradeBand } from "./competitionLogic";
+import { compactCompetitionFusionNames, ageBand, buildAutomaticCategories, calculateAge, DISCIPLINES, gradeBand } from "./competitionLogic";
 import { categoryFromBirthYear, registrationDisciplinesForCategory } from "./categoryRules";
 import { competitionRulesEngine } from "./rules/competitionRulesEngine";
 import { validateRegistrationForm } from "./registrationProcessing";
@@ -86,7 +86,9 @@ export function createEmptyParticipantRows(count = 15) {
   return Array.from({ length: count }, () => ({ ...INITIAL_PARTICIPANT_ROW }));
 }
 
-function CompetitionDashboard({ competition, onBack, onUpdateCompetition }) {
+function CompetitionDashboard({ competition: rawCompetition, onBack, onUpdateCompetition: persistCompetition }) {
+  const competition = useMemo(() => compactCompetitionFusionNames(rawCompetition), [rawCompetition]);
+  const onUpdateCompetition = next => persistCompetition(compactCompetitionFusionNames(next));
   const [view, setView] = useState("dashboard");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(INITIAL_REGISTRATION_FORM);
