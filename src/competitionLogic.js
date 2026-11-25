@@ -501,3 +501,27 @@ export function calculateFinalsPodium(pool) {
     thirdId: bronze.winnerId,
   } }, tieGroups: [] };
 }
+
+export function compactFusionName(category, competitors = []) {
+  const ids = new Set((category.competitorIds || []).map(String));
+  const members = competitors.filter(c => ids.has(String(c.id)));
+  if (!members.length) return category.nom;
+  const unique = values => [...new Set(values.filter(Boolean))].join("/");
+  const ages = unique(members.map(c => c.ageGroup || (c.dateNaissance || c.age ? categoryFromBirthYear(c.dateNaissance, c.age) : "")));
+  const sexes = unique(members.map(c => c.sexe === "M" ? "H" : c.sexe));
+  const belts = unique(members.map(c => c.grade ? gradeBand(c.grade) : c.ceinture ? gradeBand(c.ceinture) : "").filter(v => v && !/inconnu|non renseign/i.test(v)));
+  const names = unique(members.map(c => c.nom));
+  const discipline = competitionRulesEngine.isKataDiscipline(category.discipline) ? category.kataGroup || "Kata" : disciplineLabel(category.discipline);
+  return ["Fusion", discipline, [ages, sexes].filter(Boolean).join(" "), belts, names].filter(Boolean).join(" · ");
+}
+export function compactCompetitionFusionNames(competition) {
+  const categories = (competition.categories || []).map(c => /^Fusion\s*·/i.test(c.nom || "") ? {...c, nom: compactFusionName(c, competition.competitors)} : c);
+  const byId = new Map(categories.map(c => [String(c.id), c]));
+  const pools = (competition.pools || []).map(p => {
+    const c = byId.get(String(p.categoryId));
+    if (!c || !/^Fusion\s*·/i.test(c.nom || "")) return p;
+    const suffix = (p.nom || "").match(/ · (Poule (?:\d+|unique)|Finales?)$/i)?.[0] || "";
+    return {...p, nom: c.nom + suffix};
+  });
+  return {...competition, categories, pools};
+}
