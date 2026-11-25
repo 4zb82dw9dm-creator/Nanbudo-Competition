@@ -36,36 +36,15 @@ function PoolsManager({ competition, onUpdateCompetition }) {
     const ids = [...new Set(selected.flatMap((pool) => pool.competitorIds))];
     if (!window.confirm(`Créer une poule unique de ${ids.length} compétiteurs ? Les matchs seront régénérés. Vérifiez la sécurité des compétiteurs.`)) return;
     const tatami = first.tatami || 1;
-    const merged = { id: `${Date.now()}-${category.id}-fusion`, categoryId: category.id, discipline: category.discipline, nom: `${category.nom} · Poule unique`, competitorIds: ids, tatami, matches: generateMatches(ids, category, 0, tatami), statut: "À valider", rankingLocked: [], podium: null };
+    const merged = { id: `${Date.now()}-${category.id}-fusion`, categoryId: category.id, discipline: category.discipline, nom: `${category.nom} · Poule unique`, competitorIds: ids, tatami, matches: generateMatches(ids, category, 0, tatami), statut: "Tableau généré", rankingLocked: [], podium: null };
     onUpdateCompetition({ ...competition, pools: [...pools.filter((pool) => !selectedPoolIds.includes(pool.id)), merged], planningAdjustments: {} });
     setSelectedPoolIds([]);
-  }
-  function validatePool(poolId) {
-    onUpdateCompetition({
-      ...competition,
-      pools: pools.map((pool) => {
-        if (pool.id !== poolId) return pool;
-        const tatami = pool.tatami || 1;
-        return {
-          ...pool,
-          tatami,
-          statut: "Tableau généré",
-          matches: pool.matches.map((match, index) => ({
-            ...match,
-            ordre: index + 1,
-            tatami,
-            horaire: competition.horairesActifs ? `${String(9 + Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}` : "",
-          })),
-        };
-      }),
-      statut: "Tableau généré",
-    });
   }
   function changePoolTatami(poolId, tatami) {
     const selectedTatami = Number(tatami) || 1;
     const categoryId = pools.find((pool) => pool.id === poolId)?.categoryId;
     onUpdateCompetition({ ...competition, pools: pools.map((pool) => pool.categoryId === categoryId ? setPoolTatami(pool, selectedTatami) : pool), planningAdjustments: {} });
   }
-  return <div className="pools-manager"><div className="manager-header"><div><p className="surtitle">POULES ET TABLEAU</p><h2>Poules</h2><p>Regroupement par poids proche en Randori et Ju-Randori, séparation automatique hommes/femmes, équilibrage des poules par tatami, puis génération des matchs et de l'ordre de passage. Aucune poule mixte n'est créée automatiquement, même en cas d'effectif insuffisant.</p></div><div className="category-total"><strong>{pools.length}</strong><span>poules</span></div></div><button className="primary" onClick={generateAllPools} disabled={categories.length === 0}>Générer automatiquement toutes les poules</button><button className="manage-button" onClick={mergePools} disabled={selectedPoolIds.length < 2}>Fusionner les poules sélectionnées</button>{pools.length === 0 ? <div className="empty-state"><h3>Aucune poule</h3><p>Validez les catégories puis générez les poules.</p></div> : <div className="competition-list">{sortedPools.map((pool) => { const poolTatami = pool.tatami || 1; return <article className="competition" key={pool.id}><div><p className="surtitle">{disciplineLabel(pool.discipline)}</p><div className="pool-card-title"><label style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="checkbox" style={{ appearance: "auto", WebkitAppearance: "checkbox", width: 23, height: 23 }} checked={selectedPoolIds.includes(pool.id)} onChange={() => setSelectedPoolIds((current) => current.includes(pool.id) ? current.filter((id) => id !== pool.id) : [...current, pool.id])} /><strong>{pool.nom}</strong></label><label>Tatami : <select value={poolTatami} onChange={(event) => changePoolTatami(pool.id, event.target.value)}>{Array.from({ length: tatamiCount }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select></label></div><p>{pool.competitorIds.length} compétiteurs · {pool.matches.length} matchs · {pool.statut}</p><div className="competitor-events">{pool.competitorIds.map((id) => <span key={id}>{getCompetitor(id)?.nom} {getCompetitor(id)?.prenom}</span>)}</div><div className="pool-matches"><h3>Tableau de compétition</h3><p><strong>Tatami {poolTatami}</strong></p>{pool.matches.map((match) => <p key={match.id}>#{match.ordre}{match.horaire ? ` · ${match.horaire}` : ""} · {getCompetitor(match.akaId)?.nom}{match.shiroId ? ` / ${getCompetitor(match.shiroId)?.nom}` : ""} · {match.statut}</p>)}</div></div><div className="competition-actions"><button className="manage-button" onClick={() => validatePool(pool.id)}>Valider et générer</button></div></article>; })}</div>}</div>;
+  return <div className="pools-manager"><div className="manager-header"><div><p className="surtitle">POULES ET TABLEAU</p><h2>Poules</h2><p>Regroupement par poids proche en Randori et Ju-Randori, séparation automatique hommes/femmes, équilibrage des poules par tatami, puis génération des matchs et de l'ordre de passage. Aucune poule mixte n'est créée automatiquement, même en cas d'effectif insuffisant.</p></div><div className="category-total"><strong>{pools.length}</strong><span>poules</span></div></div><button className="primary" onClick={generateAllPools} disabled={categories.length === 0}>Générer automatiquement toutes les poules</button><button className="manage-button" onClick={mergePools} disabled={selectedPoolIds.length < 2}>Fusionner les poules sélectionnées</button>{pools.length === 0 ? <div className="empty-state"><h3>Aucune poule</h3><p>Validez les catégories puis générez les poules.</p></div> : <div className="competition-list">{sortedPools.map((pool) => { const poolTatami = pool.tatami || 1; return <article className="competition" key={pool.id}><div><p className="surtitle">{disciplineLabel(pool.discipline)}</p><div className="pool-card-title"><label style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="checkbox" style={{ appearance: "auto", WebkitAppearance: "checkbox", width: 23, height: 23 }} checked={selectedPoolIds.includes(pool.id)} onChange={() => setSelectedPoolIds((current) => current.includes(pool.id) ? current.filter((id) => id !== pool.id) : [...current, pool.id])} /><strong>{pool.nom}</strong></label><label>Tatami : <select value={poolTatami} onChange={(event) => changePoolTatami(pool.id, event.target.value)}>{Array.from({ length: tatamiCount }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select></label></div><p>{pool.competitorIds.length} compétiteurs · {pool.matches.length} matchs · {pool.statut === "À valider" ? "Tableau généré" : pool.statut}</p><div className="competitor-events">{pool.competitorIds.map((id) => <span key={id}>{getCompetitor(id)?.nom} {getCompetitor(id)?.prenom}</span>)}</div><div className="pool-matches"><h3>Tableau de compétition</h3><p><strong>Tatami {poolTatami}</strong></p>{pool.matches.map((match) => <p key={match.id}>#{match.ordre}{match.horaire ? ` · ${match.horaire}` : ""} · {getCompetitor(match.akaId)?.nom}{match.shiroId ? ` / ${getCompetitor(match.shiroId)?.nom}` : ""} · {match.statut}</p>)}</div></div></article>; })}</div>}</div>;
 }
 export default PoolsManager;
